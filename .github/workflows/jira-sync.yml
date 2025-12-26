@@ -19,7 +19,7 @@ jobs:
         id: create
         uses: atlassian/gajira-create@v3
         with:
-          project: "내프로젝트키"  # 예: PROJ (지라 프로젝트 키 대문자)
+          project: "PB"  # 예: PROJ (지라 프로젝트 키 대문자)
           issuetype: "Task"      # 예: Task, Bug, Story
           summary: "[GH-#${{ github.event.issue.number }}] ${{ github.event.issue.title }}"
           description: |
