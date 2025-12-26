@@ -13,6 +13,11 @@
 - 문제 해결(Troubleshooting)
 
 ## 3. 핵심 문서
-- [협업 규칙](./process/collaboration-rules.md)
-- [기술 결정 기록](./adr/README.md)
+- **[프로젝트 SSOT (Single Source of Truth)](./ssot.md)** ⭐ 가장 먼저 읽어야 할 문서
+  - 8주 로드맵 및 마일스톤
+  - 협업 규칙 및 DoD (Definition of Done)
+  - 온보딩 가이드
+- [협업 규칙 상세](./process/collaboration-rules.md)
+- [기술 결정 기록 (ADR)](./adr/README.md)
 - [문서 작성 가이드](./guides/writing-guide.md)
+- [이슈 템플릿 가이드](./issue-template-guide.md)
