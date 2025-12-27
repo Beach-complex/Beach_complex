@@ -94,10 +94,8 @@
       }                                                                 
                                                                         
       private String resolveLevel(CongestionCurrentResponse response) { 
-          if ("rule_based".equalsIgnoreCase(mode) || "rule-             
-  based".equalsIgnoreCase(mode)) {                                      
-              return response.ruleBased() != null ?                     
-  response.ruleBased().level() : null;                                  
+          if ("rule_based".equalsIgnoreCase(mode) || "rule-based".equalsIgnoreCase(mode)) {                                      
+              return response.ruleBased() != null ? response.ruleBased().level() : null;                                  
           }                                                             
           return response.ai() != null ? response.ai().level() : null;  
       }                                                                 
@@ -112,15 +110,10 @@
           };                                                            
       }                                                                 
                                                                         
-      private String formatWeatherSummary(Double tempC, Double rainMm,  
-  Double windMps) {                                                     
-          String temp = tempC == null ? "n/a" : String.format("%.1fC",  
-  tempC);                                                               
-          String rain = rainMm == null ? "n/a" : String.format("%.1fmm",
-  rainMm);                                                              
-          String wind = windMps == null ? "n/a" : String.format("%.1fm/ 
-  s", windMps);                                                         
-          return String.format("temp:%s, rain:%s, wind:%s", temp, rain, 
-  wind);                                                                
+      private String formatWeatherSummary(Double tempC, Double rainMm, Double windMps) {                                                     
+          String temp = tempC == null ? "n/a" : String.format("%.1fC", tempC);                                                               
+          String rain = rainMm == null ? "n/a" : String.format("%.1fmm", rainMm);                                                              
+          String wind = windMps == null ? "n/a" : String.format("%.1fm/s", windMps);                                                         
+          return String.format("temp:%s, rain:%s, wind:%s", temp, rain, wind);                                                                
       }                                                                 
   }
