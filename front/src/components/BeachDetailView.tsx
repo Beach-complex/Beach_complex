@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Toaster } from './ui/sonner';
 import { fetchRecentConditions, type BeachConditionDto } from '../api/conditions';
 import MapView from '@/components/MapView';
+import { useUserLocation } from '../hooks/useUserLocation'; // ✅ 추가
 
 interface BeachDetailViewProps {
   beach: Beach;
@@ -166,6 +167,9 @@ export function BeachDetailView({
   const [isLoadingConditions, setIsLoadingConditions] = useState(false);
   const [conditionsError, setConditionsError] = useState<string | null>(null);
   const beachTelemetryId = beach.id || null;
+
+  // ✅ 사용자 위치 가져오기
+  const { coords } = useUserLocation();
 
   useEffect(() => {
     let ignore = false;
@@ -465,6 +469,7 @@ export function BeachDetailView({
           beaches={allBeaches}
           selected={beach}
           onSelect={(b) => onBeachChange?.(b)}
+          userCoords={coords} // ✅ 사용자 위치 전달
         />
       </div>
 

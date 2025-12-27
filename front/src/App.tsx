@@ -16,12 +16,13 @@ import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
 // import { computeTrendingScore } from './constants/trending'; // ⬅️ 큐레이션으로 대체하여 사용 안 함
 import HashtagBar, { FilterKey } from './components/HashtagBar';
+import { useUserLocation } from './hooks/useUserLocation';
 
 /** =======================
  *  큐레이션 상수 (요청 사양)
  *  ======================= */
 // #요즘뜨는해수욕장 → 광안리, 송도, 다대포 (이 순서 유지)
-const TRENDING_ORDER = ['GWANGALLI', 'SONGDO', 'DADAEPO'] as const;
+const TRENDING_ORDER = ['GWANGALLI', 'SONGDO'] as const;
 const TRENDING_SET = new Set(TRENDING_ORDER);
 
 // #가장많이가는곳 → 해운대, 광안리 (이 순서 유지)
@@ -96,6 +97,9 @@ export default function App() {
     }
   };
 
+  // ✅ 사용자 위치 가져오기
+  const { coords, perm, error: locationError } = useUserLocation();
+
   // Load favorites from localStorage on mount
   useEffect(() => {
     const savedFavorites = localStorage.getItem('beachcheck_favorites');
@@ -118,19 +122,39 @@ export default function App() {
     localStorage.setItem('beachcheck_favorites', JSON.stringify(favoriteBeaches));
   }, [favoriteBeaches]);
 
+  // ✅ 위치 기반 검색
   useEffect(() => {
+    // 위치 정보가 없으면 대기
+    if (!coords) {
+      return;
+    }
+
     const controller = new AbortController();
     setIsLoadingBeaches(true);
     setBeachError(null);
 
-    fetchBeaches(controller.signal)
-      .then((data) => {
+    // 위치 기반 검색 API 호출 (반경 50km 고정)
+    const params = new URLSearchParams({
+      lat: coords.lat.toString(),
+      lon: coords.lng.toString(),
+      radiusKm: '50'
+    });
+
+    fetch(`/api/beaches?${params}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`API Error: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data: Beach[]) => {
         setBeaches(data);
         const serverFavIds = data.filter(b => b.isFavorite).map(b => b.id);
         setFavoriteBeaches(prev => Array.from(new Set([...prev, ...serverFavIds])));
         if (data.length > 0) {
           setLastSelectedBeach((previous) => previous ?? data[0] ?? null);
         }
+        console.log(`✅ ${data.length}개 해수욕장 발견 (반경 50km)`);
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -149,7 +173,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [coords]);
 
   // Load and apply theme on mount
   useEffect(() => {
@@ -397,6 +421,41 @@ export default function App() {
     );
   }
 
+  // ✅ 위치 권한 상태 처리
+  if (perm === 'denied' && locationError) {
+    return (
+      <div className="relative min-h-screen bg-background max-w-[480px] mx-auto flex items-center justify-center p-8">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">📍</div>
+          <h2 className="font-['Noto_Sans_KR:Bold',_sans-serif] text-lg">
+            위치 권한이 필요합니다
+          </h2>
+          <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-sm text-muted-foreground">
+            내 주변 해수욕장을 찾기 위해<br />
+            브라우저 설정에서 위치 권한을 허용해주세요.
+          </p>
+          <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
+            현재 부산시청 기준으로 검색 중입니다
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ 위치 정보 로딩 중
+  if (!coords) {
+    return (
+      <div className="relative min-h-screen bg-background max-w-[480px] mx-auto flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="animate-pulse text-4xl">📍</div>
+          <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-muted-foreground">
+            위치 정보를 가져오는 중입니다...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-background max-w-[480px] mx-auto pb-20">
       {/* Header */}
@@ -549,6 +608,7 @@ export default function App() {
           <BeachCard
             key={beach.id}
             beach={beach}
+            userCoords={coords}
             isFavorite={favoriteBeaches.includes(beach.id)}
             onFavoriteToggle={(e) => toggleFavorite(beach.id, e)}
             onClick={() => {
