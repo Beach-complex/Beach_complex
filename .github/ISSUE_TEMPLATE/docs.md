@@ -1,9 +1,9 @@
 ---
-name: 📝 Docs
+name: docs
 about: 문서 작성 및 수정 (README, Wiki, API 등)
 title: "[Docs] "
 labels: docs
-assignees: ''
+assignees: ""
 ---
 
 ## 대상 문서
