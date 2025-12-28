@@ -82,3 +82,6 @@ app:
         # CORS 설정
         - "http://localhost:3000" # 프론트(기본설정)
         - "http://localhost:8080" # 백
+  congestion:
+    base-url: http://127.0.0.1:8000
+    mode: ai
