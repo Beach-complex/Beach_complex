@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Beach } from '@/types/beach';
 import L from 'leaflet';
@@ -12,6 +12,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString(),
 });
 
+// ✅ 사용자 위치 마커 아이콘 (파란색)
+const userLocationIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
 const statusColor = (s: Beach['status']) =>
   s === 'busy' ? '#ef4444' : s === 'normal' ? '#f59e0b' : s === 'free' ? '#22c55e' : '#64748b';
@@ -26,9 +35,10 @@ type Props = {
   beaches: Beach[];
   selected?: Beach | null;
   onSelect?: (b: Beach) => void;
+  userCoords?: { lat: number; lng: number } | null; // ✅ 사용자 위치 추가
 };
 
-export default function MapView({ beaches, selected, onSelect }: Props) {
+export default function MapView({ beaches, selected, onSelect, userCoords }: Props) {
   const center: [number, number] =
     selected
       ? [selected.latitude, selected.longitude]
@@ -50,6 +60,22 @@ export default function MapView({ beaches, selected, onSelect }: Props) {
 
       {selected && <FlyTo center={[selected.latitude, selected.longitude]} />}
 
+      {/* ✅ 사용자 위치 마커 */}
+      {userCoords && (
+        <Marker
+          position={[userCoords.lat, userCoords.lng]}
+          icon={userLocationIcon}
+        >
+          <Popup>
+            <div style={{ fontWeight: 600 }}>내 위치</div>
+            <div style={{ fontSize: 12, color: '#64748b' }}>
+              {userCoords.lat.toFixed(4)}, {userCoords.lng.toFixed(4)}
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {/* 해수욕장 마커들 */}
       {beaches.map((b) => (
         <CircleMarker
           key={b.id}
