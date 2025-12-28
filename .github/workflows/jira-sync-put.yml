@@ -48,7 +48,7 @@ jobs:
               "version": 1,
               "content": [
                 {
-                  # 경고문구 
+                  // 경고문구 
                   "type": "paragraph",
                   "content": [
                     {
@@ -58,7 +58,7 @@ jobs:
                   ]
                 },
                 {
-                  # 코드블록 
+                  // 코드블록 
                   "type": "codeBlock",
                   "attrs": { "language": "markdown" },
                   "content": [
@@ -69,7 +69,7 @@ jobs:
                   ]
                 },
                 {
-                  # 바로가기 링크
+                  // 바로가기 링크
                   "type": "paragraph",
                   "content": [
                     {
