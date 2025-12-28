@@ -1,0 +1,118 @@
+name: Update Jira Issue on GitHub Edit
+
+on:
+  issues:
+    types: [edited]
+
+jobs:
+  update-jira:
+    runs-on: ubuntu-latest
+    # 제목에 'PB-'가 포함되어 있을 때만 실행 (무한 루프/오작동 방지)
+    if: contains(github.event.issue.title, 'PB-')
+
+    steps:
+      - name: Extract Jira Key
+        id: get-key
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          # 정규식으로 [PB-123] 또는 PB-123 추출
+          KEY=$(echo "$TITLE" | grep -o 'PB-[0-9]\+' | head -n 1)
+          echo "Jira Key Found: $KEY"
+          echo "key=$KEY" >> $GITHUB_OUTPUT
+
+      - name: Update Jira Issue
+        uses: actions/github-script@v6
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_KEY: ${{ steps.get-key.outputs.key }}
+        with:
+          script: |
+            const jiraKey = process.env.JIRA_KEY;
+            const baseUrl = process.env.JIRA_BASE_URL;
+            const email = process.env.JIRA_USER_EMAIL;
+            const token = process.env.JIRA_API_TOKEN;
+
+            // 깃허브 이슈 정보 가져오기
+            const ghTitle = context.payload.issue.title;
+            const ghBody = context.payload.issue.body || "내용 없음"; // 본문이 비었을 때 방어
+            const ghUrl = context.payload.issue.html_url;
+
+            
+
+            // Jira API v3용 ADF(문서 포맷) 구조 만들기
+            // 깃허브 마크다운을 억지로 변환하지 않고 '코드 블록'에 넣어 안전하게 전송합니다.
+            const adfBody = {
+              "type": "doc",
+              "version": 1,
+              "content": [
+                {
+                  # 경고문구 
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "⚠️ GitHub에서 본문이 수정되었습니다. (원본 마크다운):"
+                    }
+                  ]
+                },
+                {
+                  # 코드블록 
+                  "type": "codeBlock",
+                  "attrs": { "language": "markdown" },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": ghBody
+                    }
+                  ]
+                },
+                {
+                  # 바로가기 링크
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "🔗 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "GitHub 이슈 바로가기",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": ghUrl
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            };
+
+            // Jira API 호출 (PUT)
+            const response = await fetch(`${baseUrl}/rest/api/3/issue/${jiraKey}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                fields: {
+                  summary: ghTitle,
+                  description: adfBody // 위에서 만든 ADF 객체를 넣습니다.
+                }
+              })
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.log("Payload:", JSON.stringify(adfBody, null, 2)); // 디버깅용 로그
+              core.setFailed(`Jira API Error: ${response.status} ${errorText}`);
+            } else {
+              console.log(`Successfully updated Jira issue ${jiraKey} (Title & Body)`);
+            }
