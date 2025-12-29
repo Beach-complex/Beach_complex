@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/u
 // import { computeTrendingScore } from './constants/trending'; // ⬅️ 큐레이션으로 대체하여 사용 안 함
 import HashtagBar, { FilterKey } from './components/HashtagBar';
 import { useUserLocation } from './hooks/useUserLocation';
+import { favoritesApi } from './api/favorites';
 
 /** =======================
  *  큐레이션 상수 (요청 사양)
@@ -100,26 +101,55 @@ export default function App() {
   // ✅ 사용자 위치 가져오기
   const { coords, perm, error: locationError } = useUserLocation();
 
-  // Load favorites from localStorage on mount
+  // ✅ 서버에서 찜 목록 로드 (로그인한 경우)
+  // Note: 로그인 여부 체크는 accessToken 존재로 판단
   useEffect(() => {
-    const savedFavorites = localStorage.getItem('beachcheck_favorites');
-    if (!savedFavorites) {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      // 비로그인 상태: localStorage에서 찜 목록 로드
+      const savedFavorites = localStorage.getItem('beachcheck_favorites');
+      if (savedFavorites) {
+        try {
+          const parsed = JSON.parse(savedFavorites);
+          if (Array.isArray(parsed)) {
+            setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
+          }
+        } catch (error) {
+          console.warn('Failed to parse stored favorites', error);
+        }
+      }
       return;
     }
 
-    try {
-      const parsed = JSON.parse(savedFavorites);
-      if (Array.isArray(parsed)) {
-        setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
-      }
-    } catch (error) {
-      console.warn('Failed to parse stored favorites', error);
-    }
+    // 로그인 상태: 서버에서 찜 목록 로드
+    favoritesApi.getMyFavorites()
+      .then((favorites) => {
+        const favoriteIds = favorites.map(beach => beach.id);
+        setFavoriteBeaches(favoriteIds);
+      })
+      .catch((error) => {
+        console.error('Failed to load favorites from server:', error);
+        // 실패 시 localStorage 폴백
+        const savedFavorites = localStorage.getItem('beachcheck_favorites');
+        if (savedFavorites) {
+          try {
+            const parsed = JSON.parse(savedFavorites);
+            if (Array.isArray(parsed)) {
+              setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
+            }
+          } catch (error) {
+            console.warn('Failed to parse stored favorites', error);
+          }
+        }
+      });
   }, []);
 
-  // Save favorites to localStorage whenever they change
+  // ✅ 비로그인 사용자만 localStorage에 저장
   useEffect(() => {
-    localStorage.setItem('beachcheck_favorites', JSON.stringify(favoriteBeaches));
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      localStorage.setItem('beachcheck_favorites', JSON.stringify(favoriteBeaches));
+    }
   }, [favoriteBeaches]);
 
   // ✅ 위치 기반 검색
@@ -274,15 +304,45 @@ export default function App() {
     return arr;
   }, [beaches, favoriteBeaches, showFavoritesOnly, searchQuery, filter]);
 
-  const toggleFavorite = (beachId: string, e: React.MouseEvent) => {
+  const toggleFavorite = async (beachId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavoriteBeaches(prev => {
-      if (prev.includes(beachId)) {
-        return prev.filter(id => id !== beachId);
-      } else {
-        return [...prev, beachId];
-      }
-    });
+
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) {
+      // 비로그인 사용자: localStorage 기반 찜 관리
+      setFavoriteBeaches(prev => {
+        if (prev.includes(beachId)) {
+          return prev.filter(id => id !== beachId);
+        } else {
+          return [...prev, beachId];
+        }
+      });
+      return;
+    }
+
+    // 로그인 사용자: 서버 API 호출
+    try {
+      const result = await favoritesApi.toggleFavorite(beachId);
+
+      // 찜 상태 업데이트
+      setFavoriteBeaches(prev => {
+        if (result.isFavorite) {
+          return [...prev, beachId];
+        } else {
+          return prev.filter(id => id !== beachId);
+        }
+      });
+
+      // beaches 배열의 isFavorite도 업데이트
+      setBeaches(prev => prev.map(beach =>
+        beach.id === beachId ? { ...beach, isFavorite: result.isFavorite } : beach
+      ));
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      // 에러 발생 시 사용자에게 알림 (선택사항)
+      alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const formatDate = (date: Date | undefined) => {
@@ -408,14 +468,40 @@ export default function App() {
           setLastSelectedBeach(newBeach);
         }}
         favoriteBeaches={favoriteBeaches}
-        onFavoriteToggle={(beachId) => {
-          setFavoriteBeaches(prev => {
-            if (prev.includes(beachId)) {
-              return prev.filter(id => id !== beachId);
-            } else {
-              return [...prev, beachId];
-            }
-          });
+        onFavoriteToggle={async (beachId) => {
+          const token = localStorage.getItem('accessToken');
+
+          if (!token) {
+            // 비로그인 사용자: localStorage 기반
+            setFavoriteBeaches(prev => {
+              if (prev.includes(beachId)) {
+                return prev.filter(id => id !== beachId);
+              } else {
+                return [...prev, beachId];
+              }
+            });
+            return;
+          }
+
+          // 로그인 사용자: 서버 API 호출
+          try {
+            const result = await favoritesApi.toggleFavorite(beachId);
+
+            setFavoriteBeaches(prev => {
+              if (result.isFavorite) {
+                return [...prev, beachId];
+              } else {
+                return prev.filter(id => id !== beachId);
+              }
+            });
+
+            setBeaches(prev => prev.map(beach =>
+              beach.id === beachId ? { ...beach, isFavorite: result.isFavorite } : beach
+            ));
+          } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+            alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+          }
         }}
       />
     );
