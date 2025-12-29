@@ -8,7 +8,7 @@ import { MyPageView } from './components/MyPageView';
 import { DeveloperModeView } from './components/DeveloperModeView';
 import { AuthView } from './components/AuthView';
 import { BottomNavigation } from './components/BottomNavigation';
-import { fetchBeaches } from './data/beaches';
+import { favoritesApi } from './api/favorites';
 import { Beach } from './types/beach';
 import { Calendar } from './components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
@@ -132,23 +132,27 @@ export default function App() {
       return;
     }
 
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const savedFavorites = localStorage.getItem('beachcheck_favorites');
-    if (!savedFavorites) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(savedFavorites);
-      if (Array.isArray(parsed)) {
-        setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
-      }
-    } catch (error) {
-      console.warn('Failed to parse stored favorites', error);
-    }
+    favoritesApi.getMyFavorites()
+      .then((favorites) => {
+        const favoriteIds = favorites.map(beach => beach.id);
+        setFavoriteBeaches(favoriteIds);
+      })
+      .catch((error) => {
+        console.error('Failed to load favorites from server:', error);
+        if (typeof window !== 'undefined') {
+          const savedFavorites = localStorage.getItem('beachcheck_favorites');
+          if (savedFavorites) {
+            try {
+              const parsed = JSON.parse(savedFavorites);
+              if (Array.isArray(parsed)) {
+                setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
+              }
+            } catch (error) {
+              console.warn('Failed to parse stored favorites', error);
+            }
+          }
+        }
+      });
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -299,23 +303,37 @@ export default function App() {
     return arr;
   }, [beaches, favoriteBeaches, showFavoritesOnly, searchQuery, filter]);
 
-  const toggleFavoriteById = (beachId: string) => {
+  const toggleFavoriteById = async (beachId: string) => {
     if (!requireAuth('찜 기능을 사용하려면 로그인하세요.')) {
       return;
     }
-    setFavoriteBeaches(prev => {
-      if (prev.includes(beachId)) {
-        return prev.filter(id => id !== beachId);
-      } else {
-        return [...prev, beachId];
-      }
-    });
+
+    try {
+      const result = await favoritesApi.toggleFavorite(beachId);
+
+      setFavoriteBeaches(prev => {
+        if (result.isFavorite) {
+          return [...prev, beachId];
+        } else {
+          return prev.filter(id => id !== beachId);
+        }
+      });
+
+      setBeaches(prev => prev.map(beach =>
+        beach.id === beachId ? { ...beach, isFavorite: result.isFavorite } : beach
+      ));
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const toggleFavorite = (beachId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     toggleFavoriteById(beachId);
   };
+
+
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return '날짜';
