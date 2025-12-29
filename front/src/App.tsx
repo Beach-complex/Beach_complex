@@ -1,28 +1,36 @@
+// front/src/App.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { Search, Heart } from 'lucide-react';
 import svgPaths from "./imports/svg-aou00tt65r";
 import { BeachCard } from './components/BeachCard';
+// import { HashtagChip } from './components/HashtagChip'; // ⬅️ 사용 안 함
 import { BeachDetailView } from './components/BeachDetailView';
 import { EventsView } from './components/EventsView';
 import { MyPageView } from './components/MyPageView';
 import { DeveloperModeView } from './components/DeveloperModeView';
-import { AuthView } from './components/AuthView';
 import { BottomNavigation } from './components/BottomNavigation';
 import { fetchBeaches } from './data/beaches';
 import { Beach } from './types/beach';
 import { Calendar } from './components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
+// import { computeTrendingScore } from './constants/trending'; // ⬅️ 큐레이션으로 대체하여 사용 안 함
 import HashtagBar, { FilterKey } from './components/HashtagBar';
 import { useUserLocation } from './hooks/useUserLocation';
-import { clearAuth, loadAuth, type StoredAuth } from './utils/auth';
+import { favoritesApi } from './api/favorites';
 
+/** =======================
+ *  큐레이션 상수 (요청 사양)
+ *  ======================= */
+// #요즘뜨는해수욕장 → 광안리, 송도, 다대포 (이 순서 유지)
 const TRENDING_ORDER = ['GWANGALLI', 'SONGDO'] as const;
 const TRENDING_SET = new Set(TRENDING_ORDER);
 
+// #가장많이가는곳 → 해운대, 광안리 (이 순서 유지)
 const POPULAR_ORDER = ['HAEUNDAE', 'GWANGALLI'] as const;
 const POPULAR_SET = new Set(POPULAR_ORDER);
 
+// #축제하는곳 (필요 시 코드 추가)
 const FESTIVAL_SET = new Set<string>(['HAEUNDAE']);
 
 function WaveLogo() {
@@ -69,14 +77,12 @@ export default function App() {
   const [beachError, setBeachError] = useState<string | null>(null);
   const [selectedBeach, setSelectedBeach] = useState<Beach | null>(null);
   const [lastSelectedBeach, setLastSelectedBeach] = useState<Beach | null>(null);
-  const [currentView, setCurrentView] = useState<'main' | 'events' | 'mypage' | 'developer' | 'auth'>('main');
-  const [activeTab, setActiveTab] = useState('search');
+  const [currentView, setCurrentView] = useState<'main' | 'events' | 'mypage' | 'developer'>('main');
+  const [activeTab, setActiveTab] = useState('search'); // Start with search tab active
   const [favoriteBeaches, setFavoriteBeaches] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [authState, setAuthState] = useState<StoredAuth | null>(() => loadAuth());
-  const [authEntryMode, setAuthEntryMode] = useState<'login' | 'signup'>('login');
-  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
+  // ✅ 새 해시태그 상태
   const [filter, setFilter] = useState<FilterKey>(null);
 
   const handleSearchSubmit = () => {
@@ -88,80 +94,67 @@ export default function App() {
     if (match) {
       setSelectedBeach(match);
       setLastSelectedBeach(match);
-      setActiveTab('home');
+      setActiveTab('home'); // 상세 탭으로 전환 → 지도도 그 위치로 이동
     }
   };
 
-  const handleAuthRequest = (mode: 'login' | 'signup', notice?: string) => {
-    setAuthEntryMode(mode);
-    setAuthNotice(notice ?? null);
-    setCurrentView('auth');
-    setSelectedBeach(null);
-    setActiveTab('mypage');
-  };
-
-  const handleAuthSuccess = (storedAuth: StoredAuth) => {
-    setAuthState(storedAuth);
-    setAuthNotice(null);
-    setCurrentView('mypage');
-    setSelectedBeach(null);
-    setActiveTab('mypage');
-  };
-
-  const handleSignOut = () => {
-    clearAuth();
-    setAuthState(null);
-    setShowFavoritesOnly(false);
-  };
-
-  const requireAuth = (notice: string) => {
-    if (authState) {
-      return true;
-    }
-    handleAuthRequest('login', notice);
-    return false;
-  };
-
-  const isAuthenticated = Boolean(authState);
-
+  // ✅ 사용자 위치 가져오기
   const { coords, perm, error: locationError } = useUserLocation();
 
+  // ✅ 서버에서 찜 목록 로드 (로그인한 경우)
+  // Note: 로그인 여부 체크는 accessToken 존재로 판단
   useEffect(() => {
-    if (!isAuthenticated) {
-      setFavoriteBeaches([]);
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const savedFavorites = localStorage.getItem('beachcheck_favorites');
-    if (!savedFavorites) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(savedFavorites);
-      if (Array.isArray(parsed)) {
-        setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      // 비로그인 상태: localStorage에서 찜 목록 로드
+      const savedFavorites = localStorage.getItem('beachcheck_favorites');
+      if (savedFavorites) {
+        try {
+          const parsed = JSON.parse(savedFavorites);
+          if (Array.isArray(parsed)) {
+            setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
+          }
+        } catch (error) {
+          console.warn('Failed to parse stored favorites', error);
+        }
       }
-    } catch (error) {
-      console.warn('Failed to parse stored favorites', error);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
       return;
     }
-    if (typeof window === 'undefined') {
-      return;
-    }
-    localStorage.setItem('beachcheck_favorites', JSON.stringify(favoriteBeaches));
-  }, [favoriteBeaches, isAuthenticated]);
 
+    // 로그인 상태: 서버에서 찜 목록 로드
+    favoritesApi.getMyFavorites()
+      .then((favorites) => {
+        const favoriteIds = favorites.map(beach => beach.id);
+        setFavoriteBeaches(favoriteIds);
+      })
+      .catch((error) => {
+        console.error('Failed to load favorites from server:', error);
+        // 실패 시 localStorage 폴백
+        const savedFavorites = localStorage.getItem('beachcheck_favorites');
+        if (savedFavorites) {
+          try {
+            const parsed = JSON.parse(savedFavorites);
+            if (Array.isArray(parsed)) {
+              setFavoriteBeaches(parsed.map((id: unknown) => String(id)));
+            }
+          } catch (error) {
+            console.warn('Failed to parse stored favorites', error);
+          }
+        }
+      });
+  }, []);
+
+  // ✅ 비로그인 사용자만 localStorage에 저장
   useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      localStorage.setItem('beachcheck_favorites', JSON.stringify(favoriteBeaches));
+    }
+  }, [favoriteBeaches]);
+
+  // ✅ 위치 기반 검색
+  useEffect(() => {
+    // 위치 정보가 없으면 대기
     if (!coords) {
       return;
     }
@@ -170,6 +163,7 @@ export default function App() {
     setIsLoadingBeaches(true);
     setBeachError(null);
 
+    // 위치 기반 검색 API 호출 (반경 50km 고정)
     const params = new URLSearchParams({
       lat: coords.lat.toString(),
       lon: coords.lng.toString(),
@@ -185,10 +179,8 @@ export default function App() {
       })
       .then((data: Beach[]) => {
         setBeaches(data);
-        if (isAuthenticated) {
-          const serverFavIds = data.filter(b => b.isFavorite).map(b => b.id);
-          setFavoriteBeaches(prev => Array.from(new Set([...prev, ...serverFavIds])));
-        }
+        const serverFavIds = data.filter(b => b.isFavorite).map(b => b.id);
+        setFavoriteBeaches(prev => Array.from(new Set([...prev, ...serverFavIds])));
         if (data.length > 0) {
           setLastSelectedBeach((previous) => previous ?? data[0] ?? null);
         }
@@ -211,8 +203,9 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [coords, isAuthenticated]);
+  }, [coords]);
 
+  // Load and apply theme on mount
   useEffect(() => {
     const applyTheme = () => {
       if (typeof window !== 'undefined') {
@@ -227,6 +220,7 @@ export default function App() {
           root.classList.remove('dark');
           body.classList.remove('dark');
         } else {
+          // Developer mode - same as system mode
           const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           if (prefersDark) {
             root.classList.add('dark');
@@ -241,6 +235,7 @@ export default function App() {
 
     applyTheme();
 
+    // Listen for storage changes (when theme is changed in MyPageView)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'beachcheck_theme') {
         applyTheme();
@@ -249,6 +244,7 @@ export default function App() {
 
     window.addEventListener('storage', handleStorageChange);
 
+    // Custom event for same-page theme changes
     const handleThemeChange = () => {
       applyTheme();
     };
@@ -261,13 +257,18 @@ export default function App() {
     };
   }, []);
 
-    const filteredBeaches = useMemo(() => {
+  /** ===========================
+   *  검색 + 찜 + 해시태그 큐레이션
+   *  =========================== */
+  const filteredBeaches = useMemo(() => {
     let arr = beaches;
 
+    // 1) 찜 필터
     if (showFavoritesOnly) {
       arr = arr.filter(b => favoriteBeaches.includes(b.id));
     }
 
+    // 2) 검색 필터
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       arr = arr.filter(b =>
@@ -276,7 +277,9 @@ export default function App() {
       );
     }
 
+    // 3) 해시태그 동작 (status와 무관하게, 지정 큐레이션만 노출)
     if (filter === 'trending') {
+      // #요즘뜨는해수욕장: 광안리 → 송도 → 다대포 (순서 고정)
       arr = arr
         .filter(b => TRENDING_SET.has(b.code))
         .sort(
@@ -285,6 +288,7 @@ export default function App() {
             TRENDING_ORDER.indexOf(b.code as any)
         );
     } else if (filter === 'popular') {
+      // #가장많이가는곳: 해운대 → 광안리 (순서 고정)
       arr = arr
         .filter(b => POPULAR_SET.has(b.code))
         .sort(
@@ -293,28 +297,52 @@ export default function App() {
             POPULAR_ORDER.indexOf(b.code as any)
         );
     } else if (filter === 'festival') {
+      // #축제하는곳: 세트에 포함된 코드만
       arr = arr.filter(b => FESTIVAL_SET.has(b.code));
     }
 
     return arr;
   }, [beaches, favoriteBeaches, showFavoritesOnly, searchQuery, filter]);
 
-  const toggleFavoriteById = (beachId: string) => {
-    if (!requireAuth('찜 기능을 사용하려면 로그인하세요.')) {
+  const toggleFavorite = async (beachId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) {
+      // 비로그인 사용자: localStorage 기반 찜 관리
+      setFavoriteBeaches(prev => {
+        if (prev.includes(beachId)) {
+          return prev.filter(id => id !== beachId);
+        } else {
+          return [...prev, beachId];
+        }
+      });
       return;
     }
-    setFavoriteBeaches(prev => {
-      if (prev.includes(beachId)) {
-        return prev.filter(id => id !== beachId);
-      } else {
-        return [...prev, beachId];
-      }
-    });
-  };
 
-  const toggleFavorite = (beachId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleFavoriteById(beachId);
+    // 로그인 사용자: 서버 API 호출
+    try {
+      const result = await favoritesApi.toggleFavorite(beachId);
+
+      // 찜 상태 업데이트
+      setFavoriteBeaches(prev => {
+        if (result.isFavorite) {
+          return [...prev, beachId];
+        } else {
+          return prev.filter(id => id !== beachId);
+        }
+      });
+
+      // beaches 배열의 isFavorite도 업데이트
+      setBeaches(prev => prev.map(beach =>
+        beach.id === beachId ? { ...beach, isFavorite: result.isFavorite } : beach
+      ));
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      // 에러 발생 시 사용자에게 알림 (선택사항)
+      alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const formatDate = (date: Date | undefined) => {
@@ -334,6 +362,7 @@ export default function App() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'home') {
+      // Go to BeachDetailView (시작화면2) with last selected beach
       const beachToSelect = lastSelectedBeach || beaches[0] || null;
       if (beachToSelect) {
         setSelectedBeach(beachToSelect);
@@ -341,6 +370,7 @@ export default function App() {
       }
       setCurrentView('main');
     } else if (tab === 'search') {
+      // Go to main search screen (시작화면1)
       setCurrentView('main');
       setSelectedBeach(null);
     } else if (tab === 'events') {
@@ -352,6 +382,7 @@ export default function App() {
     }
   };
 
+  // Show events view
   if (currentView === 'events') {
     return (
       <EventsView
@@ -361,7 +392,7 @@ export default function App() {
             setSelectedBeach(null);
             setActiveTab('search');
           } else {
-            setCurrentView(view as 'main' | 'events' | 'mypage' | 'developer' | 'auth');
+            setCurrentView(view as 'main' | 'events' | 'mypage' | 'developer');
             setSelectedBeach(null);
           }
         }}
@@ -369,6 +400,7 @@ export default function App() {
     );
   }
 
+  // Show my page view
   if (currentView === 'mypage') {
     return (
       <MyPageView
@@ -381,17 +413,15 @@ export default function App() {
             setCurrentView('developer');
             setSelectedBeach(null);
           } else {
-            setCurrentView(view as 'main' | 'events' | 'mypage' | 'developer' | 'auth');
+            setCurrentView(view as 'main' | 'events' | 'mypage' | 'developer');
             setSelectedBeach(null);
           }
         }}
-        authUser={authState?.user ?? null}
-        onRequestAuth={handleAuthRequest}
-        onSignOut={handleSignOut}
       />
     );
   }
 
+  // Show developer mode view
   if (currentView === 'developer') {
     return (
       <DeveloperModeView
@@ -401,7 +431,7 @@ export default function App() {
             setSelectedBeach(null);
             setActiveTab('search');
           } else {
-            setCurrentView(view as 'main' | 'events' | 'mypage' | 'developer' | 'auth');
+            setCurrentView(view as 'main' | 'events' | 'mypage' | 'developer');
             setSelectedBeach(null);
           }
         }}
@@ -409,22 +439,7 @@ export default function App() {
     );
   }
 
-  if (currentView === 'auth') {
-    return (
-      <AuthView
-        initialMode={authEntryMode}
-        notice={authNotice}
-        onClose={() => {
-          setCurrentView('mypage');
-          setSelectedBeach(null);
-          setActiveTab('mypage');
-          setAuthNotice(null);
-        }}
-        onAuthSuccess={handleAuthSuccess}
-      />
-    );
-  }
-
+  // Show beach detail view when a beach is selected
   if (selectedBeach) {
     return (
       <BeachDetailView
@@ -432,7 +447,7 @@ export default function App() {
         beaches={beaches}
         onClose={() => {
           setSelectedBeach(null);
-          setActiveTab('search');
+          setActiveTab('search'); // Set active tab to search when closing detail view
         }}
         selectedDate={selectedDate}
         weatherTemp={mockWeather.temp}
@@ -453,13 +468,46 @@ export default function App() {
           setLastSelectedBeach(newBeach);
         }}
         favoriteBeaches={favoriteBeaches}
-        onFavoriteToggle={toggleFavoriteById}
-        isAuthenticated={isAuthenticated}
-        onRequireAuth={() => handleAuthRequest('login', '캘린더에 추가하려면 로그인하세요.')}
+        onFavoriteToggle={async (beachId) => {
+          const token = localStorage.getItem('accessToken');
+
+          if (!token) {
+            // 비로그인 사용자: localStorage 기반
+            setFavoriteBeaches(prev => {
+              if (prev.includes(beachId)) {
+                return prev.filter(id => id !== beachId);
+              } else {
+                return [...prev, beachId];
+              }
+            });
+            return;
+          }
+
+          // 로그인 사용자: 서버 API 호출
+          try {
+            const result = await favoritesApi.toggleFavorite(beachId);
+
+            setFavoriteBeaches(prev => {
+              if (result.isFavorite) {
+                return [...prev, beachId];
+              } else {
+                return prev.filter(id => id !== beachId);
+              }
+            });
+
+            setBeaches(prev => prev.map(beach =>
+              beach.id === beachId ? { ...beach, isFavorite: result.isFavorite } : beach
+            ));
+          } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+            alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+          }
+        }}
       />
     );
   }
 
+  // ✅ 위치 권한 상태 처리
   if (perm === 'denied' && locationError) {
     return (
       <div className="relative min-h-screen bg-background max-w-[480px] mx-auto flex items-center justify-center p-8">
@@ -480,6 +528,7 @@ export default function App() {
     );
   }
 
+  // ✅ 위치 정보 로딩 중
   if (!coords) {
     return (
       <div className="relative min-h-screen bg-background max-w-[480px] mx-auto flex items-center justify-center">
@@ -495,7 +544,9 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen bg-background max-w-[480px] mx-auto pb-20">
+      {/* Header */}
       <div className="relative bg-gradient-to-b from-[#E8F4FF] to-[#F5F5F5] dark:from-gray-900 dark:to-gray-800 p-3 pb-5">
+        {/* Logo and Date/Weather */}
         <div className="flex items-center justify-between gap-2 mb-5">
           <div className="flex items-center gap-2 min-w-0 flex-shrink">
             <div className="shrink-0">
@@ -570,6 +621,7 @@ export default function App() {
           </div>
         </div>
 
+        {/* Search Bar */}
         <div className="relative bg-card rounded-[10px] border-2 border-[#007dfc] p-3 flex items-center justify-between shadow-sm">
           <input
             type="text"
@@ -589,15 +641,14 @@ export default function App() {
           </button>
         </div>
 
+        {/* Hashtags */}
         <div className="flex gap-3 mt-4 overflow-x-auto pb-1 scrollbar-hide">
+          {/* Favorite Filter Button */}
           <button
             onClick={() => {
-              if (!requireAuth('찜 기능을 사용하려면 로그인하세요.')) {
-                return;
-              }
               setShowFavoritesOnly(!showFavoritesOnly);
               if (!showFavoritesOnly) {
-                setFilter(null);
+                setFilter(null); // 찜 보기 켤 때 다른 태그 해제
               }
             }}
             className={`shrink-0 flex items-center justify-center w-[36px] h-[36px] rounded-full transition-all border-2 ${
@@ -616,10 +667,12 @@ export default function App() {
             />
           </button>
 
+          {/* 새 해시태그 바 */}
           <HashtagBar value={filter} onChange={setFilter} />
         </div>
       </div>
 
+      {/* Beach List */}
       {isLoadingBeaches && (
         <div className="p-8 text-center">
           <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-muted-foreground">
@@ -647,7 +700,7 @@ export default function App() {
             onClick={() => {
               setSelectedBeach(beach);
               setLastSelectedBeach(beach);
-              setActiveTab('home');
+              setActiveTab('home'); // Set active tab to home when selecting a beach
             }}
           />
         ))}
@@ -661,6 +714,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Weather Dialog */}
       <Dialog open={showWeather} onOpenChange={setShowWeather}>
         <DialogContent className="max-w-[340px]">
           <DialogHeader>
@@ -712,6 +766,7 @@ export default function App() {
         </DialogContent>
       </Dialog>
 
+      {/* Bottom Navigation */}
       <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
