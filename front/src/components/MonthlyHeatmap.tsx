@@ -25,15 +25,24 @@ interface MonthlyHeatmapProps {
   hourlyData: HourlyData[];
   onDateSelect?: (date: DayData) => void;
   externalDate?: Date | undefined;
+  isAuthenticated?: boolean;
+  onAuthRequired?: () => void;
 }
 
-export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelect, externalDate }: MonthlyHeatmapProps) {
+export function MonthlyHeatmap({
+  month,
+  year,
+  beachName,
+  hourlyData,
+  onDateSelect,
+  externalDate,
+  isAuthenticated,
+  onAuthRequired,
+}: MonthlyHeatmapProps) {
   const [selectedDate, setSelectedDate] = useState<DayData | null>(null);
   const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [isInitialMount, setIsInitialMount] = useState(true);
 
-  // Update selectedDate when externalDate changes (from top toolbar)
-  // But skip on initial mount to show "날짜를 선택해주세요"
   useEffect(() => {
     if (isInitialMount) {
       setIsInitialMount(false);
@@ -70,7 +79,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
     free: '여유',
   };
 
-  // Get status for a specific date and hour - consistent based on date+hour
   const getStatusForDateTime = (dateNum: number, hour: number): 'free' | 'normal' | 'busy' => {
     const seed = (dateNum * 100 + hour) % 7;
     const isWeekend = new Date(year, month - 1, dateNum).getDay() % 6 === 0;
@@ -134,6 +142,10 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
   };
 
   const handleAddToCalendar = () => {
+    if (isAuthenticated === false) {
+      onAuthRequired?.();
+      return;
+    }
     if (!selectedDate) {
       toast.error('날짜를 먼저 선택해주세요');
       return;
@@ -158,7 +170,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
 
   return (
     <div className="bg-card dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-border">
-      {/* Week day headers */}
       <div className="grid grid-cols-7 gap-2 mb-3">
         {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
           <div key={idx} className="text-center">
@@ -169,7 +180,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className="space-y-2 mb-4">
         {weeks.map((week, weekIdx) => (
           <div key={weekIdx} className="grid grid-cols-7 gap-2">
@@ -200,7 +210,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
         ))}
       </div>
 
-      {/* Selected date info */}
       <div className="space-y-4 mb-4">
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-4 border-l-4 border-blue-500">
           <div className="flex items-center justify-between mb-3">
@@ -244,7 +253,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
             </div>
           </div>
 
-          {/* Legend */}
           <div className="flex items-center justify-center gap-6 pt-3 border-t border-border">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full" style={{ backgroundColor: statusColors.busy }} />
@@ -267,7 +275,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
           </div>
         </div>
 
-        {/* Time Slider */}
         <div className="bg-muted dark:bg-gray-900/50 rounded-lg p-4 border border-border">
           <div className="flex items-center justify-between mb-3">
             <label className="font-['Noto_Sans_KR:Bold',_sans-serif] text-[14px] text-foreground">
@@ -298,7 +305,6 @@ export function MonthlyHeatmap({ month, year, beachName, hourlyData, onDateSelec
           </div>
         </div>
 
-        {/* Add to Calendar Button */}
         <button
           onClick={handleAddToCalendar}
           className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg py-3 px-4 flex items-center justify-center gap-2 transition-colors shadow-md hover:shadow-lg"

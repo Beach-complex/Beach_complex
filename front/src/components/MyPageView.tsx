@@ -7,9 +7,13 @@ import { MyPageCalendar } from './MyPageCalendar';
 import { Switch } from './ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import type { UserResponseDto } from '../types/auth';
 
 interface MyPageViewProps {
   onNavigate: (view: string) => void;
+  authUser?: UserResponseDto | null;
+  onRequestAuth?: (mode: 'login' | 'signup') => void;
+  onSignOut?: () => void;
 }
 
 function WaveLogo() {
@@ -46,7 +50,12 @@ function CloudWeatherIcon() {
   );
 }
 
-export function MyPageView({ onNavigate }: MyPageViewProps) {
+export function MyPageView({
+  onNavigate,
+  authUser,
+  onRequestAuth,
+  onSignOut,
+}: MyPageViewProps) {
   const [activeTab, setActiveTab] = useState('mypage');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showWeather, setShowWeather] = useState(false);
@@ -79,8 +88,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
     }
   };
 
-  // Load settings from localStorage and apply theme
-  // This runs every time the component mounts (including when returning to this page)
   useEffect(() => {
     const loadAndApplySettings = () => {
       if (typeof window !== 'undefined') {
@@ -91,11 +98,9 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         if (storedPeak !== null) setPeakAvoidNotification(storedPeak === 'true');
         if (storedBookmark !== null) setBookmarkNotification(storedBookmark === 'true');
         
-        // Set theme mode state
         const themeValue = storedTheme as 'light' | 'dark' | 'developer';
         setThemeMode(themeValue);
         
-        // Apply theme immediately
         const root = document.documentElement;
         const body = document.body;
         
@@ -106,7 +111,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
           root.classList.remove('dark');
           body.classList.remove('dark');
         } else {
-          // Developer mode - same as system mode
           const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           if (prefersDark) {
             root.classList.add('dark');
@@ -119,11 +123,9 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
       }
     };
 
-    // Load settings immediately when component mounts
     loadAndApplySettings();
-  }, []); // Empty dependency array means this runs on every mount
+  }, []);
 
-  // Save settings to localStorage
   const handlePeakNotificationChange = (checked: boolean) => {
     setPeakAvoidNotification(checked);
     if (typeof window !== 'undefined') {
@@ -143,7 +145,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('beachcheck_theme', mode);
       
-      // Apply theme
       const root = document.documentElement;
       const body = document.body;
       
@@ -154,7 +155,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         root.classList.remove('dark');
         body.classList.remove('dark');
       } else {
-        // Developer mode - same as system mode
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (prefersDark) {
           root.classList.add('dark');
@@ -165,14 +165,12 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         }
       }
 
-      // Dispatch custom event to notify other components
       window.dispatchEvent(new Event('themechange'));
     }
   };
 
   return (
     <div className="relative min-h-screen bg-background text-foreground max-w-[480px] mx-auto pb-20">
-      {/* Header */}
       <div className="relative bg-card p-3 border-b border-border">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -236,12 +234,57 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         </div>
       </div>
 
-      {/* Notifications Section */}
+      <div className="p-4">
+        <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-4 text-foreground">계정</h3>
+        <div className="bg-card dark:bg-gray-800 rounded-xl shadow-sm border border-border p-4">
+          {authUser ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-['Noto_Sans_KR:Bold',_sans-serif] text-[14px] text-foreground truncate">
+                  {authUser.name}
+                </p>
+                <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-[12px] text-muted-foreground truncate">
+                  {authUser.email}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="text-[12px] text-red-500 hover:text-red-600"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-[12px] text-muted-foreground">
+                찜, 알림, 캘린더를 관리하려면 로그인하세요.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onRequestAuth?.('login')}
+                  className="flex-1 rounded-lg bg-[#007DFC] text-white text-[12px] py-2 font-['Noto_Sans_KR:Medium',_sans-serif] hover:bg-[#0067d1] transition"
+                >
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRequestAuth?.('signup')}
+                  className="flex-1 rounded-lg border border-[#007DFC] text-[#007DFC] text-[12px] py-2 font-['Noto_Sans_KR:Medium',_sans-serif] hover:bg-blue-50 transition"
+                >
+                  회원가입
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="p-4">
         <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-4 text-foreground">알림</h3>
         
         <div className="bg-card dark:bg-gray-800 rounded-xl shadow-sm divide-y divide-border border border-border">
-          {/* Peak Avoidance Notification */}
           <div className="flex items-center justify-between p-4">
             <div className="flex-1">
               <h4 className="font-['Noto_Sans_KR:Bold',_sans-serif] text-[14px] mb-1 text-foreground">
@@ -257,7 +300,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
             />
           </div>
 
-          {/* Bookmark Notification */}
           <div className="flex items-center justify-between p-4">
             <div className="flex-1">
               <h4 className="font-['Noto_Sans_KR:Bold',_sans-serif] text-[14px] mb-1 text-foreground">
@@ -275,13 +317,11 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         </div>
       </div>
 
-      {/* Calendar Section */}
       <div className="px-4">
         <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-3 text-foreground">캘린더</h3>
         <MyPageCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
       </div>
 
-      {/* Theme Mode Section */}
       <div className="p-4 mt-4">
         <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-3 text-foreground">
           화면 모드 (라이트 모드 / 다크 모드 / 개발자 모드)
@@ -289,7 +329,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         
         <div className="bg-muted dark:bg-gray-800 rounded-xl p-4 border border-border">
           <div className="flex items-center justify-around">
-            {/* Light Mode */}
             <button
               onClick={() => handleThemeChange('light')}
               className={`flex flex-col items-center gap-1.5 p-3 rounded-lg transition-all ${
@@ -302,7 +341,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
               </span>
             </button>
 
-            {/* Dark Mode */}
             <button
               onClick={() => handleThemeChange('dark')}
               className={`flex flex-col items-center gap-1.5 p-3 rounded-lg transition-all ${
@@ -315,7 +353,6 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
               </span>
             </button>
 
-            {/* Developer Mode */}
             <button
               onClick={() => onNavigate('developer')}
               className="flex flex-col items-center gap-1.5 p-3 rounded-lg transition-all hover:bg-accent text-foreground"
@@ -333,10 +370,8 @@ export function MyPageView({ onNavigate }: MyPageViewProps) {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
       <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* Weather Dialog */}
       <Dialog open={showWeather} onOpenChange={setShowWeather}>
         <DialogContent className="max-w-[340px]">
           <DialogHeader>
