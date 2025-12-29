@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Toaster } from './ui/sonner';
 import { fetchRecentConditions, type BeachConditionDto } from '../api/conditions';
 import MapView from '@/components/MapView';
-import { useUserLocation } from '../hooks/useUserLocation'; // ✅ 추가
+import { useUserLocation } from '../hooks/useUserLocation';
 
 interface BeachDetailViewProps {
   beach: Beach;
@@ -22,6 +22,8 @@ interface BeachDetailViewProps {
   onBeachChange?: (beach: Beach) => void;
   favoriteBeaches?: string[];
   onFavoriteToggle?: (beachId: string) => void;
+  isAuthenticated?: boolean;
+  onRequireAuth?: () => void;
 }
 
 const STATUS_COLORS = {
@@ -64,11 +66,11 @@ function CloudWeatherIcon() {
 function makeDemoConditionsFor24h(beach: Beach): BeachConditionDto[] {
   const now = Date.now();
   const weather = ['맑음', '구름 조금', '흐림'];
-  let base = 0.35 + Math.random() * 0.25; // 0.35~0.6
+  let base = 0.35 + Math.random() * 0.25;
 
   const arr = Array.from({ length: 24 }, (_, i) => {
     base += (Math.random() - 0.5) * 0.1;
-    base = Math.max(0.1, Math.min(1.1, base)); // 0.1~1.1m
+    base = Math.max(0.1, Math.min(1.1, base));
     const t = new Date(now - (23 - i) * 3600_000).toISOString();
     return {
       observedAt: t,
@@ -152,6 +154,8 @@ export function BeachDetailView({
   onBeachChange,
   favoriteBeaches = [],
   onFavoriteToggle,
+  isAuthenticated,
+  onRequireAuth,
 }: BeachDetailViewProps) {
   const [activeTab, setActiveTab] = useState('home');
   const [sheetHeight, setSheetHeight] = useState(220);
@@ -168,7 +172,6 @@ export function BeachDetailView({
   const [conditionsError, setConditionsError] = useState<string | null>(null);
   const beachTelemetryId = beach.id || null;
 
-  // ✅ 사용자 위치 가져오기
   const { coords } = useUserLocation();
 
   useEffect(() => {
@@ -209,7 +212,7 @@ export function BeachDetailView({
     const source =
       conditions.length > 0
         ? conditions
-        : makeDemoConditionsFor24h(beach); // ← 빈 경우 더미 24h
+        : makeDemoConditionsFor24h(beach);
 
     return [...source].sort(
       (a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime(),
@@ -287,12 +290,7 @@ export function BeachDetailView({
     [hourlyConditions],
   );
 
-  // const derivedStatus: ExtendedConditionStatus = latestCondition
-  //   ? classifyWaveHeight(latestCondition.waveHeightMeters)
-  //   : 'unknown';
 
-  // const displayStatus: ExtendedConditionStatus =
-  //   derivedStatus === 'unknown' ? beach.status : derivedStatus;
   const displayStatus: ExtendedConditionStatus = beach.status;
 
   const statusTextColor =
@@ -399,7 +397,6 @@ export function BeachDetailView({
 
   return (
     <div className="fixed inset-0 bg-background z-50 max-w-[480px] mx-auto">
-      {/* 상단 바 */}
       <div className="relative bg-card p-3 border-b border-border z-30">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -463,17 +460,15 @@ export function BeachDetailView({
         </div>
       </div>
 
-      {/* ✅ 여기: 이미지/TransformWrapper → 실제 지도 컴포넌트로 교체 */}
       <div className="absolute inset-0 top-[73px] bottom-0 overflow-hidden">
         <MapView
           beaches={allBeaches}
           selected={beach}
           onSelect={(b) => onBeachChange?.(b)}
-          userCoords={coords} // ✅ 사용자 위치 전달
+          userCoords={coords}
         />
       </div>
 
-      {/* 아래부터 상세 시트/그래프/하단탭은 기존 그대로 */}
       <div
         className="absolute left-0 right-0 bg-white rounded-t-[20px] shadow-[0px_-4px_16px_rgba(0,0,0,0.15)] transition-none z-20"
         style={{ bottom: 64, height: sheetHeight }}
@@ -769,6 +764,8 @@ export function BeachDetailView({
                 onDateChange?.(newDate);
               }}
               externalDate={localDate}
+              isAuthenticated={isAuthenticated}
+              onAuthRequired={onRequireAuth}
             />
           </div>
         </div>

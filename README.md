@@ -153,24 +153,20 @@ git clone https://github.com/PHJ2000/Beach_complex.git
 cd Beach_complex
 ```
 
-#### 2. Docker Compose로 데이터베이스를 실행합니다.
-```bash
-docker-compose up -d
-```
+### 2. 로컬에서 백엔드 실행 (DB/Redis만 Docker)                                                                                                     
+docker-compose up -d postgres redis                                                                                 
+./gradlew bootRun                                                                                                   
+# Windows PowerShell이면:                                                                                           
+# .\gradlew.bat bootRun
 
-#### 3. 백엔드를 빌드하고 실행합니다.
-```bash
-./gradlew bootRun
-```
-
-#### 4. 프론트엔드를 실행합니다.
+#### 3. 프론트엔드를 실행합니다.
 ```bash
 cd front
 npm install
 npm run dev
 ```
 
-#### 5. 브라우저에서 접속합니다.
+#### 4. 브라우저에서 접속합니다.
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8080`
 - API Docs (Swagger): `http://localhost:8080/swagger-ui.html`
