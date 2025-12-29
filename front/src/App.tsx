@@ -265,7 +265,7 @@ export default function App() {
     };
   }, []);
 
-    const filteredBeaches = useMemo(() => {
+  const filteredBeaches = useMemo(() => {
     let arr = beaches;
 
     if (showFavoritesOnly) {
@@ -332,8 +332,6 @@ export default function App() {
     e.stopPropagation();
     toggleFavoriteById(beachId);
   };
-
-
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return '날짜';
