@@ -5,7 +5,6 @@ import com.beachcheck.domain.User;
 import com.beachcheck.dto.beach.BeachDto;
 import com.beachcheck.repository.BeachRepository;
 //import com.beachcheck.util.GeometryUtils;
-import com.beachcheck.repository.UserFavoriteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -22,8 +21,9 @@ public class BeachService {
     private final BeachRepository beachRepository;
     private final UserFavoriteService favoriteService;
 
-    public BeachService(BeachRepository beachRepository) {
+    public BeachService(BeachRepository beachRepository, UserFavoriteService favoriteService) {
         this.beachRepository = beachRepository;
+        this.favoriteService = favoriteService;
     }
 
     @Cacheable("beachSummaries")
@@ -51,7 +51,7 @@ public class BeachService {
         //         beach.getTag(),          // 없으면 null 로 바꿔도 됨
         //         Boolean.FALSE            // 찜 기능 붙이기 전까지 기본값
         // );
-        return BeachDto.from(beach);
+        return BeachDto.from(beach, false);
     }
 
     // 대소문자 구분없이 검색
@@ -73,7 +73,7 @@ public class BeachService {
                     .toList();
         }
 
-        return rows.stream().map(BeachDto::from).toList();
+        return rows.stream().map(beach -> BeachDto.from(beach, false)).toList();
     }
 
     /**
@@ -90,7 +90,7 @@ public class BeachService {
 
         return beachRepository.findBeachesWithinRadius(longitude, latitude, radiusMeters)
                 .stream()
-                .map(BeachDto::from)
+                .map(beach -> BeachDto.from(beach, false))
                 .toList();
     }
 
@@ -106,15 +106,15 @@ public class BeachService {
 
             // DTO 변환 시 찜 여부 포함
             return beaches.stream()
-                    .map(beach -> BeachDto.fromEntity(beach, favoriteIds.contains(beach.getId())))
+                    .map(beach -> BeachDto.from(beach, favoriteIds.contains(beach.getId())))
                     .toList();
         } else {
             // 비로그인 사용자는 모두 false
             return beaches.stream()
-                    .map(beach -> BeachDto.fromEntity(beach, false))
+                    .map(beach -> BeachDto.from(beach, false))
                     .toList();
         }
-
+    }
 
     // TODO: Introduce aggregation with external wave monitoring service for enriched beach summaries.
 }
