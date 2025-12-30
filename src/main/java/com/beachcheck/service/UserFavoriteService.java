@@ -5,6 +5,7 @@ import com.beachcheck.domain.User;
 import com.beachcheck.domain.UserFavorite;
 import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +41,13 @@ public class UserFavoriteService {
                 .orElseThrow(() -> new IllegalArgumentException("해수욕장을 찾을 수 없습니다."));
 
         UserFavorite favorite = new UserFavorite(user, beach);
-        return favoriteRepository.save(favorite);
+
+        try {
+            return favoriteRepository.save(favorite);
+        } catch (DataIntegrityViolationException e) {
+            // 동시 요청으로 인한 UNIQUE 제약위반 상태이므로 예외 던지기
+            throw new IllegalStateException("이미 찜한 해수욕장입니다.");
+        }
     }
 
     /**
