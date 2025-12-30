@@ -42,5 +42,9 @@ public record BeachDto(
         );
     }
 
+    public static BeachDto from(Beach beach) {
+        return from(beach, false);
+    }
+
 
 }

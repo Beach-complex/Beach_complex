@@ -51,7 +51,7 @@ public class BeachService {
         //         beach.getTag(),          // 없으면 null 로 바꿔도 됨
         //         Boolean.FALSE            // 찜 기능 붙이기 전까지 기본값
         // );
-        return BeachDto.from(beach, false);
+        return BeachDto.from(beach);
     }
 
     // 대소문자 구분없이 검색
@@ -73,7 +73,7 @@ public class BeachService {
                     .toList();
         }
 
-        return rows.stream().map(beach -> BeachDto.from(beach, false)).toList();
+        return rows.stream().map(BeachDto::from).toList();
     }
 
     /**
@@ -90,7 +90,7 @@ public class BeachService {
 
         return beachRepository.findBeachesWithinRadius(longitude, latitude, radiusMeters)
                 .stream()
-                .map(beach -> BeachDto.from(beach, false))
+                .map(BeachDto::from)
                 .toList();
     }
 
@@ -111,7 +111,7 @@ public class BeachService {
         } else {
             // 비로그인 사용자는 모두 false
             return beaches.stream()
-                    .map(beach -> BeachDto.from(beach, false))
+                    .map(BeachDto::from)
                     .toList();
         }
     }
