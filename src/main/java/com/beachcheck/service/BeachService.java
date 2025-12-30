@@ -1,6 +1,7 @@
 package com.beachcheck.service;
 
 import com.beachcheck.domain.Beach;
+import com.beachcheck.domain.User;
 import com.beachcheck.dto.beach.BeachDto;
 import com.beachcheck.repository.BeachRepository;
 //import com.beachcheck.util.GeometryUtils;
@@ -10,15 +11,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
 public class BeachService {
 
     private final BeachRepository beachRepository;
+    private final UserFavoriteService favoriteService;
 
-    public BeachService(BeachRepository beachRepository) {
+    public BeachService(BeachRepository beachRepository, UserFavoriteService favoriteService) {
         this.beachRepository = beachRepository;
+        this.favoriteService = favoriteService;
     }
 
     @Cacheable("beachSummaries")
@@ -89,6 +94,27 @@ public class BeachService {
                 .toList();
     }
 
+    /**
+     * 사용자 인증 정보가 있으면 찜 여부를 포함한 Beach 목록 반환
+     */
+    public List<BeachDto> getBeachesWithFavorites(User user) {
+        List<Beach> beaches = beachRepository.findAll();    // 조건 없음
+
+        if (user != null) {
+            // 사용자의 찜 목록 ID 가져오기
+            Set<UUID> favoriteIds = favoriteService.getFavoriteBeachIds(user);
+
+            // DTO 변환 시 찜 여부 포함
+            return beaches.stream()
+                    .map(beach -> BeachDto.from(beach, favoriteIds.contains(beach.getId())))
+                    .toList();
+        } else {
+            // 비로그인 사용자는 모두 false
+            return beaches.stream()
+                    .map(BeachDto::from)
+                    .toList();
+        }
+    }
 
     // TODO: Introduce aggregation with external wave monitoring service for enriched beach summaries.
 }
