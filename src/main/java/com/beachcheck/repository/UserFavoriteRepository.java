@@ -13,7 +13,8 @@ import java.util.UUID;
 public interface UserFavoriteRepository extends JpaRepository<UserFavorite, UUID> {
 
     // 사용자별 찜 목록 조회
-    List<UserFavorite> findByUserId(UUID userId);
+    @Query("SELECT f FROM UserFavorite f JOIN FETCH f.beach WHERE f.user.id = :userId ")
+    List<UserFavorite> findByUserId(@Param("userId") UUID userId);
 
     // 특정 사용자의 특정 해수욕장 찜 여부 확인
     boolean existsByUserIdAndBeachId(UUID userId, UUID beachId);
