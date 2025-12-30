@@ -67,8 +67,13 @@ public class UserFavoriteService {
             removeFavorite(user, beachId);
             return false; // 제거됨
         } else {
-            addFavorite(user, beachId);
-            return true; // 추가됨
+            try {
+                addFavorite(user, beachId);
+                return true; // 추가됨
+            } catch (IllegalStateException e) {
+                // 동시 요청으로 이미 추가된 경우, 추가된 것으로 간주
+                return true;
+            }
         }
     }
 
