@@ -322,11 +322,19 @@ export default function App() {
     return arr;
   }, [beaches, favoriteBeaches, showFavoritesOnly, searchQuery, filter]);
 
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState<string | null>(null);
+
   const toggleFavoriteById = async (beachId: string) => {
     if (!requireAuth('찜 기능을 사용하려면 로그인하세요.')) {
       return;
     }
 
+    // 이미 처리 중이면 무시 (중복 클릭 방지)
+    if (isTogglingFavorite === beachId) {
+      return;
+    }
+
+    setIsTogglingFavorite(beachId);
     try {
       const result = await favoritesApi.toggleFavorite(beachId);
 
@@ -344,6 +352,8 @@ export default function App() {
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
       alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsTogglingFavorite(null);
     }
   };
 
