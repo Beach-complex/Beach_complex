@@ -30,12 +30,7 @@ public class BeachService {
     public List<BeachDto> findAll(User user) {
         return toBeachDtoList(beachRepository.findAll(), user);
     }
-
-    public BeachDto findByCode(String code, User user) {
-        Beach beach = beachRepository.findByCode(code)
-                .orElseThrow(() -> new EntityNotFoundException("Beach with code " + code + " not found"));
-        return toBeachDto(beach, user);
-    }
+    
 
     private BeachDto toBeachDto(Beach beach, User user) {
         if (user != null) {
