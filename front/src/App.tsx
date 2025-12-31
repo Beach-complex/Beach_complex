@@ -197,10 +197,9 @@ export default function App() {
         setBeaches(data);
         if (isAuthenticated) {
           const serverFavIds = data.filter(b => b.isFavorite).map(b => b.id);
-          setFavoriteBeaches(prev => {
-            const newFavs = Array.from(new Set([...prev, ...serverFavIds]));
-            return newFavs;
-          });
+          // SSOT: 서버 응답을 진실의 원천으로 삼아 로컬 상태를 완전히 동기화
+          // 다른 기기에서 찜 해제한 항목이 로컬에 남는 문제 방지
+          setFavoriteBeaches(serverFavIds);
         }
         if (data.length > 0) {
           setLastSelectedBeach((previous) => previous ?? data[0] ?? null);
