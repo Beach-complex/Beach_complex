@@ -319,7 +319,11 @@ export function MyPageView({
 
       <div className="px-4">
         <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-3 text-foreground">캘린더</h3>
-        <MyPageCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+        <MyPageCalendar
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          isAuthenticated={Boolean(authUser)}
+        />
       </div>
 
       <div className="p-4 mt-4">

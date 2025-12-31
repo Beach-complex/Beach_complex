@@ -5,6 +5,7 @@ export interface StoredAuth extends AuthResponseDto {
 }
 
 const AUTH_STORAGE_KEY = "beachcheck_auth";
+let cachedAuth: StoredAuth | null = null;
 
 function getStorage(): Storage | null {
   if (typeof window === "undefined") {
@@ -21,31 +22,18 @@ export function saveAuth(auth: AuthResponseDto): StoredAuth {
     issuedAt: Date.now(),
   };
 
+  cachedAuth = stored;
   storage?.setItem(AUTH_STORAGE_KEY, JSON.stringify(stored));
   return stored;
 }
 
 export function loadAuth(): StoredAuth | null {
-  const storage = getStorage();
-  const raw = storage?.getItem(AUTH_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as StoredAuth;
-    if (!parsed?.accessToken || !parsed?.user) {
-      return null;
-    }
-
-    return parsed;
-  } catch (error) {
-    return null;
-  }
+  return cachedAuth;
 }
 
 export function clearAuth(): void {
   const storage = getStorage();
+  cachedAuth = null;
   storage?.removeItem(AUTH_STORAGE_KEY);
 }
 

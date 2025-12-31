@@ -2,9 +2,10 @@ import { Event } from '../data/events';
 
 interface EventCardProps {
   event: Event;
+  onReserve?: (event: Event) => void;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onReserve }: EventCardProps) {
   const statusColors = {
     busy: '#FF0000',
     normal: '#FFEA00',
@@ -58,6 +59,18 @@ export function EventCard({ event }: EventCardProps) {
           <p className="font-['Noto_Sans_KR:Medium',_sans-serif] text-[13px] text-foreground">
             {event.recommendedTime}
           </p>
+        </div>
+        <div className="mt-3 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReserve?.(event);
+            }}
+            className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-['Noto_Sans_KR:Bold',_sans-serif] text-blue-700 transition-colors hover:border-blue-400 hover:bg-blue-100"
+          >
+            예약하기
+          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,8 @@
 // Saved dates from calendar bookmark feature
 export interface SavedDate {
   id: string;
+  reservationId?: string;
+  beachId?: string;
   beachName: string;
   date: Date;
   hour: number;
@@ -11,19 +13,30 @@ export interface SavedDate {
 // In a real app, this would be persisted to localStorage or backend
 let savedDates: SavedDate[] = [];
 
+const parseStoredDates = (raw: string): SavedDate[] => {
+  const parsed = JSON.parse(raw);
+  return parsed.map((d: any) => ({
+    ...d,
+    date: new Date(d.date),
+    createdAt: new Date(d.createdAt),
+  }));
+};
+
 export const addSavedDate = (date: SavedDate) => {
-  savedDates.push(date);
+  const next = [...getSavedDates(), date];
+  savedDates = next;
   // In real app: save to localStorage
   if (typeof window !== 'undefined') {
-    localStorage.setItem('beachcheck_saved_dates', JSON.stringify(savedDates));
+    localStorage.setItem('beachcheck_saved_dates', JSON.stringify(next));
   }
 };
 
 export const removeSavedDate = (id: string) => {
-  savedDates = savedDates.filter(d => d.id !== id);
+  const next = getSavedDates().filter(d => d.id !== id);
+  savedDates = next;
   // In real app: save to localStorage
   if (typeof window !== 'undefined') {
-    localStorage.setItem('beachcheck_saved_dates', JSON.stringify(savedDates));
+    localStorage.setItem('beachcheck_saved_dates', JSON.stringify(next));
   }
 };
 
@@ -32,16 +45,17 @@ export const getSavedDates = (): SavedDate[] => {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('beachcheck_saved_dates');
     if (stored) {
-      const parsed = JSON.parse(stored);
-      // Convert date strings back to Date objects
-      return parsed.map((d: any) => ({
-        ...d,
-        date: new Date(d.date),
-        createdAt: new Date(d.createdAt),
-      }));
+      return parseStoredDates(stored);
     }
   }
   return savedDates;
+};
+
+export const setSavedDates = (next: SavedDate[]) => {
+  savedDates = next;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('beachcheck_saved_dates', JSON.stringify(next));
+  }
 };
 
 export const getSavedDatesForMonth = (year: number, month: number): SavedDate[] => {

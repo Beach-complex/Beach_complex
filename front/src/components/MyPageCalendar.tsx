@@ -1,16 +1,36 @@
-import { useState } from 'react';
-import { getSavedDatesForMonth, removeSavedDate } from '../data/savedDates';
+import { useState, useEffect, useMemo } from 'react';
+import { getSavedDates, removeSavedDate, setSavedDates as persistSavedDates, type SavedDate } from '../data/savedDates';
 import { X, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { deleteReservation, getMyReservations, ApiError as ReservationApiError } from '../api/reservations';
+import { fetchBeaches } from '../api/beaches';
 
 interface MyPageCalendarProps {
   selectedDate: Date | undefined;
   onDateSelect: (date: Date) => void;
+  isAuthenticated?: boolean;
 }
 
-export function MyPageCalendar({ selectedDate, onDateSelect }: MyPageCalendarProps) {
+export function MyPageCalendar({ selectedDate, onDateSelect, isAuthenticated }: MyPageCalendarProps) {
   const [clickedDate, setClickedDate] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [savedDates, setSavedDates] = useState<SavedDate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const toDateFromApi = (value: string | number) => {
+    if (typeof value === 'number') {
+      const epochMs = value < 1e12 ? value * 1000 : value;
+      return new Date(epochMs);
+    }
+    const trimmed = value.trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const numeric = Number(trimmed);
+      const epochMs = numeric < 1e12 ? numeric * 1000 : numeric;
+      return new Date(epochMs);
+    }
+    return new Date(value);
+  };
   
   const currentDate = selectedDate || new Date();
   const year = currentDate.getFullYear();
@@ -28,11 +48,95 @@ export function MyPageCalendar({ selectedDate, onDateSelect }: MyPageCalendarPro
   for (let day = 1; day <= daysInMonth; day++) {
     calendarDays.push(day);
   }
-  
-  const savedDates = getSavedDatesForMonth(year, month);
-  
+
+  useEffect(() => {
+    let active = true;
+
+    if (!isAuthenticated) {
+      setSavedDates([]);
+      setLoadError(null);
+      return;
+    }
+
+    const loadReservations = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+
+      const localSavedDates = getSavedDates();
+      if (localSavedDates.length > 0) {
+        setSavedDates(localSavedDates);
+      }
+
+      try {
+        const [reservationsResult, beachesResult] = await Promise.allSettled([
+          getMyReservations(),
+          fetchBeaches(),
+        ]);
+
+        if (!active) return;
+
+        if (reservationsResult.status === 'rejected') {
+          console.error('Failed to load reservations', reservationsResult.reason);
+          const message =
+            reservationsResult.reason instanceof ReservationApiError
+              ? reservationsResult.reason.message || '?? ??? ???? ????.'
+              : '?? ??? ???? ????.';
+          setLoadError(message);
+          setSavedDates(localSavedDates);
+          return;
+        }
+
+        const beaches = beachesResult.status === 'fulfilled' ? beachesResult.value : [];
+        if (beachesResult.status === 'rejected') {
+          console.warn('Failed to load beaches for reservation labels', beachesResult.reason);
+        }
+
+        const beachNameById = new Map(beaches.map((beach) => [beach.id, beach.name]));
+        const mapped: SavedDate[] = reservationsResult.value.map((reservation) => {
+          const reservedAt = toDateFromApi(reservation.reservedAtUtc);
+          return {
+            id: reservation.reservationId,
+            reservationId: reservation.reservationId,
+            beachId: reservation.beachId,
+            beachName: beachNameById.get(reservation.beachId) ?? '????',
+            date: reservedAt,
+            hour: reservedAt.getHours(),
+            status: 'normal',
+            createdAt: toDateFromApi(reservation.createdAtUtc),
+          };
+        });
+
+        const sorted = mapped.sort((a, b) => {
+          const timeDiff = a.date.getTime() - b.date.getTime();
+          if (timeDiff != 0) return timeDiff;
+          return a.hour - b.hour;
+        });
+
+        persistSavedDates(sorted);
+        setSavedDates(sorted);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    loadReservations();
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, refreshKey]);
+
+  const monthSavedDates = useMemo(
+    () =>
+      savedDates.filter((saved) => {
+        const savedDate = new Date(saved.date);
+        return savedDate.getFullYear() === year && savedDate.getMonth() === month;
+      }),
+    [savedDates, year, month],
+  );
+
   const getSavedDatesForDay = (day: number) => {
-    return savedDates.filter(saved => {
+    return monthSavedDates.filter(saved => {
       const savedDate = new Date(saved.date);
       return savedDate.getDate() === day;
     });
@@ -45,24 +149,47 @@ export function MyPageCalendar({ selectedDate, onDateSelect }: MyPageCalendarPro
     }
   };
 
-  const handleDeleteSavedDate = (id: string) => {
-    removeSavedDate(id);
-    toast.success('일정이 삭제되었습니다');
-    
-    // Refresh the calendar data
-    setRefreshKey(prev => prev + 1);
-    
-    // Check if there are still dates for the clicked day
-    if (clickedDate !== null) {
-      const remainingDates = getSavedDatesForMonth(year, month).filter(saved => {
-        const savedDate = new Date(saved.date);
-        return savedDate.getDate() === clickedDate;
+  const handleDeleteSavedDate = async (saved: SavedDate) => {
+    const removeFromState = () => {
+      removeSavedDate(saved.id);
+      setSavedDates((prev) => {
+        const next = prev.filter((item) => item.id !== saved.id);
+        if (clickedDate !== null) {
+          const hasRemaining = next.some((item) => {
+            const savedDate = new Date(item.date);
+            return savedDate.getDate() === clickedDate &&
+              savedDate.getFullYear() === year &&
+              savedDate.getMonth() === month;
+          });
+          if (!hasRemaining) {
+            setClickedDate(null);
+          }
+        }
+        return next;
       });
-      
-      if (remainingDates.length === 0) {
-        setClickedDate(null);
-      }
+      toast.success('??? ?????.');
+
+      // Refresh the calendar data
+      setRefreshKey(prev => prev + 1);
+    };
+
+    if (!saved.reservationId || !saved.beachId) {
+      removeFromState();
+      return;
     }
+
+    try {
+      await deleteReservation(saved.beachId, saved.reservationId);
+    } catch (error) {
+      let message = '?? ??? ?????.';
+      if (error instanceof ReservationApiError) {
+        message = error.message || message;
+      }
+      toast.error(message);
+      return;
+    }
+
+    removeFromState();
   };
 
   const getStatusColor = (status: 'free' | 'normal' | 'busy') => {
@@ -114,6 +241,16 @@ export function MyPageCalendar({ selectedDate, onDateSelect }: MyPageCalendarPro
 
   return (
     <div key={refreshKey} className="bg-card dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-border">
+      {isLoading && (
+        <div className="mb-3 text-center text-[12px] text-muted-foreground">
+          예약 정보를 불러오는 중...
+        </div>
+      )}
+      {loadError && (
+        <div className="mb-3 text-center text-[12px] text-red-500">
+          {loadError}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={handlePrevMonth}
@@ -155,42 +292,48 @@ export function MyPageCalendar({ selectedDate, onDateSelect }: MyPageCalendarPro
           const daySavedDates = getSavedDatesForDay(day);
           const today = isToday(day);
           
-          return (
-            <button
-              key={day}
-              onClick={() => handleDateClick(day)}
-              disabled={daySavedDates.length === 0}
-              className={`aspect-square flex flex-col items-center justify-start p-1 rounded-lg relative transition-all ${
-                today 
-                  ? 'bg-blue-600 text-white dark:bg-blue-500' 
-                  : daySavedDates.length > 0 
-                  ? 'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' 
-                  : ''
-              } ${clickedDate === day ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <span className={`font-['Noto_Sans_KR:Medium',_sans-serif] text-[14px] mb-1 ${
-                today ? 'text-white' : day === 7 || day === 14 || day === 21 || day === 28 ? 'text-red-500 dark:text-red-400' : 'text-foreground'
-              }`}>
-                {day}
-              </span>
-              
-              {daySavedDates.length > 0 && (
-                <div className="flex flex-col gap-0.5 w-full px-1">
-                  {daySavedDates.slice(0, 3).map((saved, savedIdx) => (
+            return (
+              <button
+                key={day}
+                onClick={() => handleDateClick(day)}
+                disabled={daySavedDates.length === 0}
+                className={`aspect-square flex flex-col items-center justify-start p-1 rounded-lg relative transition-all ${
+                  today 
+                    ? 'bg-blue-600 text-white dark:bg-blue-500' 
+                    : daySavedDates.length > 0 
+                    ? 'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' 
+                    : ''
+                } ${clickedDate === day ? 'ring-2 ring-blue-500' : ''}`}
+              >
+                <span className={`font-['Noto_Sans_KR:Medium',_sans-serif] text-[14px] mb-1 ${
+                  today ? 'text-white' : day === 7 || day === 14 || day === 21 || day === 28 ? 'text-red-500 dark:text-red-400' : 'text-foreground'
+                }`}>
+                  {day}
+                </span>
+                
+                {daySavedDates.length > 0 && (
+                  <div className="mt-0.5 w-full px-1 flex flex-col flex-1">
+                    <div className="flex flex-col gap-0.5">
+                      {daySavedDates.slice(0, 3).map((saved, savedIdx) => (
+                        <div
+                          key={savedIdx}
+                          className="w-full h-1 rounded-full bg-blue-500 dark:bg-blue-400"
+                          title={`${saved.beachName} ${saved.hour}:00`}
+                        />
+                      ))}
+                    </div>
                     <div
-                      key={savedIdx}
-                      className="w-full h-1 rounded-full bg-blue-500 dark:bg-blue-400"
-                      title={`${saved.beachName} ${saved.hour}:00`}
-                    />
-                  ))}
-                  {daySavedDates.length > 3 && (
-                    <div className="text-[8px] text-blue-600 dark:text-blue-400 text-center">+{daySavedDates.length - 3}</div>
-                  )}
-                </div>
-              )}
-            </button>
-          );
-        })}
+                      className={`mt-auto min-h-[10px] text-[8px] leading-[10px] text-center ${
+                        today ? 'text-white/90' : 'text-blue-600 dark:text-blue-400'
+                      }`}
+                    >
+                      {daySavedDates.length > 3 ? `+${daySavedDates.length - 3}` : ''}
+                    </div>
+                  </div>
+                )}
+              </button>
+            );
+          })}
       </div>
 
       {/* Saved Dates Details Panel */}
@@ -236,8 +379,8 @@ export function MyPageCalendar({ selectedDate, onDateSelect }: MyPageCalendarPro
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDeleteSavedDate(saved.id)}
-                  className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  onClick={() => handleDeleteSavedDate(saved)}
+                  className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   title="일정 삭제"
                 >
                   <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />

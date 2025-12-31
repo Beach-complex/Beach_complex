@@ -12,9 +12,27 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Why: 예외를 ProblemDetail로 매핑해 오류 응답의 일관성을 보장하기 위해.
+ * Policy: 예외 유형별로 고정된 HttpStatus와 속성 키를 사용한다.
+ * Contract(Input): 예외가 핸들러 메서드로 전달된다.
+ * Contract(Output): ProblemDetail에 status와 필요한 속성을 담아 반환한다.
+ */
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+
+    @ExceptionHandler(ApiException.class)
+    public ProblemDetail handleApiException(ApiException ex) {
+        ErrorCode code = ex.getErrorCode();
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(code.getStatus(), ex.getMessage());
+        pd.setTitle(code.getCode());
+        // ApiException 응답에서 code/details 키는 클라이언트 계약이므로 변경에 주의한다.
+        pd.setProperty("code", code.getCode());
+        pd.setProperty("details", ex.getDetails());
+        return pd;
+    }
     /**
      * Validation 에러 처리 (회원가입 양식 오류 등)
      * 각 필드별로 어떤 문제가 있는지 명확하게 반환
