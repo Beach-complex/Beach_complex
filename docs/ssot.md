@@ -227,13 +227,13 @@
   - PR 제목에 Jira 이슈 키를 포함합니다
 
 ### 2.2 커밋 메시지 규칙
-**포맷**: `<type>: <내용>` (Jira 이슈 키 포함 권장)
+**포맷**: `<type>: <내용>`
 
 **타입 종류**:
 - `feat`: 기능 추가
 - `fix`: 버그 수정
 - `chore`: 빌드/설정/기타
-- `docs`: 문서 수정
+- `docs`: 문서 수정, 주석 추가
 - `refactor`: 코드 리팩토링
 - `test`: 테스트 추가/수정
 - `style`: 코드 포맷팅
@@ -272,7 +272,7 @@ cd: AWS 배포 스크립트 작성
 ### 2.4 이슈 관리
 
 #### Jira 연동
-- 프로젝트는 **Jira와 GitHub을 연동**하여 사용합니다
+- 프로젝트는 **Jira와 GitHub을 연동**하여 사용합니다(Github issue -> Jira issue)
 - Jira 이슈 키를 기반으로 작업을 관리합니다
 - GitHub Actions를 통해 자동으로 Jira와 동기화됩니다
 
@@ -370,12 +370,11 @@ git checkout -b feature/PB-024-redis-cache
 
 #### Step 3: 코드 작성
 - 기존 코드 스타일과 아키텍처를 따릅니다
-- 커밋 메시지 규칙을 준수합니다
-- 커밋 메시지에 이슈 키 포함 권장 (예: `docs: PB-26 SSOT 문서 작성`)
+- 커밋 메시지 규칙을 준수합니다 (예: `docs: SSOT 문서 작성`)
 
 #### Step 4: PR 생성
 - 작업 완료 후 PR을 생성합니다
-- **PR 제목에 Jira 이슈 키를 포함**합니다 (예: `[docs] PB-26 개발 규칙 문서 반영`)
+- **PR 제목에 Jira 이슈 키를 포함**합니다 (예: `[Docs] PB-26 개발 규칙 문서 반영`)
 - PR 템플릿에 맞춰 내용을 작성합니다
 - 최소 1명의 리뷰어를 지정합니다
 
@@ -434,4 +433,4 @@ git checkout -b feature/PB-024-redis-cache
 
 ---
 
-**Last Updated**: 2025-12-26
+**Last Updated**: 2025-12-31
