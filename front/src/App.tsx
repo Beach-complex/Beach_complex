@@ -180,18 +180,36 @@ export default function App() {
       radiusKm: '50'
     });
 
-    fetch(`/api/beaches?${params}`, { signal: controller.signal })
+    console.log('🔍 [Beach API] 요청 시작:', `/api/beaches?${params}`);
+    console.log('🔍 [Beach API] 인증 상태:', isAuthenticated ? '로그인' : '비로그인');
+    console.log('🔍 [Beach API] 현재 토큰:', authState?.accessToken ? `${authState.accessToken.substring(0, 20)}...` : 'null');
+
+    fetch(`/api/beaches?${params}`, {
+      signal: controller.signal,
+      headers: authState?.accessToken ? {
+        'Authorization': `Bearer ${authState.accessToken}`
+      } : {}
+    })
       .then((res) => {
+        console.log('🔍 [Beach API] 응답 상태:', res.status);
         if (!res.ok) {
           throw new Error(`API Error: ${res.status}`);
         }
         return res.json();
       })
       .then((data: Beach[]) => {
+        console.log('🔍 [Beach API] 받은 데이터:', data);
+        console.log('🔍 [Beach API] isFavorite=true인 항목:', data.filter(b => b.isFavorite));
+
         setBeaches(data);
         if (isAuthenticated) {
           const serverFavIds = data.filter(b => b.isFavorite).map(b => b.id);
-          setFavoriteBeaches(prev => Array.from(new Set([...prev, ...serverFavIds])));
+          console.log('🔍 [Beach API] 서버에서 받은 찜 ID 목록:', serverFavIds);
+          setFavoriteBeaches(prev => {
+            const newFavs = Array.from(new Set([...prev, ...serverFavIds]));
+            console.log('🔍 [Beach API] 업데이트된 찜 목록:', newFavs);
+            return newFavs;
+          });
         }
         if (data.length > 0) {
           setLastSelectedBeach((previous) => previous ?? data[0] ?? null);
@@ -208,6 +226,7 @@ export default function App() {
         }
 
         const message = error instanceof Error ? error.message : '해수욕장 정보를 불러오지 못했습니다.';
+        console.error('🔍 [Beach API] 에러:', error);
         setBeachError(message);
       })
       .finally(() => {
@@ -215,7 +234,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [coords, isAuthenticated]);
+  }, [coords, isAuthenticated, authState?.accessToken]);
 
   useEffect(() => {
     const applyTheme = () => {
