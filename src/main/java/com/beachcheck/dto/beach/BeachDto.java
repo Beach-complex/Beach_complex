@@ -17,7 +17,13 @@ public record BeachDto(
         String tag,
         Boolean isFavorite
 ) {
-    // 엔티티 -> DTO 변환용 정적 메서드
+    /**
+     * Beach 엔티티를 BeachDto로 변환 (찜 여부 포함)
+     *
+     * @param beach Beach 엔티티
+     * @param isFavorite 찜 여부 (로그인 사용자의 찜 상태)
+     * @return BeachDto
+     */
     public static BeachDto from(Beach beach, boolean isFavorite) {
         double lat = 0.0;
         double lon = 0.0;
@@ -42,9 +48,19 @@ public record BeachDto(
         );
     }
 
+    /**
+     * Beach 엔티티를 BeachDto로 변환 메서드 오버라이딩 (메서드 참조 위한)
+     * 비로그인 사용자 또는 찜 정보가 불필요한 경우 사용
+     *
+     * @param beach Beach 엔티티
+     * @return BeachDto (isFavorite = false)
+     */
     public static BeachDto from(Beach beach) {
         return from(beach, false);
     }
+
+
+
 
 
 }

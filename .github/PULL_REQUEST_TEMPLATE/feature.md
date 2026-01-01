@@ -1,11 +1,11 @@
 # ✨ Feature PR
 
 ## 🔗 Jira Issue (필수)
-- Key: **TES-123**
-- Link: https://<your-site>.atlassian.net/browse/TES-123
+- Key: **PB-**
+- Link: https://parkjaehong.atlassian.net/browse/PB-
 
-> PR 제목: `TES-123 <짧은 요약>`  
-> 브랜치: `TES-123/<slug>`
+> PR 제목: `PB-123 <짧은 요약>`  
+> 브랜치: `PB-123/<slug>`
 
 
 ---
