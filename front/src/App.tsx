@@ -8,6 +8,7 @@ import { MyPageView } from './components/MyPageView';
 import { DeveloperModeView } from './components/DeveloperModeView';
 import { AuthView } from './components/AuthView';
 import { BottomNavigation } from './components/BottomNavigation';
+import { fetchBeachByCode } from './api/beaches';
 import { favoritesApi } from './api/favorites';
 import { Beach } from './types/beach';
 import { Calendar } from './components/ui/calendar';
@@ -15,7 +16,9 @@ import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
 import HashtagBar, { FilterKey } from './components/HashtagBar';
 import { useUserLocation } from './hooks/useUserLocation';
-import { clearAuth, loadAuth, type StoredAuth } from './utils/auth';
+import { clearAuth, type StoredAuth } from './utils/auth';
+import { type Event } from './data/events';
+import { toast } from 'sonner@2.0.3';
 
 const TRENDING_ORDER = ['GWANGALLI', 'SONGDO'] as const;
 const TRENDING_SET = new Set(TRENDING_ORDER);
@@ -73,9 +76,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('search');
   const [favoriteBeaches, setFavoriteBeaches] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [authState, setAuthState] = useState<StoredAuth | null>(() => loadAuth());
+  const [authState, setAuthState] = useState<StoredAuth | null>(null);
   const [authEntryMode, setAuthEntryMode] = useState<'login' | 'signup'>('login');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [reservationEventId, setReservationEventId] = useState<string | null>(null);
+  const [reservationPreferredHour, setReservationPreferredHour] = useState<number | null>(null);
 
   const [filter, setFilter] = useState<FilterKey>(null);
 
@@ -86,10 +91,83 @@ export default function App() {
       (b) => b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q)
     );
     if (match) {
+      setReservationEventId(null);
+      setReservationPreferredHour(null);
       setSelectedBeach(match);
       setLastSelectedBeach(match);
       setActiveTab('home');
     }
+  };
+
+  const resolveBeachForEvent = async (event: Event): Promise<Beach | null> => {
+    const beachCode = event.beachCode?.trim();
+    if (!beachCode) {
+      return null;
+    }
+
+    const byCode = beaches.find((beach) => beach.code === beachCode);
+    if (byCode) {
+      return byCode;
+    }
+
+    const byName = event.beachName
+      ? beaches.find((beach) => beach.name === event.beachName)
+      : null;
+    if (byName) {
+      return byName;
+    }
+
+    try {
+      return await fetchBeachByCode(beachCode);
+    } catch (error) {
+      console.error('Failed to resolve beach for event:', error);
+      return null;
+    }
+  };
+
+  const extractPreferredHour = (recommendedTime?: string | null) => {
+    if (!recommendedTime) {
+      return null;
+    }
+    const match = recommendedTime.match(/(\d{1,2})/);
+    if (!match) {
+      return null;
+    }
+    const hour = Number(match[1]);
+    if (!Number.isFinite(hour) || hour < 0 || hour > 23) {
+      return null;
+    }
+    const lower = recommendedTime.toLowerCase();
+    const hasPm = lower.includes('pm') || recommendedTime.includes('오후');
+    const hasAm = lower.includes('am') || recommendedTime.includes('오전');
+    if (hasPm && hour < 12) {
+      return hour + 12;
+    }
+    if (hasAm && hour === 12) {
+      return 0;
+    }
+    return hour;
+  };
+
+  const handleEventReserve = async (event: Event) => {
+    if (!requireAuth('예약하려면 로그인이 필요해요.')) {
+      return;
+    }
+
+    const beach = await resolveBeachForEvent(event);
+    if (!beach) {
+      toast.error('행사에 연결된 해수욕장을 찾지 못했어요.');
+      return;
+    }
+
+    const preferredHour = extractPreferredHour(event.recommendedTime);
+    setReservationEventId(event.id);
+    setReservationPreferredHour(preferredHour);
+    setSelectedDate(event.date ? new Date(event.date) : new Date());
+    setSelectedBeach(beach);
+    setLastSelectedBeach(beach);
+    setCurrentView('main');
+    setActiveTab('home');
   };
 
   const handleAuthRequest = (mode: 'login' | 'signup', notice?: string) => {
@@ -125,6 +203,11 @@ export default function App() {
   const isAuthenticated = Boolean(authState);
 
   const { coords, perm, error: locationError } = useUserLocation();
+
+  useEffect(() => {
+    // Avoid unintended auto-login from persisted storage.
+    clearAuth();
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -398,6 +481,7 @@ export default function App() {
             setSelectedBeach(null);
           }
         }}
+        onReserve={handleEventReserve}
       />
     );
   }
@@ -464,11 +548,15 @@ export default function App() {
         beach={selectedBeach}
         beaches={beaches}
         onClose={() => {
+          setReservationEventId(null);
+          setReservationPreferredHour(null);
           setSelectedBeach(null);
           setActiveTab('search');
         }}
         selectedDate={selectedDate}
         weatherTemp={mockWeather.temp}
+        reservationEventId={reservationEventId}
+        reservationPreferredHour={reservationPreferredHour}
         onDateChange={setSelectedDate}
         onNavigate={(view) => {
           if (view === 'events') {
@@ -482,6 +570,8 @@ export default function App() {
           }
         }}
         onBeachChange={(newBeach) => {
+          setReservationEventId(null);
+          setReservationPreferredHour(null);
           setSelectedBeach(newBeach);
           setLastSelectedBeach(newBeach);
         }}
@@ -678,6 +768,8 @@ export default function App() {
             isFavorite={favoriteBeaches.includes(beach.id)}
             onFavoriteToggle={(e) => toggleFavorite(beach.id, e)}
             onClick={() => {
+              setReservationEventId(null);
+              setReservationPreferredHour(null);
               setSelectedBeach(beach);
               setLastSelectedBeach(beach);
               setActiveTab('home');

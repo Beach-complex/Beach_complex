@@ -4,12 +4,14 @@ import svgPaths from "../imports/svg-aou00tt65r";
 import { BottomNavigation } from './BottomNavigation';
 import { EventCalendar } from './EventCalendar';
 import { EventCard } from './EventCard';
-import { events } from '../data/events';
+import { events, type Event } from '../data/events';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Toaster } from './ui/sonner';
 
 interface EventsViewProps {
   onNavigate: (view: string) => void;
+  onReserve?: (event: Event) => void;
 }
 
 function WaveLogo() {
@@ -46,7 +48,7 @@ function CloudWeatherIcon() {
   );
 }
 
-export function EventsView({ onNavigate }: EventsViewProps) {
+export function EventsView({ onNavigate, onReserve }: EventsViewProps) {
   const [activeTab, setActiveTab] = useState('events');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showWeather, setShowWeather] = useState(false);
@@ -156,13 +158,14 @@ export function EventsView({ onNavigate }: EventsViewProps) {
         <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-3 text-foreground">주변 행사 / 활동 추천</h3>
         <div className="bg-card dark:bg-gray-800 rounded-xl shadow-sm divide-y divide-border border border-border overflow-hidden">
           {events.map((event) => (
-            <EventCard key={event.id} event={event} />
+            <EventCard key={event.id} event={event} onReserve={onReserve} />
           ))}
         </div>
       </div>
 
       {/* Bottom Navigation */}
       <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      <Toaster position="top-center" />
 
       {/* Weather Dialog */}
       <Dialog open={showWeather} onOpenChange={setShowWeather}>

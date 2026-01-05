@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Slider } from './ui/slider';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { createReservation, ApiError as ReservationApiError, type ReservationResponse } from '../api/reservations';
 import { addSavedDate } from '../data/savedDates';
+import { isReservationTimeInPast } from '../utils/reservationTime';
 
 interface DayData {
   date: number;
@@ -22,8 +24,12 @@ interface MonthlyHeatmapProps {
   month: number;
   year: number;
   beachName: string;
+  beachId?: string;
+  eventId?: string | null;
+  preferredHour?: number | null;
   hourlyData: HourlyData[];
   onDateSelect?: (date: DayData) => void;
+  onMonthChange?: (date: Date) => void;
   externalDate?: Date | undefined;
   isAuthenticated?: boolean;
   onAuthRequired?: () => void;
@@ -33,15 +39,28 @@ export function MonthlyHeatmap({
   month,
   year,
   beachName,
+  beachId,
+  eventId,
+  preferredHour,
   hourlyData,
   onDateSelect,
+  onMonthChange,
   externalDate,
   isAuthenticated,
   onAuthRequired,
 }: MonthlyHeatmapProps) {
   const [selectedDate, setSelectedDate] = useState<DayData | null>(null);
-  const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
+  const [selectedHour, setSelectedHour] = useState<number>(() => (
+    preferredHour ?? new Date().getHours()
+  ));
   const [isInitialMount, setIsInitialMount] = useState(true);
+
+  useEffect(() => {
+    if (preferredHour == null) {
+      return;
+    }
+    setSelectedHour(preferredHour);
+  }, [preferredHour]);
 
   useEffect(() => {
     if (isInitialMount) {
@@ -77,6 +96,18 @@ export function MonthlyHeatmap({
     busy: '혼잡',
     normal: '보통',
     free: '여유',
+  };
+
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+  const handlePrevMonth = () => {
+    const newDate = new Date(year, month - 2, 1);
+    onMonthChange?.(newDate);
+  };
+
+  const handleNextMonth = () => {
+    const newDate = new Date(year, month, 1);
+    onMonthChange?.(newDate);
   };
 
   const getStatusForDateTime = (dateNum: number, hour: number): 'free' | 'normal' | 'busy' => {
@@ -141,18 +172,76 @@ export function MonthlyHeatmap({
     }
   };
 
-  const handleAddToCalendar = () => {
+  const handleAddToCalendar = async () => {
     if (isAuthenticated === false) {
       onAuthRequired?.();
       return;
     }
     if (!selectedDate) {
-      toast.error('날짜를 먼저 선택해주세요');
+      toast.error('날짜를 먼저 선택해 주세요.');
+      return;
+    }
+    if (!beachId) {
+      toast.error('해수욕장 정보가 없습니다.');
+      return;
+    }
+
+    const reservationTime = new Date(
+      selectedDate.year,
+      selectedDate.month - 1,
+      selectedDate.date,
+      selectedHour,
+      0,
+      0,
+      0,
+    );
+    if (isReservationTimeInPast(reservationTime)) {
+      toast.error('현재 시각 이후만 예약할 수 있어요.');
+      return;
+    }
+
+    const normalizedEventId = eventId?.trim();
+
+    let reservationResponse: ReservationResponse;
+    try {
+      reservationResponse = await createReservation(beachId, {
+        reservedAtUtc: reservationTime.toISOString(),
+        eventId: normalizedEventId ? normalizedEventId : undefined,
+      });
+    } catch (error) {
+      if (error instanceof ReservationApiError && error.status === 401) {
+        onAuthRequired?.();
+        return;
+      }
+
+      let message = '예약에 실패했어요.';
+      if (error instanceof ReservationApiError) {
+        switch (error.code) {
+          case 'RESERVATION_PAST_TIME':
+            message = '현재 시각 이후만 예약할 수 있어요.';
+            break;
+          case 'RESERVATION_INVALID_TIME':
+            message = '날짜/시간 형식을 확인해 주세요.';
+            break;
+          case 'RESERVATION_DUPLICATE':
+            message = '예약이 중복되었습니다.';
+            break;
+          case 'BEACH_NOT_FOUND':
+            message = '해수욕장을 찾을 수 없어요.';
+            break;
+          default:
+            message = error.message || message;
+        }
+      }
+
+      toast.error(message);
       return;
     }
 
     addSavedDate({
-      id: `${beachName}-${selectedDate.year}-${selectedDate.month}-${selectedDate.date}-${selectedHour}-${Date.now()}`,
+      id: reservationResponse.reservationId,
+      reservationId: reservationResponse.reservationId,
+      beachId: reservationResponse.beachId,
       beachName,
       date: new Date(selectedDate.year, selectedDate.month - 1, selectedDate.date),
       hour: selectedHour,
@@ -160,16 +249,47 @@ export function MonthlyHeatmap({
       createdAt: new Date(),
     });
 
-    const dateStr = `${selectedDate.year}년 ${selectedDate.month}월 ${selectedDate.date}일 (${selectedDate.dayOfWeek})`;
-    const timeStr = `${selectedHour}:00`;
-    
-    toast.success('캘린더에 추가되었습니다', {
+    const reservationDate = new Date(
+      selectedDate.year,
+      selectedDate.month - 1,
+      selectedDate.date,
+    );
+    const dateStr = new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short',
+    }).format(reservationDate);
+    const timeStr = `${String(selectedHour).padStart(2, '0')}:00`;
+
+    toast.success('예약이 완료되었어요.', {
       description: `${beachName} - ${dateStr} ${timeStr}`,
     });
   };
 
   return (
     <div className="bg-card dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-border">
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={handlePrevMonth}
+          className="p-2 hover:bg-accent rounded-lg transition-colors"
+          aria-label="이전 달"
+        >
+          <ChevronLeft className="w-5 h-5 text-foreground" />
+        </button>
+        <h4 className="font-['Noto_Sans_KR:Bold',_sans-serif] text-[16px] text-foreground">
+          {monthNames[month - 1]} {year}
+        </h4>
+        <button
+          type="button"
+          onClick={handleNextMonth}
+          className="p-2 hover:bg-accent rounded-lg transition-colors"
+          aria-label="다음 달"
+        >
+          <ChevronRight className="w-5 h-5 text-foreground" />
+        </button>
+      </div>
       <div className="grid grid-cols-7 gap-2 mb-3">
         {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
           <div key={idx} className="text-center">

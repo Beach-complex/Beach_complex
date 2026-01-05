@@ -17,6 +17,8 @@ interface BeachDetailViewProps {
   onClose: () => void;
   selectedDate: Date | undefined;
   weatherTemp: string;
+  reservationEventId?: string | null;
+  reservationPreferredHour?: number | null;
   onDateChange?: (date: Date | undefined) => void;
   onNavigate?: (view: string) => void;
   onBeachChange?: (beach: Beach) => void;
@@ -149,6 +151,8 @@ export function BeachDetailView({
   onClose,
   selectedDate,
   weatherTemp,
+  reservationEventId,
+  reservationPreferredHour,
   onDateChange,
   onNavigate,
   onBeachChange,
@@ -754,10 +758,17 @@ export function BeachDetailView({
           <div ref={monthlyHeatmapRef} className="mt-4">
             <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-3 text-foreground">월간 혼잡도</h3>
             <MonthlyHeatmap
-              month={localDate?.getMonth() ? localDate.getMonth() + 1 : new Date().getMonth() + 1}
-              year={localDate?.getFullYear() || new Date().getFullYear()}
+              month={localDate ? localDate.getMonth() + 1 : new Date().getMonth() + 1}
+              year={localDate ? localDate.getFullYear() : new Date().getFullYear()}
               beachName={beach.name}
+              beachId={beach.id}
+              eventId={reservationEventId ?? null}
+              preferredHour={reservationPreferredHour ?? null}
               hourlyData={heatmapHourlyData}
+              onMonthChange={(date) => {
+                setLocalDate(date);
+                onDateChange?.(date);
+              }}
               onDateSelect={(date) => {
                 const newDate = new Date(date.year, date.month - 1, date.date);
                 setLocalDate(newDate);

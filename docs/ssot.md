@@ -66,14 +66,16 @@
   - 작성 후 조회 결과 반영
 
 ### Core-4: 예약 생성 (경쟁 조건)
-- **엔드포인트**: `POST /api/events/{eventId}/reservations`
-- **입력**: `userId` (또는 토큰), `quantity` (보통 1), `idempotencyKey`
-- **출력**: `reservationId`, `status(CONFIRMED|REJECTED)`, `remainingSeats`
-- **이유**: 동시 요청 시 경쟁 조건(race condition) 발생, 재고 관리 복잡도
+- **엔드포인트**: `POST /api/beaches/{beachId}/reservations`
+- **입력**: `reservedAtUtc`(ISO-8601 UTC), `eventId`(optional, max 128)
+- **출력**: `reservationId`, `status(CONFIRMED|REJECTED)`, `reservedAtUtc`, `beachId`, `eventId`,
+`createdAtUtc`
+- **이유**: 예약은 시간 제약/중복 방지 검증이 필요한 쓰기 API이므로 실패 케이스를 명확히 정의한다.
 - **주요 포인트**:
-  - 낙관적/비관적 락
-  - 멱등성 (idempotency) 보장
-  - 재고 관리 정합성
+  - 과거 시간 예약 금지
+  - 시간 포맷 검증(UTC ISO-8601)
+  - 동일 사용자/해변/시간 중복 예약 방지
+  - 해수욕장/사용자 존재 확인
 
 ---
 
