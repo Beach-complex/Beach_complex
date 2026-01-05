@@ -8,7 +8,7 @@ assignees: ""
 
 ## 대상 문서
 - [ ] README / 가이드 (설치, 실행 방법 등)
-- [ ] API 명세서 (Swagger, Postman 등)
+- [ ] SSOT (API 명세서 등)
 - [ ] 코드 주석 (JavaDoc, JSDoc 등)
 - [ ] 프로젝트 위키/기획서
 
