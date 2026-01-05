@@ -26,11 +26,11 @@ public class BeachService {
         this.favoriteService = favoriteService;
     }
 
-    @Cacheable("beachSummaries")
+    @Cacheable(value = "beachSummaries", key = "#user?.id ?: 'anonymous'")
     public List<BeachDto> findAll(User user) {
         return toBeachDtoList(beachRepository.findAll(), user);
     }
-    
+
 
     private BeachDto toBeachDto(Beach beach, User user) {
         if (user != null) {
@@ -45,7 +45,7 @@ public class BeachService {
      */
     private List<BeachDto> toBeachDtoList(List<Beach> beaches, User user) {
         if (user != null) {
-            Set<UUID> favoriteIds = favoriteService.getFavoriteBeachIds(user);
+            Set<UUID> favoriteIds = favoriteService.getFavoriteBeachIds(user); // Set 으로 중복 제거 및 빠른 조회
             return beaches.stream()
                     // Set.contains() 각 O(1) × N번 = O(N) (List 사용 시 O(N×M) 이므로 비효율적)
                     .map(beach -> BeachDto.from(beach, favoriteIds.contains(beach.getId())))

@@ -37,6 +37,7 @@ dependencies {
     implementation 'org.hibernate.orm:hibernate-spatial:6.5.2.Final'
     implementation 'org.locationtech.jts:jts-core:1.19.0'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'  // 로컬 캐시 라이브러리
 
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'

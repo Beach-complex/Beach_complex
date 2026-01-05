@@ -5,6 +5,7 @@ import com.beachcheck.domain.User;
 import com.beachcheck.domain.UserFavorite;
 import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class UserFavoriteService {
      * 찜 추가
      */
     @Transactional
+    @CacheEvict(value = "beachSummaries", key = "#user.id")
     public UserFavorite addFavorite(User user, UUID beachId) {
         // 이미 찜했는지 확인
         if (favoriteRepository.existsByUserIdAndBeachId(user.getId(), beachId)) {
@@ -54,6 +56,7 @@ public class UserFavoriteService {
      * 찜 제거
      */
     @Transactional
+    @CacheEvict(value = "beachSummaries", key = "#user.id")
     public void removeFavorite(User user, UUID beachId) {
         favoriteRepository.deleteByUserIdAndBeachId(user.getId(), beachId);
     }
