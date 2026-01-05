@@ -79,128 +79,6 @@
 
 ---
 
-## V1 8주 로드맵 (2주 스프린트 x 4)
-
-### Sprint 0 (Week 1) — "되살리기 + SSOT/CI"
-
-**목표**: 로컬 재현/문서/규칙/CI가 돌아가는 상태 만들기
-
-#### Jira 백로그
-- **PB-030** 깃헙 이슈 -> 지라 이슈 연동 
-  - AC: Issue 생성 시 Jira 이슈 1건 자동 생성
-- **PB-026** 개발 규칙 문서(SSOT/Contrib) 반영
-  - AC: `docs/ssot.md` 생성(마일스톤/룰/온보딩), `docs/contrib/<name>/index.md` + 템플릿 추가
-- **PB-031** CI 최소 파이프라인
-  - AC: PR 시 build + test 자동 실행, 실패 시 머지 불가(브랜치 보호)
-- **PB-025** 데모 시나리오 4개 정의(기획)
-  - AC: 리스트/상세/리뷰 쓰기 4개 시나리오 문서화, 각 시나리오의 "성공 기준" 1줄 포함
-- **PB-005** 깨진 기능/환경 Fix (Top 3)
-  - AC: 실행 막는 에러 3개 이상 해결(재현 방법 포함), PR로 기록 + 템플릿 추가
-
-**담당 추천**:
-- BE-A (jaehong): PB-004, PB-005, PB-031
-- BE-B (gunwoo): PB-001, PB-002, PB-005, PB-031
-
----
-
-### Sprint 1 (Week 2–3) — "테스트 체계(통합 중심)"
-
-**목표**: 핵심 플로우가 깨지지 않게 방어막 만들기
-
-#### Jira 백로그
-- **PB-010** Testcontainers 기반 통합테스트 인프라
-  - AC: DB 컨테이너 띄워서 통합테스트 1개 통과, CI에서 동작
-- **PB-011** Core-1 리스트 조회 통합테스트 (`GET /api/beaches`)
-  - AC: 페이징/정렬/검색 케이스 포함, DB seed 데이터 준비, 인덱스 활용 확인
-- **PB-012** Core-2 상세 조회 통합테스트 (`GET /api/beaches/{id}`)
-  - AC: 연관 데이터(리뷰 요약, 평점, 날씨) 포함, N+1 가능성 체크 포인트 메모
-- **PB-013** Core-3 리뷰 작성 통합테스트 (`POST /api/beaches/{id}/reviews`)
-  - AC: 트랜잭션 롤백/검증 포함, "작성 후 조회 결과 반영" 확인
-- **PB-014** Core-4 예약 생성 통합테스트 (`POST /api/beaches/{beachId}/reservations`)
-  - AC: 동시 요청 시나리오(race condition), 멱등성 검증, 재고 정합성 확인
-- **PB-015** 테스트 가이드 문서
-  - AC: 로컬에서 테스트 실행 방법 1페이지, 테스트 데이터 전략(픽스처/seed) 설명
-
-**담당 추천**:
-- BE-A (jaehong): PB-010, PB-014, PB-015
-- BE-B (gunwoo): PB-011~013 주도 (서로 리뷰 강제)
-
----
-
-### Sprint 2 (Week 4–5) — "부하테스트 Baseline + 병목 2개 개선"
-
-**목표**: 숫자(지표)로 말할 수 있는 성능 개선 2건 만들기
-
-#### Jira 백로그
-- **PB-020** 부하테스트 시나리오(k6) 1차
-  - AC: 읽기 시나리오 2개(Core-1 리스트 조회, Core-2 상세 조회), 쓰기 시나리오 2개(Core-3 리뷰 작성, Core-4 예약 생성), 3단계 부하(예: 50/100/200 VU), 결과 저장(리포트 파일)
-- **PB-021** Baseline 성능 리포트 작성
-  - AC: p50/p95/p99, 에러율, DB 커넥션/슬로우쿼리/캐시 히트, `docs/perf/YYYY-MM-DD-baseline.md`
-- **PB-022** 병목 원인 1개 특정(가설+근거)
-  - AC: 쿼리 플랜/로그/메트릭 등 근거 1개 이상, "왜 이게 병목인지" 3줄
-- **PB-023** 병목 개선 1개 적용
-  - 후보: 인덱스 추가/수정, N+1 제거(fetch join, batch size), 캐시(TTL/키 설계)
-  - AC: 변경 PR + 영향 범위 문서화
-- **PB-024** 개선 전/후 비교 리포트
-  - AC: baseline vs improved 비교표(p95 중심), "무엇이 좋아졌고 무엇이 남았는지", `docs/perf/YYYY-MM-DD-improvement.md`
-- **PB-025** Actuator/Micrometer 기본 계측
-  - AC: HTTP 지연/에러 지표 노출, DB 풀(Hikari) 지표 노출(가능하면)
-
-**담당 추천**:
-- BE-B (gunwoo): PB-020~024 (성능 주도)
-- BE-A (jaehong): PB-025 (관측 최소치 미리 준비)
-
----
-
-### Sprint 3 (Week 6–7) — "관측 대시보드 + 알림 + 런북"
-
-**목표**: 운영 가능한 시스템으로 만들기 (관측/대응/절차)
-
-#### Jira 백로그
-- **PB-030** Prometheus + Grafana 구성
-  - AC: docker-compose로 로컬에서 대시보드 뜸, Prometheus가 서비스 metrics scrape 성공
-- **PB-031** 대시보드(최소) 1개 완성
-  - 필수 패널: RPS, p95 latency, 5xx 에러율, JVM 메모리/GC(가능하면), DB 커넥션 풀 사용량
-  - AC: 스크린샷 + 링크(또는 json export)
-- **PB-032** 알림 2개
-  - 에러율 급증, p95 급증
-  - AC: 트리거 조건 문서화, 실제 테스트(임계치 낮춰서라도)로 알림 동작 확인
-- **PB-033** Runbook: 배포/롤백
-  - AC: dev 배포 절차, 실패 시 되돌리는 방법(태그/이전 이미지)
-- **PB-034** Runbook: 장애 최초 10분
-  - AC: 확인 순서(대시보드 → 로그 → DB → 외부연동), "즉시 완화 조치" 2개 포함
-
-> **참고**: Elasticsearch는 여기서 "옵션"으로 두는 게 안전합니다.
-> 로그는 우선 "컨테이너 로그 + grep + 필요시 Loki"로 충분히 점수 납니다.
-
-**담당 추천**:
-- BE-A (jaehong): PB-030, PB-031, PB-032
-- BE-B (gunwoo): PB-033, PB-034
-
----
-
-### Week 8 — "배포 자동화 + 구조 확장(조건부) + Freeze"
-
-**목표**: 버튼 1번 배포 + V1 제출물 정리
-
-#### Jira 백로그
-- **PB-040** 배포 자동화(GitHub Actions)
-  - AC: workflow_dispatch(수동 버튼)로 dev 배포 1차, 헬스체크 `/health` 200 확인
-- **PB-041** 롤백 절차 자동/반자동 확보
-  - AC: 이전 태그/이미지로 되돌리기 가능, Runbook에 반영
-- **PB-042** 구조 확장(조건부)
-  - 조건: Sprint2에서 "구조 변경이 병목 해결에 필요"가 명확할 때만 진행
-  - 예: 읽기 트래픽이 크면 캐시 계층 강화, 쓰기/외부연동이 병목이면 큐 도입(비동기)
-  - AC: ADR 1장(왜/대안/결과)
-- **PB-043** V1 Freeze & Portfolio Pack
-  - AC: README에 "아키텍처/실행/운영/성능 결과" 섹션 정리, perf 리포트 2개(baseline, improvement) 링크, 대시보드 스크린샷/알림 증거 포함
-
-**담당 추천**:
-- BE-A (jaehong): PB-040, PB-041, PB-043
-- BE-B (gunwoo): PB-042
-
----
-
 ### 이미 완료된 작업 (MVP 단계)
 - [x] **핵심 도메인**: 해수욕장(Beach), 날씨(BeachCondition) CRUD 및 기본 API 구현
 - [x] **DB 고도화**: Flyway 도입을 통한 스키마 형상 관리 및 마이그레이션 자동화
@@ -229,13 +107,13 @@
   - PR 제목에 Jira 이슈 키를 포함합니다
 
 ### 2.2 커밋 메시지 규칙
-**포맷**: `<type>: <내용>` (Jira 이슈 키 포함 권장)
+**포맷**: `<type>: <내용>`
 
 **타입 종류**:
 - `feat`: 기능 추가
 - `fix`: 버그 수정
 - `chore`: 빌드/설정/기타
-- `docs`: 문서 수정
+- `docs`: 문서 수정, 주석 추가
 - `refactor`: 코드 리팩토링
 - `test`: 테스트 추가/수정
 - `style`: 코드 포맷팅
@@ -274,7 +152,7 @@ cd: AWS 배포 스크립트 작성
 ### 2.4 이슈 관리
 
 #### Jira 연동
-- 프로젝트는 **Jira와 GitHub을 연동**하여 사용합니다
+- 프로젝트는 **Jira와 GitHub을 연동**하여 사용합니다(Github issue -> Jira issue)
 - Jira 이슈 키를 기반으로 작업을 관리합니다
 - GitHub Actions를 통해 자동으로 Jira와 동기화됩니다
 
@@ -309,6 +187,38 @@ cd: AWS 배포 스크립트 작성
 5. **코드 리뷰** (최소 1명 승인)
 6. **승인 후 머지**
 7. **Jira 이슈 자동 업데이트** (GitHub Actions를 통해)
+
+### 2.5 코드 주석 목적 및 규칙
+- 목적: 코드의 의도와 복잡한 로직 설명
+- 규칙:
+  - **Why**: 해당 코드가 왜 필요한지 설명
+  - **Policy**: 비즈니스 규칙, 보안, 트랜잭션, 캐싱 등 로직의 실행 정책
+  - **Contract(Input/Output)**: 입력값과 출력값에 대한 사전 조건 및 후 조건 명시
+  - **Todo**: 향후 개선 사항이나 리팩토링 예정 사항 기록(Intellij TODO 태그 활용 권장)
+
+예시 코드
+``` java
+/**
+* Why: 회원 정보 수정 시 이메일 변경은 별도 인증 프로세스가 필요하므로, 이 메서드에서는 닉네임과 프로필 이미지 수정만 허용한다.
+* Policy: 트랜잭션 내에서 처리하며, 실패 시 전체 롤백한다.
+* Contract(Input): nickname은 욕설 필터링을 통과해야 한다. (FilterService 참조)
+* Contract(Output): 수정된 User 객체를 반환하되, password 필드는 마스킹 처리된다.
+* Todo: 현재 동기(Synchronous) 방식인 프로필 변경 알림 메일 발송을 추후 Kafka 이벤트 발행(비동기)으로 변경하여 응답 속도를 개선할 것.
+    */
+    public UserResponse updateUser(Long userId, UpdateUserRequest request) {
+    // 1. 유저 조회
+    User user = userRepository.findById(userId)
+    .orElseThrow(() -> new NotFoundException("User not found"));
+
+// 2. 닉네임 검증 (Contract 이행)
+filterService.validateNickname(request.getNickname());
+
+// 3. 정보 업데이트
+user.updateProfile(request.getNickname(), request.getProfileImageUrl());
+
+// ... (이하 로직)
+}
+```
 
 ---
 
@@ -372,12 +282,11 @@ git checkout -b feature/PB-024-redis-cache
 
 #### Step 3: 코드 작성
 - 기존 코드 스타일과 아키텍처를 따릅니다
-- 커밋 메시지 규칙을 준수합니다
-- 커밋 메시지에 이슈 키 포함 권장 (예: `docs: PB-26 SSOT 문서 작성`)
+- 커밋 메시지 규칙을 준수합니다 (예: `docs: SSOT 문서 작성`)
 
 #### Step 4: PR 생성
 - 작업 완료 후 PR을 생성합니다
-- **PR 제목에 Jira 이슈 키를 포함**합니다 (예: `[docs] PB-26 개발 규칙 문서 반영`)
+- **PR 제목에 Jira 이슈 키를 포함**합니다 (예: `[Docs] PB-26 개발 규칙 문서 반영`)
 - PR 템플릿에 맞춰 내용을 작성합니다
 - 최소 1명의 리뷰어를 지정합니다
 
@@ -436,4 +345,4 @@ git checkout -b feature/PB-024-redis-cache
 
 ---
 
-**Last Updated**: 2025-12-26
+**Last Updated**: 2026-01-01

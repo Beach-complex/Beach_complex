@@ -26,36 +26,39 @@ public class BeachService {
         this.favoriteService = favoriteService;
     }
 
-    @Cacheable("beachSummaries")
-    public List<BeachDto> findAll() {
-        return beachRepository.findAll().stream()
-                .map(this::toDto)
-                .toList();
+    @Cacheable(value = "beachSummaries", key = "#user?.id ?: 'anonymous'")
+    public List<BeachDto> findAll(User user) {
+        return toBeachDtoList(beachRepository.findAll(), user);
     }
 
-    public BeachDto findByCode(String code) {
-        Beach beach = beachRepository.findByCode(code)
-                .orElseThrow(() -> new EntityNotFoundException("Beach with code " + code + " not found"));
-        return toDto(beach);
-    }
 
-    private BeachDto toDto(Beach beach) {
-        // return new BeachDto(
-        //         beach.getId(),
-        //         beach.getCode(),
-        //         beach.getName(),
-        //         beach.getStatus(),
-        //         GeometryUtils.extractLatitude(beach.getLocation()),
-        //         GeometryUtils.extractLongitude(beach.getLocation()),
-        //         beach.getUpdatedAt()
-        //         beach.getTag(),          // 없으면 null 로 바꿔도 됨
-        //         Boolean.FALSE            // 찜 기능 붙이기 전까지 기본값
-        // );
+    private BeachDto toBeachDto(Beach beach, User user) {
+        if (user != null) {
+            boolean isFavorite = favoriteService.isFavorite(user, beach.getId());
+            return BeachDto.from(beach, isFavorite);
+        }
         return BeachDto.from(beach);
     }
 
+    /**
+     * Beach 엔티티 리스트를 BeachDto 리스트로 변환 (찜 여부 포함해서 반환)
+     */
+    private List<BeachDto> toBeachDtoList(List<Beach> beaches, User user) {
+        if (user != null) {
+            Set<UUID> favoriteIds = favoriteService.getFavoriteBeachIds(user); // Set 으로 중복 제거 및 빠른 조회
+            return beaches.stream()
+                    // Set.contains() 각 O(1) × N번 = O(N) (List 사용 시 O(N×M) 이므로 비효율적)
+                    .map(beach -> BeachDto.from(beach, favoriteIds.contains(beach.getId())))
+                    .toList();
+        } else {
+            return beaches.stream()
+                    .map(BeachDto::from)
+                    .toList();
+        }
+    }
+
     // 대소문자 구분없이 검색
-    public List<BeachDto> search(String q, String tag) {
+    public List<BeachDto> search(String q, String tag, User user) {
         String qq = (q == null || q.isBlank()) ? null : q.trim();
         String tt = (tag == null || tag.isBlank()) ? null : tag.trim();
 
@@ -73,7 +76,7 @@ public class BeachService {
                     .toList();
         }
 
-        return rows.stream().map(BeachDto::from).toList();
+        return toBeachDtoList(rows, user);
     }
 
     /**
@@ -82,16 +85,15 @@ public class BeachService {
      * @param longitude 경도
      * @param latitude 위도
      * @param radiusKm 반경 (킬로미터)
+     * @param user 사용자 (찜 여부 확인용, null 가능)
      * @return 거리순 해변 목록
      */
-    public List<BeachDto> findNearby(double longitude, double latitude, double radiusKm) {
+    public List<BeachDto> findNearby(double longitude, double latitude, double radiusKm, User user) {
         // km를 미터로 변환
         double radiusMeters = radiusKm * 1000;
 
-        return beachRepository.findBeachesWithinRadius(longitude, latitude, radiusMeters)
-                .stream()
-                .map(BeachDto::from)
-                .toList();
+        List<Beach> beaches = beachRepository.findBeachesWithinRadius(longitude, latitude, radiusMeters);
+        return toBeachDtoList(beaches, user);
     }
 
     /**
@@ -100,20 +102,7 @@ public class BeachService {
     public List<BeachDto> getBeachesWithFavorites(User user) {
         List<Beach> beaches = beachRepository.findAll();    // 조건 없음
 
-        if (user != null) {
-            // 사용자의 찜 목록 ID 가져오기
-            Set<UUID> favoriteIds = favoriteService.getFavoriteBeachIds(user);
-
-            // DTO 변환 시 찜 여부 포함
-            return beaches.stream()
-                    .map(beach -> BeachDto.from(beach, favoriteIds.contains(beach.getId())))
-                    .toList();
-        } else {
-            // 비로그인 사용자는 모두 false
-            return beaches.stream()
-                    .map(BeachDto::from)
-                    .toList();
-        }
+        return toBeachDtoList(beaches, user);
     }
 
     // TODO: Introduce aggregation with external wave monitoring service for enriched beach summaries.

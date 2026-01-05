@@ -263,7 +263,12 @@ export default function App() {
       radiusKm: '50'
     });
 
-    fetch(`/api/beaches?${params}`, { signal: controller.signal })
+    fetch(`/api/beaches?${params}`, {
+      signal: controller.signal,
+      headers: authState?.accessToken ? {
+        'Authorization': `Bearer ${authState.accessToken}`
+      } : {}
+    })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`API Error: ${res.status}`);
@@ -271,15 +276,17 @@ export default function App() {
         return res.json();
       })
       .then((data: Beach[]) => {
+
         setBeaches(data);
         if (isAuthenticated) {
           const serverFavIds = data.filter(b => b.isFavorite).map(b => b.id);
-          setFavoriteBeaches(prev => Array.from(new Set([...prev, ...serverFavIds])));
+          // SSOT: 서버 응답을 진실의 원천으로 삼아 로컬 상태를 완전히 동기화
+          // 다른 기기에서 찜 해제한 항목이 로컬에 남는 문제 방지
+          setFavoriteBeaches(serverFavIds);
         }
         if (data.length > 0) {
           setLastSelectedBeach((previous) => previous ?? data[0] ?? null);
         }
-        console.log(`✅ ${data.length}개 해수욕장 발견 (반경 50km)`);
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -298,7 +305,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [coords, isAuthenticated]);
+  }, [coords, isAuthenticated, authState?.accessToken]);
 
   useEffect(() => {
     const applyTheme = () => {
@@ -386,11 +393,19 @@ export default function App() {
     return arr;
   }, [beaches, favoriteBeaches, showFavoritesOnly, searchQuery, filter]);
 
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState<string | null>(null);
+
   const toggleFavoriteById = async (beachId: string) => {
     if (!requireAuth('찜 기능을 사용하려면 로그인하세요.')) {
       return;
     }
 
+    // 이미 처리 중이면 무시 (중복 클릭 방지)
+    if (isTogglingFavorite === beachId) {
+      return;
+    }
+
+    setIsTogglingFavorite(beachId);
     try {
       const result = await favoritesApi.toggleFavorite(beachId);
 
@@ -408,6 +423,8 @@ export default function App() {
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
       alert('찜 상태 변경에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsTogglingFavorite(null);
     }
   };
 

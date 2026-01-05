@@ -20,7 +20,8 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
   cache:
-    type: simple
+    type: caffeine
+    cache-names: beachSummaries, facilitySummaries, conditionSnapshots
   data:
     redis:
       repositories:
