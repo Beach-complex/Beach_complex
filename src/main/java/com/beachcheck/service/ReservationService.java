@@ -125,7 +125,7 @@ public class ReservationService {
     /**
      * Why: 시간 입력을 표준 형식으로 통일해 해석 차이를 제거하기 위해.
      * Policy: 파싱 실패는 RESERVATION_INVALID_TIME으로 변환한다.
-     * Contract(Input): reservedAtUtc가 null이면 예외가 발생한다.
+     * Contract(Input): reservedAtUtc는 ISO-8601 UTC 문자열이다.
      * Contract(Output): 성공 시 Instant를 반환한다.
      */
     private Instant parseReservedAtUtc(String reservedAtUtc) {
