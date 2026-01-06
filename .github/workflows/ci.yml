@@ -10,6 +10,15 @@ on:
       - main
       - develop
 
+  # 수동 실행 버튼 활성화
+  workflow_dispatch:
+
+# 중복 실행 방지 그룹 설정
+# 동일한 워크플로우와 브랜치에서 새 요청이 오면 기존 실행을 취소함
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-build-test:
     name: Backend Build & Unit Test
@@ -29,12 +38,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 단위 테스트만 실행 (통합 테스트 제외)
-      - name: Run unit tests
-        run: ./gradlew test --no-daemon
+      # 1회 실행으로 통합 + 상세 로그 옵션 추가
+      - name: Build and Test
+        run: ./gradlew test assemble --no-daemon --stacktrace
 
-      - name: Build
-        run: ./gradlew build -x test --no-daemon
 
       # 테스트 실패 시 리포트 업로드
       - name: Upload test results
@@ -43,6 +50,13 @@ jobs:
         with:
           name: test-results
           path: build/reports/tests/test/
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/reports/jacoco/test/html/
 
       # 빌드 성공 시 jar 업로드
       - name: Upload build artifacts
