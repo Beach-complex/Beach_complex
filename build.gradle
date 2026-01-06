@@ -51,3 +51,16 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.withType(Test).configureEach {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+
+tasks.register('reservationServiceTest', Test) {
+    useJUnitPlatform()
+    testClassesDirs = files("$buildDir/classes/java/test")
+    classpath = files("$buildDir/classes/java/test", "$buildDir/classes/java/main") + configurations.testRuntimeClasspath
+    include("**/ReservationServiceTest.class")
+}
