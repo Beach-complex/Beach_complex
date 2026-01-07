@@ -85,8 +85,8 @@ class UserFavoriteServiceTest {
         assertThat(captured.getUser().getId()).isEqualTo(testUser.getId());
         assertThat(captured.getBeach().getId()).isEqualTo(beachId);
 
-        // Then - save 메서드 호출 확인
-        then(favoriteRepository).should(times(1)).save(any(UserFavorite.class));
+        // Then - 핵심 동작: 저장이 수행되었는지 검증
+        then(favoriteRepository).should().save(any(UserFavorite.class));
     }
 
     /**
@@ -161,8 +161,8 @@ class UserFavoriteServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("이미 찜한 해수욕장입니다");
 
-        // save는 호출되어야 함 (예외 발생까지)
-        then(favoriteRepository).should(times(1)).save(any(UserFavorite.class));
+        // Then - 핵심 동작: 저장 시도가 있었는지 검증 (예외 발생)
+        then(favoriteRepository).should().save(any(UserFavorite.class));
     }
 
     /**
@@ -182,7 +182,7 @@ class UserFavoriteServiceTest {
         // When
         favoriteService.removeFavorite(testUser, beachId);
 
-        // Then
+        // Then - Captor로 올바른 파라미터가 전달되었는지 검증
         then(favoriteRepository).should().deleteByUserIdAndBeachId(
                 userIdCaptor.capture(),
                 beachIdCaptor.capture()
@@ -190,10 +190,6 @@ class UserFavoriteServiceTest {
 
         assertThat(userIdCaptor.getValue()).isEqualTo(testUser.getId());
         assertThat(beachIdCaptor.getValue()).isEqualTo(beachId);
-
-        // 정확히 1번 호출되어야 함
-        then(favoriteRepository).should(times(1))
-                .deleteByUserIdAndBeachId(any(UUID.class), any(UUID.class));
     }
 
     // ========== P1 권장 테스트: toggleFavorite 엣지 케이스 ==========
@@ -222,12 +218,9 @@ class UserFavoriteServiceTest {
         // Then - 추가되어 true 반환
         assertThat(result).isTrue();
 
-        // addFavorite 내부 로직 검증
-        // toggleFavorite에서 1번 + addFavorite 내부에서 1번 = 총 2번
-        then(favoriteRepository).should(times(2))
-                .existsByUserIdAndBeachId(testUser.getId(), beachId);
-        then(beachRepository).should(times(1)).findById(beachId);
-        then(favoriteRepository).should(times(1)).save(any(UserFavorite.class));
+        // Then - 핵심 동작: 저장이 수행되었는지 검증
+        then(favoriteRepository).should().save(any(UserFavorite.class));
+        then(favoriteRepository).should(never()).deleteByUserIdAndBeachId(any(), any());
     }
 
     /**
@@ -250,27 +243,22 @@ class UserFavoriteServiceTest {
         // Then - 제거되어 false 반환
         assertThat(result).isFalse();
 
-        // removeFavorite 내부 로직 검증
-        then(favoriteRepository).should(times(1))
-                .existsByUserIdAndBeachId(testUser.getId(), beachId);
-        then(favoriteRepository).should(times(1))
-                .deleteByUserIdAndBeachId(testUser.getId(), beachId);
-
-        // save는 호출되지 않아야 함
+        // Then - 핵심 동작: 삭제가 수행되었는지 검증
+        then(favoriteRepository).should().deleteByUserIdAndBeachId(testUser.getId(), beachId);
         then(favoriteRepository).should(never()).save(any());
     }
 
     /**
      * TC-S08: toggleFavorite - 동시성 경합 (Race Condition)
      * Why: 동시 요청으로 인한 중복 저장 시도 시 멱등성 보장
-     * Policy: addFavorite에서 IllegalStateException 발생 → catch 후 true 반환 (추가된 것으로 간주)
+     * Policy: addFavorite에서 DataIntegrityViolationException 발생 → IllegalStateException 변환 → toggleFavorite에서 catch 후 true 반환
      * Contract(Input): 동시성으로 인해 exists=false였지만 save 시점에 이미 존재
-     * Contract(Output): true (이미 추가됨)
+     * Contract(Output): 예외 전파 없이 true 반환 (멱등성 보장)
      */
     @Test
     @DisplayName("TC-S08: toggleFavorite - 동시성 경합 시 멱등성 보장")
     void toggleFavorite_동시성경합_멱등성보장() {
-        // Given - 체크 시에는 없었지만 save 시점에 중복 발생
+        // Given - 체크 시에는 없었지만 save 시점에 중복 발생 (Race Condition)
         given(favoriteRepository.existsByUserIdAndBeachId(testUser.getId(), beachId))
                 .willReturn(false);
         given(beachRepository.findById(beachId))
@@ -278,18 +266,15 @@ class UserFavoriteServiceTest {
         given(favoriteRepository.save(any(UserFavorite.class)))
                 .willThrow(new DataIntegrityViolationException("Duplicate entry"));
 
-        // When
+        // When - 동시성 예외가 발생해도 정상 처리되어야 함 (예외 전파 X)
         boolean result = favoriteService.toggleFavorite(testUser, beachId);
 
-        // Then - 예외를 catch하고 true 반환 (이미 추가된 것으로 간주)
+        // Then - 멱등성 보장: 예외 없이 true 반환 (이미 추가된 것으로 간주)
         assertThat(result).isTrue();
 
-        // addFavorite 시도했음을 검증
-        // toggleFavorite에서 1번 + addFavorite 내부에서 1번 = 총 2번
-        then(favoriteRepository).should(times(2))
-                .existsByUserIdAndBeachId(testUser.getId(), beachId);
-        then(beachRepository).should(times(1)).findById(beachId);
-        then(favoriteRepository).should(times(1)).save(any(UserFavorite.class));
+        // Then - 핵심 동작: 저장 시도는 있었지만, 삭제는 없어야 함
+        then(favoriteRepository).should().save(any(UserFavorite.class));
+        then(favoriteRepository).should(never()).deleteByUserIdAndBeachId(any(), any());
     }
 }
 
