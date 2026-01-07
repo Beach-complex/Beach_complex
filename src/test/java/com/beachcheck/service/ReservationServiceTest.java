@@ -11,6 +11,7 @@ import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.ReservationRepository;
 import com.beachcheck.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -49,7 +50,9 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 성공")
     void createReservation_success() {
+        // Given
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
@@ -60,8 +63,10 @@ class ReservationServiceTest {
 
         ReservationCreateRequest req = req("2025-01-01T01:00:00Z", "  EVENT-1  ");
 
+        // When
         var response = reservationService.createReservation(userId, beachId, req);
 
+        // Then
         assertThat(response.status()).isEqualTo(ReservationStatus.CONFIRMED.name());
         assertThat(response.eventId()).isEqualTo("EVENT-1");
         assertThat(response.reservedAtUtc()).isEqualTo(reservedAt);
@@ -74,6 +79,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 실패 - 과거 시각")
     void createReservation_pastTime() {
         ReservationCreateRequest req = req("2024-12-31T23:59:00Z", null);
 
@@ -86,6 +92,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 실패 - 시간 형식 오류")
     void createReservation_invalidTimeFormat() {
         ReservationCreateRequest req = req("2025-01-01 01:00:00", null);
 
@@ -98,6 +105,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 실패 - 중복 예약")
     void createReservation_duplicate() {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
@@ -117,6 +125,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 실패 - 해변 없음")
     void createReservation_beachNotFound() {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
@@ -136,6 +145,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 실패 - 유저 없음")
     void createReservation_userNotFound() {
         /**
          * Why: 해변은 존재하지만 유저가 없는 경우의 예외 흐름을 명확히 보장.
@@ -163,6 +173,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 - 이벤트 ID 공백은 null 처리")
     void createReservation_eventIdBlank_normalizesToNull() {
         /**
          * Why: 공백 eventId가 의미 없는 값으로 저장되는 것을 방지.
@@ -187,6 +198,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 - 이벤트 ID null 유지")
     void createReservation_eventIdNull_staysNull() {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
@@ -205,6 +217,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 - 현재 시각 예약 허용")
     void createReservation_nowIsAllowed() {
         /**
          * Why: 경계값(now)에서 허용/거부 정책을 고정.
@@ -230,7 +243,9 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 생성 - 유저/해변/이벤트 ID 설정")
     void createReservation_setsUserBeachAndEventId() {
+        // Given
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
@@ -242,16 +257,19 @@ class ReservationServiceTest {
 
         ReservationCreateRequest req = req("2025-01-01T01:00:00Z", "  EVENT-3  ");
 
+        // When
         reservationService.createReservation(userId, beachId, req);
 
+        // Then
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
         verify(reservationRepository).save(captor.capture());
-        assertThat(captor.getValue().getUser()).isEqualTo(user);
-        assertThat(captor.getValue().getBeach()).isEqualTo(beach);
+        assertThat(captor.getValue().getUser().getId()).isEqualTo(userId);
+        assertThat(captor.getValue().getBeach().getId()).isEqualTo(beachId);
         assertThat(captor.getValue().getEventId()).isEqualTo("EVENT-3");
     }
 
     @Test
+    @DisplayName("예약 취소 실패 - 리소스 없음")
     void cancelReservation_notFound() {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
@@ -269,6 +287,7 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 취소 성공")
     void cancelReservation_success() {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
@@ -286,7 +305,9 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("내 예약 조회 - 응답 매핑")
     void getMyReservations_mapsResponses() {
+        // Given
         /**
          * Why: 도메인 -> 응답 DTO 매핑이 정확해야 UI/API가 안전하다.
          * Policy: ReservationResponse.from 매핑 규칙을 그대로 따른다.
@@ -310,8 +331,10 @@ class ReservationServiceTest {
 
         when(reservationRepository.findByUserId(userId)).thenReturn(List.of(reservation));
 
+        // When
         var responses = reservationService.getMyReservations(userId);
 
+        // Then
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).reservationId()).isEqualTo(reservationId);
         assertThat(responses.get(0).status()).isEqualTo(ReservationStatus.CONFIRMED.name());
