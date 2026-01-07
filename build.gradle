@@ -20,10 +20,6 @@ configurations {
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -61,4 +57,17 @@ jacocoTestReport {
         xml.required = true
         csv.required = false
     }
+}
+
+tasks.withType(Test).configureEach {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+
+tasks.register('reservationServiceTest', Test) {
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    include("**/ReservationServiceTest.class")
 }
