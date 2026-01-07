@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,7 +74,7 @@ class ReservationServiceTest {
         assertThat(response.beachId()).isEqualTo(beachId);
 
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
-        verify(reservationRepository).save(captor.capture());
+        then(reservationRepository).should().save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
         assertThat(captor.getValue().getReservedAt()).isEqualTo(reservedAt);
     }
@@ -121,7 +122,7 @@ class ReservationServiceTest {
         );
 
         assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.RESERVATION_DUPLICATE);
-        verify(reservationRepository, never()).save(any());
+        then(reservationRepository).should(never()).save(any());
     }
 
     @Test
@@ -140,8 +141,8 @@ class ReservationServiceTest {
         );
 
         assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.BEACH_NOT_FOUND);
-        verify(reservationRepository, never()).save(any());
-        verify(userRepository, never()).findById(any());
+        then(reservationRepository).should(never()).save(any());
+        then(userRepository).should(never()).findById(any());
     }
 
     @Test
@@ -157,9 +158,9 @@ class ReservationServiceTest {
         UUID beachId = UUID.randomUUID();
 
         givenBeach(beachId);
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
-                .thenReturn(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        given(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
+                .willReturn(false);
+        given(userRepository.findById(userId)).willReturn(Optional.empty());
 
         ReservationCreateRequest req = req("2025-01-01T01:00:00Z", null);
 
@@ -169,7 +170,7 @@ class ReservationServiceTest {
         );
 
         assertThat(ex.getMessage()).isEqualTo("User not found");
-        verify(reservationRepository, never()).save(any());
+        then(reservationRepository).should(never()).save(any());
     }
 
     @Test
@@ -262,7 +263,7 @@ class ReservationServiceTest {
 
         // Then
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
-        verify(reservationRepository).save(captor.capture());
+        then(reservationRepository).should().save(captor.capture());
         assertThat(captor.getValue().getUser().getId()).isEqualTo(userId);
         assertThat(captor.getValue().getBeach().getId()).isEqualTo(beachId);
         assertThat(captor.getValue().getEventId()).isEqualTo("EVENT-3");
@@ -275,8 +276,8 @@ class ReservationServiceTest {
         UUID beachId = UUID.randomUUID();
         UUID reservationId = UUID.randomUUID();
 
-        when(reservationRepository.findByIdAndUserIdAndBeachId(reservationId, userId, beachId))
-                .thenReturn(Optional.empty());
+        given(reservationRepository.findByIdAndUserIdAndBeachId(reservationId, userId, beachId))
+                .willReturn(Optional.empty());
 
         ApiException ex = catchThrowableOfType(
                 () -> reservationService.cancelReservation(userId, beachId, reservationId),
@@ -296,12 +297,12 @@ class ReservationServiceTest {
         Reservation reservation = new Reservation();
         reservation.setId(reservationId);
 
-        when(reservationRepository.findByIdAndUserIdAndBeachId(reservationId, userId, beachId))
-                .thenReturn(Optional.of(reservation));
+        given(reservationRepository.findByIdAndUserIdAndBeachId(reservationId, userId, beachId))
+                .willReturn(Optional.of(reservation));
 
         reservationService.cancelReservation(userId, beachId, reservationId);
 
-        verify(reservationRepository).delete(reservation);
+        then(reservationRepository).should().delete(reservation);
     }
 
     @Test
@@ -329,7 +330,7 @@ class ReservationServiceTest {
         reservation.setEventId("EVENT-4");
         reservation.setCreatedAt(Instant.parse("2025-01-01T00:00:00Z"));
 
-        when(reservationRepository.findByUserId(userId)).thenReturn(List.of(reservation));
+        given(reservationRepository.findByUserId(userId)).willReturn(List.of(reservation));
 
         // When
         var responses = reservationService.getMyReservations(userId);
@@ -354,29 +355,29 @@ class ReservationServiceTest {
     }
 
     private void givenBeach(UUID beachId) {
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach(beachId)));
+        given(beachRepository.findById(beachId)).willReturn(Optional.of(beach(beachId)));
     }
 
     private void givenBeachNotFound(UUID beachId) {
-        when(beachRepository.findById(beachId)).thenReturn(Optional.empty());
+        given(beachRepository.findById(beachId)).willReturn(Optional.empty());
     }
 
     private void givenUser(UUID userId) {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user(userId)));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user(userId)));
     }
 
     private void givenNoDuplicate(UUID userId, UUID beachId, Instant reservedAt) {
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
-                .thenReturn(false);
+        given(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
+                .willReturn(false);
     }
 
     private void givenDuplicate() {
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
-                .thenReturn(true);
+        given(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
+                .willReturn(true);
     }
 
     private void stubSaveReservation() {
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
+        given(reservationRepository.save(any(Reservation.class))).willAnswer(inv -> {
             Reservation r = inv.getArgument(0);
             r.setId(UUID.randomUUID());
             return r;
