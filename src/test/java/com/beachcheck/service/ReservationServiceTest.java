@@ -53,26 +53,12 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
-
-        User user = new User();
-        user.setId(userId);
-
         Instant reservedAt = Instant.parse("2025-01-01T01:00:00Z");
+        givenUserAndBeach(userId, beachId);
+        givenNoDuplicate(userId, beachId, reservedAt);
+        stubSaveReservation();
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
-                .thenReturn(false);
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
-            Reservation r = inv.getArgument(0);
-            r.setId(UUID.randomUUID());
-            return r;
-        });
-
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", "  EVENT-1  ");
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", "  EVENT-1  ");
 
         var response = reservationService.createReservation(userId, beachId, req);
 
@@ -89,8 +75,7 @@ class ReservationServiceTest {
 
     @Test
     void createReservation_pastTime() {
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2024-12-31T23:59:00Z", null);
+        ReservationCreateRequest req = req("2024-12-31T23:59:00Z", null);
 
         ApiException ex = catchThrowableOfType(
                 () -> reservationService.createReservation(UUID.randomUUID(), UUID.randomUUID(), req),
@@ -102,8 +87,7 @@ class ReservationServiceTest {
 
     @Test
     void createReservation_invalidTimeFormat() {
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01 01:00:00", null);
+        ReservationCreateRequest req = req("2025-01-01 01:00:00", null);
 
         ApiException ex = catchThrowableOfType(
                 () -> reservationService.createReservation(UUID.randomUUID(), UUID.randomUUID(), req),
@@ -118,15 +102,10 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
+        givenBeach(beachId);
+        givenDuplicate();
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
-                .thenReturn(true);
-
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", null);
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", null);
 
         ApiException ex = catchThrowableOfType(
                 () -> reservationService.createReservation(userId, beachId, req),
@@ -142,10 +121,9 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.empty());
+        givenBeachNotFound(beachId);
 
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", null);
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", null);
 
         ApiException ex = catchThrowableOfType(
                 () -> reservationService.createReservation(userId, beachId, req),
@@ -168,16 +146,12 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
-
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
+        givenBeach(beachId);
         when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
                 .thenReturn(false);
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", null);
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", null);
 
         var ex = catchThrowableOfType(
                 () -> reservationService.createReservation(userId, beachId, req),
@@ -199,26 +173,13 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
-
-        User user = new User();
-        user.setId(userId);
-
         Instant reservedAt = Instant.parse("2025-01-01T01:00:00Z");
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
-                .thenReturn(false);
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
-            Reservation r = inv.getArgument(0);
-            r.setId(UUID.randomUUID());
-            return r;
-        });
+        givenUserAndBeach(userId, beachId);
+        givenNoDuplicate(userId, beachId, reservedAt);
+        stubSaveReservation();
 
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", "   ");
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", "   ");
 
         var response = reservationService.createReservation(userId, beachId, req);
 
@@ -230,26 +191,13 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
-
-        User user = new User();
-        user.setId(userId);
-
         Instant reservedAt = Instant.parse("2025-01-01T01:00:00Z");
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
-                .thenReturn(false);
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
-            Reservation r = inv.getArgument(0);
-            r.setId(UUID.randomUUID());
-            return r;
-        });
+        givenUserAndBeach(userId, beachId);
+        givenNoDuplicate(userId, beachId, reservedAt);
+        stubSaveReservation();
 
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", null);
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", null);
 
         var response = reservationService.createReservation(userId, beachId, req);
 
@@ -267,26 +215,13 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
-
-        User user = new User();
-        user.setId(userId);
-
         Instant reservedAt = Instant.parse("2025-01-01T00:00:00Z");
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
-                .thenReturn(false);
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
-            Reservation r = inv.getArgument(0);
-            r.setId(UUID.randomUUID());
-            return r;
-        });
+        givenUserAndBeach(userId, beachId);
+        givenNoDuplicate(userId, beachId, reservedAt);
+        stubSaveReservation();
 
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T00:00:00Z", "EVENT-2");
+        ReservationCreateRequest req = req("2025-01-01T00:00:00Z", "EVENT-2");
 
         var response = reservationService.createReservation(userId, beachId, req);
 
@@ -299,26 +234,13 @@ class ReservationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID beachId = UUID.randomUUID();
 
-        Beach beach = new Beach();
-        beach.setId(beachId);
-
-        User user = new User();
-        user.setId(userId);
-
         Instant reservedAt = Instant.parse("2025-01-01T01:00:00Z");
 
-        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
-                .thenReturn(false);
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
-            Reservation r = inv.getArgument(0);
-            r.setId(UUID.randomUUID());
-            return r;
-        });
+        givenUserAndBeach(userId, beachId);
+        givenNoDuplicate(userId, beachId, reservedAt);
+        stubSaveReservation();
 
-        ReservationCreateRequest req =
-                new ReservationCreateRequest("2025-01-01T01:00:00Z", "  EVENT-3  ");
+        ReservationCreateRequest req = req("2025-01-01T01:00:00Z", "  EVENT-3  ");
 
         reservationService.createReservation(userId, beachId, req);
 
@@ -397,5 +319,56 @@ class ReservationServiceTest {
         assertThat(responses.get(0).beachId()).isEqualTo(beachId);
         assertThat(responses.get(0).eventId()).isEqualTo("EVENT-4");
         assertThat(responses.get(0).createdAtUtc()).isEqualTo(reservation.getCreatedAt());
+    }
+
+    private ReservationCreateRequest req(String reservedAtUtc, String eventId) {
+        return new ReservationCreateRequest(reservedAtUtc, eventId);
+    }
+
+    private void givenUserAndBeach(UUID userId, UUID beachId) {
+        givenBeach(beachId);
+        givenUser(userId);
+    }
+
+    private void givenBeach(UUID beachId) {
+        when(beachRepository.findById(beachId)).thenReturn(Optional.of(beach(beachId)));
+    }
+
+    private void givenBeachNotFound(UUID beachId) {
+        when(beachRepository.findById(beachId)).thenReturn(Optional.empty());
+    }
+
+    private void givenUser(UUID userId) {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user(userId)));
+    }
+
+    private void givenNoDuplicate(UUID userId, UUID beachId, Instant reservedAt) {
+        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(userId, beachId, reservedAt))
+                .thenReturn(false);
+    }
+
+    private void givenDuplicate() {
+        when(reservationRepository.existsByUserIdAndBeachIdAndReservedAt(any(), any(), any()))
+                .thenReturn(true);
+    }
+
+    private void stubSaveReservation() {
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
+            Reservation r = inv.getArgument(0);
+            r.setId(UUID.randomUUID());
+            return r;
+        });
+    }
+
+    private Beach beach(UUID beachId) {
+        Beach beach = new Beach();
+        beach.setId(beachId);
+        return beach;
+    }
+
+    private User user(UUID userId) {
+        User user = new User();
+        user.setId(userId);
+        return user;
     }
 }
