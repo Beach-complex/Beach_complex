@@ -7,7 +7,7 @@ import com.beachcheck.domain.UserFavorite;
 import java.util.UUID;
 
 import static com.beachcheck.domain.User.Role.*;
-import static java.util.UUID.*;
+import static java.util.UUID.randomUUID;
 
 public class FavoriteTestFixtures {
 
@@ -41,5 +41,5 @@ public class FavoriteTestFixtures {
         return new UserFavorite(user, beach);
     }
 
-
 }
+
