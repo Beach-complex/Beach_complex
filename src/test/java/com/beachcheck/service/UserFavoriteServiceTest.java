@@ -56,7 +56,7 @@ class UserFavoriteServiceTest {
     /**
      * TC-S01: addFavorite - 정상 추가
      * Why: ArgumentCaptor를 사용하여 실제 저장되는 UserFavorite 객체의 필드값 검증
-     * Policy: save() 메서드에 전달되는 객체의 user, beach, createdAt 필드 검증
+     * Policy: save() 메서드에 전달되는 객체의 user, beach 필드 검증 (createdAt은 JPA가 처리)
      * Contract(Input): 유효한 user, beachId
      * Contract(Output): UserFavorite 객체가 올바른 필드값으로 생성되어 저장됨
      */
@@ -71,12 +71,7 @@ class UserFavoriteServiceTest {
 
         ArgumentCaptor<UserFavorite> favoriteCaptor = ArgumentCaptor.forClass(UserFavorite.class);
         given(favoriteRepository.save(favoriteCaptor.capture()))
-                .willAnswer(invocation -> {
-                    UserFavorite favorite = invocation.getArgument(0);
-                    // Mock 환경에서 @PrePersist 동작 시뮬레이션
-                    favorite.onCreate();
-                    return favorite;
-                });
+                .willAnswer(invocation -> invocation.getArgument(0));
 
         // When
         UserFavorite result = favoriteService.addFavorite(testUser, beachId);
@@ -89,7 +84,6 @@ class UserFavoriteServiceTest {
         assertThat(captured).isNotNull();
         assertThat(captured.getUser().getId()).isEqualTo(testUser.getId());
         assertThat(captured.getBeach().getId()).isEqualTo(beachId);
-        assertThat(captured.getCreatedAt()).isNotNull();
 
         // Then - save 메서드 호출 확인
         then(favoriteRepository).should(times(1)).save(any(UserFavorite.class));
@@ -220,11 +214,7 @@ class UserFavoriteServiceTest {
         given(beachRepository.findById(beachId))
                 .willReturn(Optional.of(testBeach));
         given(favoriteRepository.save(any(UserFavorite.class)))
-                .willAnswer(invocation -> {
-                    UserFavorite favorite = invocation.getArgument(0);
-                    favorite.onCreate();
-                    return favorite;
-                });
+                .willAnswer(invocation -> invocation.getArgument(0));
 
         // When
         boolean result = favoriteService.toggleFavorite(testUser, beachId);
