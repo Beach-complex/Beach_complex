@@ -1,4 +1,17 @@
+# ⚠️ 경고: 이 파일은 테스트 전용입니다!
+# 실환경에서 절대 사용하지 마세요.
+# spring.flyway.clean-disabled: false는 DB 전체 삭제를 허용합니다.
+#
+# 안전 보장:
+# 1. src/test/resources는 프로덕션 빌드(JAR)에 포함되지 않음
+# 2. @ActiveProfiles("test") 어노테이션으로만 활성화
+# 3. 모든 배포 환경(docker-compose)에서 "local" 프로파일 사용
+
 spring:
+  config:
+    activate:
+      on-profile: test  # test 프로파일에서만 활성화
+
   # DataSource는 Testcontainers가 @ServiceConnection으로 자동 제공
   # application.yml의 datasource 설정을 무효화
   datasource:
