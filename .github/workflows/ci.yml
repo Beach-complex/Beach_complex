@@ -49,8 +49,8 @@ jobs:
 
       # 최소 정적 테스트
       - name: Static checks (minimal)
-        run: ./gradlew compileJava checkstyleMain --no-daemon
-        
+        run: ./gradlew compileJava checkstyleMain --no-daemon --stacktrace
+
       # 1회 실행으로 통합 + 상세 로그 옵션 추가
       - name: Build and Test
         run: ./gradlew test assemble --no-daemon --stacktrace
