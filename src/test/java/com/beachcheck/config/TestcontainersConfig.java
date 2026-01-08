@@ -20,6 +20,7 @@ public class TestcontainersConfig {
      *
      * @ServiceConnection: Spring Boot가 자동으로 DataSource 설정
      * DockerImageName: postgis/postgis:16-3.4 (PostgreSQL 16 + PostGIS 3.4)
+     * asCompatibleSubstituteFor: postgis 이미지가 postgres와 호환됨을 명시
      * withReuse(true): 컨테이너 재사용으로 테스트 속도 향상
      */
     @Bean
@@ -27,6 +28,7 @@ public class TestcontainersConfig {
     PostgreSQLContainer<?> postgresContainer() {
         return new PostgreSQLContainer<>(
                 DockerImageName.parse("postgis/postgis:16-3.4")
+                        .asCompatibleSubstituteFor("postgres")
         )
                 .withDatabaseName("testdb")
                 .withUsername("test")
