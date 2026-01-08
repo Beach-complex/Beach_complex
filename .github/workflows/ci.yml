@@ -24,11 +24,6 @@ jobs:
     name: Backend Build & Test (Unit + Integration)
     runs-on: ubuntu-latest
 
-    # Testcontainers를 위한 Docker 서비스 활성화
-    services:
-      docker:
-        image: docker:24-dind
-        options: --privileged
 
     steps:
       - name: Checkout code
