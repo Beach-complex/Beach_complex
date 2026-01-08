@@ -32,6 +32,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 인코딩 UTF-8 테스트
       - name: Verify UTF-8 encoding for tracked files
         run: |
           python3 scripts/verify-utf8.py
@@ -46,6 +47,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # 최소 정적 테스트
+      - name: Static checks (minimal)
+        run: ./gradlew compileJava checkstyleMain --no-daemon
+        
       # 1회 실행으로 통합 + 상세 로그 옵션 추가
       - name: Build and Test
         run: ./gradlew test assemble --no-daemon --stacktrace
