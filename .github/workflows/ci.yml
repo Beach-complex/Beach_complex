@@ -23,10 +23,19 @@ jobs:
   backend-build-test:
     name: Backend Build & Unit Test
     runs-on: ubuntu-latest
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # 인코딩 UTF-8 테스트
+      - name: Verify UTF-8 encoding for tracked files
+        run: |
+          python3 scripts/verify-utf8.py
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -37,6 +46,10 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      # 최소 정적 테스트
+      - name: Static checks (minimal)
+        run: ./gradlew compileJava checkstyleMain --no-daemon --stacktrace
 
       # 1회 실행으로 통합 + 상세 로그 옵션 추가
       - name: Build and Test
