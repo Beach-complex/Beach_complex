@@ -1,0 +1,47 @@
+spring:
+  # JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 테스트마다 스키마 재생성
+    show-sql: true           # 쿼리 로그 출력
+    properties:
+      hibernate:
+        format_sql: true     # SQL 포맷팅
+        use_sql_comments: true  # 쿼리 주석 추가
+
+  # Flyway 설정
+  flyway:
+    enabled: true            # 마이그레이션 실행
+    locations: classpath:db/migration  # 실제 마이그레이션 사용
+    clean-disabled: false    # 테스트 환경에서는 clean 허용
+
+  # 캐시 설정 (Caffeine 사용)
+  cache:
+    type: caffeine
+    cache-names: beachSummaries, facilitySummaries, conditionSnapshots
+
+  # Redis 비활성화 (테스트 환경)
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+# JWT 설정 (테스트용)
+jwt:
+  secret: test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256
+  access-token-expiration: 3600000   # 1시간
+  refresh-token-expiration: 86400000 # 24시간
+
+# 캐시 설정 (테스트용)
+app:
+  cache:
+    ttl-minutes: 30  # 운영 환경과 동일
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # 바인딩 파라미터 출력
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
+    com.beachcheck: DEBUG
+

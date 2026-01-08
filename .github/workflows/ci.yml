@@ -21,8 +21,14 @@ concurrency:
 
 jobs:
   backend-build-test:
-    name: Backend Build & Unit Test
+    name: Backend Build & Test (Unit + Integration)
     runs-on: ubuntu-latest
+
+    # Testcontainers를 위한 Docker 서비스 활성화
+    services:
+      docker:
+        image: docker:24-dind
+        options: --privileged
 
     steps:
       - name: Checkout code
@@ -39,8 +45,12 @@ jobs:
         run: chmod +x gradlew
 
       # 1회 실행으로 통합 + 상세 로그 옵션 추가
-      - name: Build and Test
-        run: ./gradlew test assemble --no-daemon --stacktrace
+      # Testcontainers 통합 테스트 포함
+      - name: Build and Test (Unit + Integration + API)
+        run: ./gradlew test assemble jacocoTestReport --no-daemon --stacktrace
+        env:
+          # Testcontainers가 GitHub Actions에서 Docker를 찾을 수 있도록 설정
+          TESTCONTAINERS_RYUK_DISABLED: true
 
 
       # 테스트 실패 시 리포트 업로드
@@ -51,12 +61,15 @@ jobs:
           name: test-results
           path: build/reports/tests/test/
 
-      - name: Upload coverage report
+      # 커버리지 리포트 업로드 (HTML + XML)
+      - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: build/reports/jacoco/test/html/
+          name: coverage-reports
+          path: |
+            build/reports/jacoco/test/html/ 
+            build/reports/jacoco/test/*.xml 
 
       # 빌드 성공 시 jar 업로드
       - name: Upload build artifacts
