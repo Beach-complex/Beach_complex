@@ -27,10 +27,14 @@ jobs:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
       JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Verify UTF-8 encoding for tracked files
+        run: |
+          python3 scripts/verify-utf8.py
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
