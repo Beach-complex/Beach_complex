@@ -1,8 +1,13 @@
 spring:
+  # DataSource는 Testcontainers가 @ServiceConnection으로 자동 제공
+  # application.yml의 datasource 설정을 무효화
+  datasource:
+    url: jdbc:tc:postgresql:///testdb  # Testcontainers JDBC URL
+
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: create-drop  # 테스트마다 스키마 재생성
+      ddl-auto: validate  # Flyway가 스키마 관리, Hibernate는 검증만
     show-sql: true           # 쿼리 로그 출력
     properties:
       hibernate:
