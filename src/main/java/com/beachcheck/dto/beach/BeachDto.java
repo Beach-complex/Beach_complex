@@ -1,66 +1,57 @@
 package com.beachcheck.dto.beach;
 
 import com.beachcheck.domain.Beach;
-import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.UUID;
+import org.locationtech.jts.geom.Point;
 
 public record BeachDto(
-        UUID id,
-        String code,
-        String name,
-        String status,
-        double latitude,
-        double longitude,
-        Instant updatedAt,
-        String tag,
-        Boolean isFavorite
-) {
-    /**
-     * Beach 엔티티를 BeachDto로 변환 (찜 여부 포함)
-     *
-     * @param beach Beach 엔티티
-     * @param isFavorite 찜 여부 (로그인 사용자의 찜 상태)
-     * @return BeachDto
-     */
-    public static BeachDto from(Beach beach, boolean isFavorite) {
-        double lat = 0.0;
-        double lon = 0.0;
+    UUID id,
+    String code,
+    String name,
+    String status,
+    double latitude,
+    double longitude,
+    Instant updatedAt,
+    String tag,
+    Boolean isFavorite) {
+  /**
+   * Beach 엔티티를 BeachDto로 변환 (찜 여부 포함)
+   *
+   * @param beach Beach 엔티티
+   * @param isFavorite 찜 여부 (로그인 사용자의 찜 상태)
+   * @return BeachDto
+   */
+  public static BeachDto from(Beach beach, boolean isFavorite) {
+    double lat = 0.0;
+    double lon = 0.0;
 
-        if (beach.getLocation() != null) {
-            // WGS84(Point): X=경도(lon), Y=위도(lat)
-            Point p = beach.getLocation();
-            lon = p.getX();
-            lat = p.getY();
-        }
-
-        return new BeachDto(
-                beach.getId(),
-                beach.getCode(),
-                beach.getName(),
-                beach.getStatus(),
-                lat,
-                lon,
-                beach.getUpdatedAt(),
-                beach.getTag(),
-                isFavorite
-        );
+    if (beach.getLocation() != null) {
+      // WGS84(Point): X=경도(lon), Y=위도(lat)
+      Point p = beach.getLocation();
+      lon = p.getX();
+      lat = p.getY();
     }
 
-    /**
-     * Beach 엔티티를 BeachDto로 변환 메서드 오버라이딩 (메서드 참조 위한)
-     * 비로그인 사용자 또는 찜 정보가 불필요한 경우 사용
-     *
-     * @param beach Beach 엔티티
-     * @return BeachDto (isFavorite = false)
-     */
-    public static BeachDto from(Beach beach) {
-        return from(beach, false);
-    }
+    return new BeachDto(
+        beach.getId(),
+        beach.getCode(),
+        beach.getName(),
+        beach.getStatus(),
+        lat,
+        lon,
+        beach.getUpdatedAt(),
+        beach.getTag(),
+        isFavorite);
+  }
 
-
-
-
-
+  /**
+   * Beach 엔티티를 BeachDto로 변환 메서드 오버라이딩 (메서드 참조 위한) 비로그인 사용자 또는 찜 정보가 불필요한 경우 사용
+   *
+   * @param beach Beach 엔티티
+   * @return BeachDto (isFavorite = false)
+   */
+  public static BeachDto from(Beach beach) {
+    return from(beach, false);
+  }
 }

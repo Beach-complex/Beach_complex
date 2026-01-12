@@ -10,7 +10,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -18,77 +17,77 @@ import java.util.UUID;
 @Table(name = "refresh_tokens")
 public class RefreshToken {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false) // JoinColumn 있으면 외래키라는거 User에 mappedBy 따로 없으니 단방향
-    private User user;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false) // JoinColumn 있으면 외래키라는거 User에 mappedBy 따로 없으니 단방향
+  private User user;
 
-    @Column(nullable = false, unique = true, length = 512)
-    private String token;
+  @Column(nullable = false, unique = true, length = 512)
+  private String token;
 
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+  @Column(name = "expires_at", nullable = false)
+  private Instant expiresAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(nullable = false)
-    private Boolean revoked = false;
+  @Column(nullable = false)
+  private Boolean revoked = false;
 
-    @PrePersist
-    public void onCreate() {
-        createdAt = Instant.now();
-    }
+  @PrePersist
+  public void onCreate() {
+    createdAt = Instant.now();
+  }
 
-    public boolean isExpired() {
-        return Instant.now().isAfter(expiresAt);
-    }
+  public boolean isExpired() {
+    return Instant.now().isAfter(expiresAt);
+  }
 
-    // Getters and Setters
-    public UUID getId() {
-        return id;
-    }
+  // Getters and Setters
+  public UUID getId() {
+    return id;
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public User getUser() {
-        return user;
-    }
+  public User getUser() {
+    return user;
+  }
 
-    public void setUser(User user) {
-        this.user = user;
-    }
+  public void setUser(User user) {
+    this.user = user;
+  }
 
-    public String getToken() {
-        return token;
-    }
+  public String getToken() {
+    return token;
+  }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
+  public void setToken(String token) {
+    this.token = token;
+  }
 
-    public Instant getExpiresAt() {
-        return expiresAt;
-    }
+  public Instant getExpiresAt() {
+    return expiresAt;
+  }
 
-    public void setExpiresAt(Instant expiresAt) {
-        this.expiresAt = expiresAt;
-    }
+  public void setExpiresAt(Instant expiresAt) {
+    this.expiresAt = expiresAt;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public Boolean getRevoked() {
-        return revoked;
-    }
+  public Boolean getRevoked() {
+    return revoked;
+  }
 
-    public void setRevoked(Boolean revoked) {
-        this.revoked = revoked;
-    }
+  public void setRevoked(Boolean revoked) {
+    this.revoked = revoked;
+  }
 }
