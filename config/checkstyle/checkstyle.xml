@@ -7,6 +7,9 @@
     <module name="UnusedImports"/>                                                                                                                      
     <module name="ModifierOrder"/>                                                                                                                      
     <module name="WhitespaceAround"/>
+      <property name="allowEmptyMethods" value="true"/>
+      <property name="allowEmptyConstructors" value="true"/>
+      <property name="allowEmptyTypes" value="true"/>
     <module name="FinalClass"/>
     <module name="EmptyBlock"/>
     <module name="MissingSwitchDefault"/>
