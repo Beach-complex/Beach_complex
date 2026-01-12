@@ -2,7 +2,6 @@ package com.beachcheck.dto.beach.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record BeachSearchRequestDto(

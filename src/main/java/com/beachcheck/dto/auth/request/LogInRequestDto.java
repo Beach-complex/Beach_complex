@@ -10,4 +10,4 @@ public record LogInRequestDto(
 
     @NotBlank(message = "Password is required")
     String password
-) {}
+) { }

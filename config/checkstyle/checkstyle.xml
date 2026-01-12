@@ -3,6 +3,10 @@
 
 <module name="Checker">
   <module name="TreeWalker">
+    <module name="AvoidStarImport"/>                                                                                                                    
+    <module name="UnusedImports"/>                                                                                                                      
+    <module name="ModifierOrder"/>                                                                                                                      
+    <module name="WhitespaceAround"/>
     <module name="FinalClass"/>
     <module name="EmptyBlock"/>
     <module name="MissingSwitchDefault"/>

@@ -1,18 +1,19 @@
 package com.beachcheck.controller;
 
 import com.beachcheck.repository.BeachRepository;
-import com.beachcheck.domain.Beach;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @Profile("local")
 public class DebugController {
     private final BeachRepository repo;
-    public DebugController(BeachRepository repo){ this.repo = repo; }
+    public DebugController(BeachRepository repo) { this.repo = repo; }
 
     @GetMapping("/api/_debug/beaches-all")
     public List<Map<String, Object>> all() {
@@ -26,5 +27,5 @@ public class DebugController {
                     return m;
                 })
                 .toList();
-            }
+    }
 }

@@ -5,7 +5,6 @@ import com.beachcheck.domain.User;
 import com.beachcheck.dto.beach.BeachDto;
 import com.beachcheck.repository.BeachRepository;
 //import com.beachcheck.util.GeometryUtils;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

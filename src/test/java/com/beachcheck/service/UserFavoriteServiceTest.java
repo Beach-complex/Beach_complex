@@ -18,10 +18,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.beachcheck.fixture.FavoriteTestFixtures.*;
-import static org.assertj.core.api.Assertions.*;
+import static com.beachcheck.fixture.FavoriteTestFixtures.createBeach;
+import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 /**
  * Why: 찜하기 비즈니스 로직 및 트랜잭션 동작 검증
