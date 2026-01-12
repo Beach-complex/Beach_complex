@@ -5,31 +5,42 @@ import com.beachcheck.domain.User;
 import com.beachcheck.domain.UserFavorite;
 import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
 @Service
 public class UserFavoriteService {
 
-  private final UserFavoriteRepository favoriteRepository;
-  private final BeachRepository beachRepository;
+    private final UserFavoriteRepository favoriteRepository;
+    private final BeachRepository beachRepository;
 
-  public UserFavoriteService(
-      UserFavoriteRepository favoriteRepository, BeachRepository beachRepository) {
-    this.favoriteRepository = favoriteRepository;
-    this.beachRepository = beachRepository;
-  }
+    public UserFavoriteService(
+            UserFavoriteRepository favoriteRepository,
+            BeachRepository beachRepository
+    ) {
+        this.favoriteRepository = favoriteRepository;
+        this.beachRepository = beachRepository;
+    }
 
-  /** 찜 추가 */
+  /**
+   * 찜 추가
+   *
+   * <p>Why: 사용자가 해수욕장을 찜 목록에 추가 Policy: Pre-check로 99% 중복 차단, DB UNIQUE 제약이 최종 안전망 Contract(Input):
+   * user, beachId (존재하는 해수욕장) Contract(Output): 저장된 UserFavorite
+   *
+   * <p>동시성 처리 전략: 1. exists 체크: 대부분의 중복 요청을 빠르게 차단 (성능 최적화) 2. DB UNIQUE 제약: Race condition 발생 시 최종
+   * 방어 3. GlobalExceptionHandler: 커밋 시점 DataIntegrityViolationException을 409 CONFLICT로 변환
+   */
   @Transactional
-  @CacheEvict(value = "beachSummaries", key = "#user.id")
+  @CacheEvict(value = "beachSummaries", key = "'user:' + #user.id")
   public UserFavorite addFavorite(User user, UUID beachId) {
-    // 이미 찜했는지 확인
+    // Pre-check: 이미 찜했는지 확인 (동시 요청 대부분 차단)
     if (favoriteRepository.existsByUserIdAndBeachId(user.getId(), beachId)) {
       throw new IllegalStateException("이미 찜한 해수욕장입니다.");
     }
@@ -41,17 +52,13 @@ public class UserFavoriteService {
 
     UserFavorite favorite = new UserFavorite(user, beach);
 
-    try {
-      return favoriteRepository.save(favorite);
-    } catch (DataIntegrityViolationException e) {
-      // 동시 요청으로 인한 UNIQUE 제약위반 상태이므로 예외 던지기
-      throw new IllegalStateException("이미 찜한 해수욕장입니다.");
-    }
+    // save(): 배치 최적화 유지, 커밋 시점 예외는 GlobalExceptionHandler가 처리
+    return favoriteRepository.save(favorite);
   }
 
   /** 찜 제거 */
   @Transactional
-  @CacheEvict(value = "beachSummaries", key = "#user.id")
+  @CacheEvict(value = "beachSummaries", key = "'user:' + #user.id")
   public void removeFavorite(User user, UUID beachId) {
     favoriteRepository.deleteByUserIdAndBeachId(user.getId(), beachId);
   }
@@ -68,6 +75,7 @@ public class UserFavoriteService {
         return true; // 추가됨
       } catch (IllegalStateException e) {
         // 동시 요청으로 이미 추가된 경우, 추가된 것으로 간주
+        // (addFavorite가 DataIntegrityViolationException을 IllegalStateException으로 변환)
         return true;
       }
     }
