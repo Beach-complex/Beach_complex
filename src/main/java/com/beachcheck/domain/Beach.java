@@ -8,120 +8,124 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
-import java.time.Instant;
-import java.util.UUID;
-
 @Entity
 @Table(name = "beaches")
 public class Beach {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private UUID id;
 
-    @Column(nullable = false, unique = true, length = 64)
-    private String code;
+  @Column(nullable = false, unique = true, length = 64)
+  private String code;
 
-    @Column(nullable = false, length = 255)
-    private String name;
+  @Column(nullable = false, length = 255)
+  private String name;
 
-    @Column(nullable = false, length = 32)
-    private String status;
+  @Column(nullable = false, length = 32)
+  private String status;
 
-    @JdbcTypeCode(SqlTypes.GEOMETRY)
-    @Column(columnDefinition = "geometry(Point, 4326)", nullable = false)
-    private Point location;
+  @JdbcTypeCode(SqlTypes.GEOMETRY)
+  @Column(columnDefinition = "geometry(Point, 4326)", nullable = false)
+  private Point location;
 
-    @JdbcTypeCode(SqlTypes.GEOMETRY)
-    @Column(columnDefinition = "geometry(Polygon, 4326)")
-    private Polygon boundary;
+  @JdbcTypeCode(SqlTypes.GEOMETRY)
+  @Column(columnDefinition = "geometry(Polygon, 4326)")
+  private Polygon boundary;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    @Column(name = "tag", columnDefinition = "text")
-    private String tag;
+  @Column(name = "tag", columnDefinition = "text")
+  private String tag;
 
-    public String getTag() { return tag; }
-    public void setTag(String tag) { this.tag = tag; }
+  public String getTag() {
+    return tag;
+  }
 
-    @PrePersist
-    public void onCreate() {
-        Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
-    }
+  public void setTag(String tag) {
+    this.tag = tag;
+  }
 
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = Instant.now();
-    }
+  @PrePersist
+  public void onCreate() {
+    Instant now = Instant.now();
+    createdAt = now;
+    updatedAt = now;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  @PreUpdate
+  public void onUpdate() {
+    updatedAt = Instant.now();
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getCode() {
-        return code;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
+  public String getCode() {
+    return code;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public void setCode(String code) {
+    this.code = code;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getStatus() {
-        return status;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+  public String getStatus() {
+    return status;
+  }
 
-    public Point getLocation() {
-        return location;
-    }
+  public void setStatus(String status) {
+    this.status = status;
+  }
 
-    public void setLocation(Point location) {
-        this.location = location;
-    }
+  public Point getLocation() {
+    return location;
+  }
 
-    public Polygon getBoundary() {
-        return boundary;
-    }
+  public void setLocation(Point location) {
+    this.location = location;
+  }
 
-    public void setBoundary(Polygon boundary) {
-        this.boundary = boundary;
-    }
+  public Polygon getBoundary() {
+    return boundary;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public void setBoundary(Polygon boundary) {
+    this.boundary = boundary;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

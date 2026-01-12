@@ -50,7 +50,7 @@ jobs:
 
       # 최소 정적 테스트
       - name: Static checks (minimal)
-        run: ./gradlew compileJava checkstyleMain --no-daemon --stacktrace
+        run: ./gradlew compileJava checkstyleMain spotlessCheck --no-daemon --stacktrace
 
       # 1회 실행으로 통합 + 상세 로그 옵션 추가
       # Testcontainers 통합 테스트 포함

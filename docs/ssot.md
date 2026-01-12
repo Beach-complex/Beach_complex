@@ -258,7 +258,13 @@ npm install
 npm run dev
 ```
 
-5. **브라우저에서 확인**
+5. **포맷 자동화**
+```bash
+./gradlew spotlessCheck
+./gradlew spotlessApply
+``` 
+
+7. **브라우저에서 확인**
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8080
 - API Docs (Swagger): http://localhost:8080/swagger-ui.html
