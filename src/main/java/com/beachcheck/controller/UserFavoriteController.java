@@ -3,6 +3,16 @@ package com.beachcheck.controller;
 import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
 import com.beachcheck.service.UserFavoriteService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,11 +66,16 @@ public class UserFavoriteController {
             isFavorite));
   }
 
-  /** 특정 해수욕장 찜 여부 확인 GET /api/favorites/{beachId}/check */
-  @GetMapping("/{beachId}/check")
-  public ResponseEntity<Map<String, Boolean>> checkFavorite(
-      @AuthenticationPrincipal User user, @PathVariable UUID beachId) {
-    boolean isFavorite = favoriteService.isFavorite(user, beachId);
-    return ResponseEntity.ok(Map.of("isFavorite", isFavorite));
-  }
+    /**
+     * 특정 해수욕장 찜 여부 확인
+     * GET /api/favorites/{beachId}/check
+     */
+    @GetMapping("/{beachId}/check")
+    public ResponseEntity<Map<String, Boolean>> checkFavorite(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID beachId
+    ) {
+        boolean isFavorite = favoriteService.isFavorite(user, beachId);
+        return ResponseEntity.ok(Map.of("isFavorite", isFavorite));
+    }
 }

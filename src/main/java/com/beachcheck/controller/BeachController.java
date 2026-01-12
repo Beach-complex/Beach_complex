@@ -5,13 +5,14 @@ import com.beachcheck.dto.beach.BeachDto;
 import com.beachcheck.dto.beach.request.BeachSearchRequestDto;
 import com.beachcheck.service.BeachService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/beaches")

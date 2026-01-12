@@ -1,0 +1,65 @@
+# ⚠️ 경고: 이 파일은 테스트 전용입니다!
+# 실환경에서 절대 사용하지 마세요.
+# spring.flyway.clean-disabled: false는 DB 전체 삭제를 허용합니다.
+#
+# 안전 보장:
+# 1. src/test/resources는 프로덕션 빌드(JAR)에 포함되지 않음
+# 2. @ActiveProfiles("test") 어노테이션으로만 활성화
+# 3. 모든 배포 환경(docker-compose)에서 "local" 프로파일 사용
+
+spring:
+  config:
+    activate:
+      on-profile: test  # test 프로파일에서만 활성화
+
+  # DataSource는 Testcontainers가 @ServiceConnection으로 자동 제공
+  # application.yml의 datasource 설정을 무효화
+  datasource:
+    url: jdbc:tc:postgresql:///testdb  # Testcontainers JDBC URL
+
+  # JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway가 스키마 관리, Hibernate는 검증만
+    show-sql: true           # 쿼리 로그 출력
+    properties:
+      hibernate:
+        format_sql: true     # SQL 포맷팅
+        use_sql_comments: true  # 쿼리 주석 추가
+
+  # Flyway 설정
+  flyway:
+    enabled: true            # 마이그레이션 실행
+    locations: classpath:db/migration  # 실제 마이그레이션 사용
+    clean-disabled: false    # 테스트 환경에서는 clean 허용
+
+  # 캐시 설정 (Caffeine 사용)
+  cache:
+    type: caffeine
+    cache-names: beachSummaries, facilitySummaries, conditionSnapshots
+
+  # Redis 비활성화 (테스트 환경)
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+# JWT 설정 (테스트용)
+jwt:
+  secret: test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256
+  access-token-expiration: 3600000   # 1시간
+  refresh-token-expiration: 86400000 # 24시간
+
+# 캐시 설정 (테스트용)
+app:
+  cache:
+    ttl-minutes: 30  # 운영 환경과 동일
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # 바인딩 파라미터 출력
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
+    com.beachcheck: DEBUG
+

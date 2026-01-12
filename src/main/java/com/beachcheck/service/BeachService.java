@@ -4,7 +4,11 @@ import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
 import com.beachcheck.dto.beach.BeachDto;
 import com.beachcheck.repository.BeachRepository;
-// import com.beachcheck.util.GeometryUtils;
+//import com.beachcheck.util.GeometryUtils;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

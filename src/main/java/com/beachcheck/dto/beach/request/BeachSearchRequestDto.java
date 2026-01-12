@@ -29,5 +29,4 @@ public record BeachSearchRequestDto(
       throw new IllegalArgumentException(
           "Radius search requires all three parameters: lat, lon, radiusKm");
     }
-  }
 }

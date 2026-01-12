@@ -22,6 +22,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import static com.beachcheck.fixture.FavoriteTestFixtures.createBeach;
+import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
+
 /**
  * Why: 찜하기 비즈니스 로직 및 트랜잭션 동작 검증 Policy: Mock 객체 활용 단위 테스트, ArgumentCaptor로 실제 전달값 검증
  * Contract(Input): Repository/BeachRepository 동작은 stub로 대체 Contract(Output): 정확한 예외 발생, 객체 필드값 검증

@@ -1,7 +1,19 @@
 package com.beachcheck.domain;
 
-import jakarta.persistence.*;
-import java.security.AuthProvider;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -82,109 +94,106 @@ public class User implements UserDetails {
     return true;
   }
 
-  @Override
-  public boolean isCredentialsNonExpired() {
-    return true;
-  }
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
 
-  @Override
-  public boolean isEnabled() {
-    return enabled;
-  }
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
 
-  // Getters and Setters
-  public UUID getId() {
-    return id;
-  }
+    // Getters and Setters
+    public UUID getId() {
+        return id;
+    }
 
-  public void setId(UUID id) {
-    this.id = id;
-  }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-  public String getEmail() {
-    return email;
-  }
+    public String getEmail() {
+        return email;
+    }
 
-  public void setEmail(String email) {
-    this.email = email;
-  }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-  public String getPassword() {
-    return password;
-  }
+    public String getPassword() {
+        return password;
+    }
 
-  public void setPassword(String password) {
-    this.password = password;
-  }
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-  public String getName() {
-    return name;
-  }
+    public String getName() {
+        return name;
+    }
 
-  public void setName(String name) {
-    this.name = name;
-  }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-  public Role getRole() {
-    return role;
-  }
+    public Role getRole() {
+        return role;
+    }
 
-  public void setRole(Role role) {
-    this.role = role;
-  }
+    public void setRole(Role role) {
+        this.role = role;
+    }
 
-  public Boolean getEnabled() {
-    return enabled;
-  }
+    public Boolean getEnabled() {
+        return enabled;
+    }
 
-  public void setEnabled(Boolean enabled) {
-    this.enabled = enabled;
-  }
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
 
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 
-  public Instant getUpdatedAt() {
-    return updatedAt;
-  }
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 
-  public void setUpdatedAt(Instant updatedAt) {
-    this.updatedAt = updatedAt;
-  }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
-  public Instant getLastLoginAt() {
-    return lastLoginAt;
-  }
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
 
-  public void setLastLoginAt(Instant lastLoginAt) {
-    this.lastLoginAt = lastLoginAt;
-  }
+    public void setLastLoginAt(Instant lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+    }
 
-  public String getTimezone() {
-    return timezone;
-  }
+    public String getTimezone() {
+        return timezone;
+    }
 
-  public void setTimezone(String timezone) {
-    this.timezone = timezone;
-  }
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
+    }
 
-  public AuthProvider getAuthProvider() {
-    return authProvider;
-  }
+    public AuthProvider getAuthProvider() {
+        return authProvider;
+    }
 
-  public void setAuthProvider(AuthProvider authProvider) {
-    this.authProvider = authProvider;
-  }
+    public void setAuthProvider(AuthProvider authProvider) {
+        this.authProvider = authProvider;
+    }
 
-  public enum Role {
-    USER,
-    ADMIN
-  }
+    public enum Role {
+        USER, ADMIN
+    }
 
-  public enum AuthProvider {
-    EMAIL,
-    GOOGLE,
-    KAKAO
-  }
+    public enum AuthProvider {
+        EMAIL, GOOGLE, KAKAO
+    }
 }

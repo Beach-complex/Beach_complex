@@ -2,7 +2,11 @@ package com.beachcheck.util;
 
 import com.beachcheck.config.JwtProperties;
 import com.beachcheck.domain.User;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -79,7 +83,7 @@ public class JwtUtils {
     return false;
   }
 
-  public long getAccessTokenExpiration() {
-    return accessTokenExpiration / 1000; // Convert to seconds
-  }
+    public long getAccessTokenExpiration() {
+        return accessTokenExpiration / 1000; // Convert to seconds
+    }
 }

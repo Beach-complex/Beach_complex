@@ -12,8 +12,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/beaches")
@@ -26,17 +35,19 @@ public class ReservationController {
     this.reservationService = reservationService;
   }
 
-  /**
-   * Why: 예약 주체를 클라이언트가 아니라 서버가 확정해 위조를 막기 위해. Policy: userId는 요청 데이터가 아니라 보안 컨텍스트에서만 취득한다.
-   * Contract(Input): 인증되지 않으면 401로 거부한다. Contract(Output): 인증되면 userId로 예약을 생성해 201로 반환한다.
-   */
-  @PostMapping("/{beachId}/reservations")
-  public ResponseEntity<ReservationResponse> createReservation(
-      @AuthenticationPrincipal User user,
-      @PathVariable @NotNull UUID beachId,
-      @Valid @RequestBody ReservationCreateRequest request) {
-    if (user == null) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+    @PostMapping("/{beachId}/reservations")
+    public ResponseEntity<ReservationResponse> createReservation(
+            @AuthenticationPrincipal User user,
+            @PathVariable @NotNull UUID beachId,
+            @Valid @RequestBody ReservationCreateRequest request
+    ) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        ReservationResponse response =
+                reservationService.createReservation(user.getId(), beachId, request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     ReservationResponse response =
         reservationService.createReservation(user.getId(), beachId, request);
