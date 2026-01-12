@@ -6,7 +6,7 @@ import com.beachcheck.domain.UserFavorite;
 
 import java.util.UUID;
 
-import static com.beachcheck.domain.User.Role.*;
+import static com.beachcheck.domain.User.Role.USER;
 import static java.util.UUID.randomUUID;
 
 public class FavoriteTestFixtures {

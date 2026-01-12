@@ -1,12 +1,13 @@
 package com.beachcheck.controller;
 
 import com.beachcheck.repository.BeachRepository;
-import com.beachcheck.domain.Beach;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @Profile("local")
