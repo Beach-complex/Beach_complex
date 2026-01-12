@@ -18,14 +18,14 @@
               @JsonProperty("weather") WeatherInput weather,         
               @JsonProperty("is_weekend_or_holiday") Boolean         
   isWeekendOrHoliday                                                 
-      ) {}                                                           
+      ) { }                                                           
                                                                      
       @JsonIgnoreProperties(ignoreUnknown = true)                    
       public record WeatherInput(                                    
               @JsonProperty("temp_c") Double tempC,                  
               @JsonProperty("rain_mm") Double rainMm,
               @JsonProperty("wind_mps") Double windMps               
-      ) {}                                                           
+      ) { }                                                           
                                                                      
       @JsonIgnoreProperties(ignoreUnknown = true)                    
       public record OutputBlock(                                     
@@ -33,6 +33,6 @@
               @JsonProperty("score_pct") Double scorePct,            
               @JsonProperty("level") String level,                   
               @JsonProperty("model_version") String modelVersion     
-      ) {}                                                           
+      ) { }                                                           
   }
   

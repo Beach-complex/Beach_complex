@@ -13,7 +13,7 @@ import java.util.Map;
 @Profile("local")
 public class DebugController {
     private final BeachRepository repo;
-    public DebugController(BeachRepository repo){ this.repo = repo; }
+    public DebugController(BeachRepository repo) { this.repo = repo; }
 
     @GetMapping("/api/_debug/beaches-all")
     public List<Map<String, Object>> all() {
@@ -27,5 +27,5 @@ public class DebugController {
                     return m;
                 })
                 .toList();
-            }
+    }
 }

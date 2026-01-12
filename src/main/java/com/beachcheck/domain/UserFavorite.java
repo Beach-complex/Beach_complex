@@ -44,7 +44,7 @@ public class UserFavorite {
     }
 
     // Constructors
-    public UserFavorite() {}
+    public UserFavorite() { }
 
     public UserFavorite(User user, Beach beach) {
         this.user = user;
