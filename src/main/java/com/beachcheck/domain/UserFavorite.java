@@ -6,49 +6,65 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "user_favorites",
-        // 중복 방지: 한 사용자가 같은 해수욕장을 여러 번 찜할 수 없음
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "beach_id"})
-)
+    name = "user_favorites",
+    // 중복 방지: 한 사용자가 같은 해수욕장을 여러 번 찜할 수 없음
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "beach_id"}))
 public class UserFavorite {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "beach_id", nullable = false)
-    private Beach beach;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "beach_id", nullable = false)
+  private Beach beach;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @PrePersist
-    public void onCreate() {
-        createdAt = Instant.now();
-    }
+  @PrePersist
+  public void onCreate() {
+    createdAt = Instant.now();
+  }
 
-    // Constructors
-    public UserFavorite() {}
+  // Constructors
+  public UserFavorite() {}
 
-    public UserFavorite(User user, Beach beach) {
-        this.user = user;
-        this.beach = beach;
-    }
+  public UserFavorite(User user, Beach beach) {
+    this.user = user;
+    this.beach = beach;
+  }
 
-    // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+  // Getters and Setters
+  public UUID getId() {
+    return id;
+  }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public Beach getBeach() { return beach; }
-    public void setBeach(Beach beach) { this.beach = beach; }
+  public User getUser() {
+    return user;
+  }
 
-    public Instant getCreatedAt() { return createdAt; }
+  public void setUser(User user) {
+    this.user = user;
+  }
+
+  public Beach getBeach() {
+    return beach;
+  }
+
+  public void setBeach(Beach beach) {
+    this.beach = beach;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 }
