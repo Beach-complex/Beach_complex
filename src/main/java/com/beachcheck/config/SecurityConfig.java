@@ -55,6 +55,14 @@ public class SecurityConfig {
                         HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/refresh")
                     .permitAll()
 
+                    // ✅ 이메일 링크 진입(GET)과 실제 인증 완료(POST)를 모두 공개 처리한다.
+                    .requestMatchers(HttpMethod.GET, "/api/auth/verify-email")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/verify-email/confirm")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/resend-verification")
+                    .permitAll()
+
                     // ✅ 해변 조회는 공개, 찜 토글(임시)도 공개
                     .requestMatchers(HttpMethod.GET, "/api/beaches/**")
                     .permitAll()

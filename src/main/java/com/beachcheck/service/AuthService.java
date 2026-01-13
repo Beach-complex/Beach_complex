@@ -26,16 +26,19 @@ public class AuthService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtUtils jwtUtils;
+  private final EmailVerificationService emailVerificationService;
 
   public AuthService(
       UserRepository userRepository,
       RefreshTokenRepository refreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      JwtUtils jwtUtils) {
+      JwtUtils jwtUtils,
+      EmailVerificationService emailVerificationService) {
     this.userRepository = userRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtils = jwtUtils;
+    this.emailVerificationService = emailVerificationService;
   }
 
   @Transactional
@@ -49,10 +52,12 @@ public class AuthService {
     user.setPassword(passwordEncoder.encode(request.password()));
     user.setName(request.name());
     user.setRole(User.Role.USER);
-    user.setEnabled(true);
+    // 이메일 인증 완료 전에는 로그인 차단을 위해 비활성화 상태로 생성한다.
+    user.setEnabled(false);
     user.setAuthProvider(User.AuthProvider.EMAIL);
 
     User savedUser = userRepository.save(user);
+    emailVerificationService.sendVerification(savedUser);
     return UserResponseDto.from(savedUser);
   }
 

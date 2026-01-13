@@ -235,6 +235,13 @@ user.updateProfile(request.getNickname(), request.getProfileImageUrl());
 
 #### 설치 및 설정
 
+0. **로컬 환경 설정**
+```bash
+$env:SPRING_MAIL_USERNAME="본인지메일@gmail.com"
+$env:SPRING_MAIL_PASSWORD="16자리앱비밀번호"
+$env:APP_EMAIL_VERIFICATION_BASE_URL="http://localhost:8080/api/auth/verify-email"
+```
+
 1. **레포지토리 클론**
 ```bash
 git clone https://github.com/PHJ2000/Beach_complex.git
