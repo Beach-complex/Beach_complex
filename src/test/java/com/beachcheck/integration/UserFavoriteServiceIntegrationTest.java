@@ -48,17 +48,22 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   @BeforeEach
   void setUp() {
     // Fixture를 사용하여 해수욕장 생성 (PostGIS location 포함)
-    // Why: Flyway 데이터(HAEUNDAE, GWANGALLI 등)와 충돌 방지를 위해 TEST_ prefix 사용
+    // Why: UUID 기반 동적 code 생성으로 테스트 간 UNIQUE 제약 충돌 방지
+    String uniqueCode1 = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
+    String uniqueCode2 = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
+
     beach1 =
-        beachRepository.save(
-            createBeachWithLocation("TEST_BEACH_1", "테스트해수욕장1", 129.1603, 35.1587));
+        beachRepository.save(createBeachWithLocation(uniqueCode1, "테스트해수욕장1", 129.1603, 35.1587));
     beach2 =
-        beachRepository.save(
-            createBeachWithLocation("TEST_BEACH_2", "테스트해수욕장2", 129.1189, 35.1532));
+        beachRepository.save(createBeachWithLocation(uniqueCode2, "테스트해수욕장2", 129.1189, 35.1532));
 
     // Fixture를 사용하여 사용자 생성
-    user1 = userRepository.save(createUser("user1@test.com", "User 1"));
-    user2 = userRepository.save(createUser("user2@test.com", "User 2"));
+    // Why: UUID 기반 동적 email 생성으로 UNIQUE 제약 충돌 방지
+    String uniqueEmail1 = "user1_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    String uniqueEmail2 = "user2_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+
+    user1 = userRepository.save(createUser(uniqueEmail1, "User 1"));
+    user2 = userRepository.save(createUser(uniqueEmail2, "User 2"));
 
     // 캐시 초기화
     cacheManager.getCache("beachSummaries").clear();
