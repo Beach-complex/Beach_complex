@@ -5,28 +5,24 @@ import com.beachcheck.domain.User;
 import com.beachcheck.domain.UserFavorite;
 import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserFavoriteService {
 
-    private final UserFavoriteRepository favoriteRepository;
-    private final BeachRepository beachRepository;
+  private final UserFavoriteRepository favoriteRepository;
+  private final BeachRepository beachRepository;
 
-    public UserFavoriteService(
-            UserFavoriteRepository favoriteRepository,
-            BeachRepository beachRepository
-    ) {
-        this.favoriteRepository = favoriteRepository;
-        this.beachRepository = beachRepository;
-    }
+  public UserFavoriteService(
+      UserFavoriteRepository favoriteRepository, BeachRepository beachRepository) {
+    this.favoriteRepository = favoriteRepository;
+    this.beachRepository = beachRepository;
+  }
 
   /**
    * 찜 추가

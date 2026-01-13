@@ -1,5 +1,13 @@
 package com.beachcheck.integration;
 
+import static com.beachcheck.fixture.CacheTestHelper.getCacheValue;
+import static com.beachcheck.fixture.CacheTestHelper.hasKey;
+import static com.beachcheck.fixture.CacheTestHelper.printCacheState;
+import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
+import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.beachcheck.base.IntegrationTest;
 import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
@@ -8,6 +16,12 @@ import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.service.UserFavoriteService;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,21 +30,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.beachcheck.fixture.CacheTestHelper.getCacheValue;
-import static com.beachcheck.fixture.CacheTestHelper.hasKey;
-import static com.beachcheck.fixture.CacheTestHelper.printCacheState;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   @Autowired private UserFavoriteService favoriteService;
