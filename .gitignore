@@ -49,3 +49,7 @@ target/
 .idea/
 .vscode/
 *.iml
+
+
+# ---------- Claude ----------
+CLAUDE.md
