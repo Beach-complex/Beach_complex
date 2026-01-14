@@ -102,3 +102,5 @@ app:
     token-expiration-minutes: 30
     resend-cooldown-minutes: 3
     from-address: ${APP_EMAIL_FROM_ADDRESS:${SPRING_MAIL_USERNAME:}}
+  mail:
+    default-from: ${APP_MAIL_DEFAULT_FROM:${SPRING_MAIL_USERNAME:}}
