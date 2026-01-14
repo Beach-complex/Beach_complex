@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Propagation;
@@ -44,6 +45,18 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
 
   private Beach beach1, beach2;
   private User user1, user2;
+
+  /**
+   * 캐시 가져오기 헬퍼 메서드
+   *
+   * <p>Why: getCache()가 null을 반환하면 테스트 설정 오류이므로 명시적 실패 처리
+   *
+   * <p>Policy: Objects.requireNonNull로 null 체크, NPE 대신 명확한 에러 메시지 제공
+   */
+  private Cache getBeachSummariesCache() {
+    return java.util.Objects.requireNonNull(
+        cacheManager.getCache("beachSummaries"), "beachSummaries 캐시가 설정되지 않았습니다. 캐시 설정을 확인하세요.");
+  }
 
   @BeforeEach
   void setUp() {
@@ -66,12 +79,17 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
     user2 = userRepository.save(createUser(uniqueEmail2, "User 2"));
 
     // 캐시 초기화
-    cacheManager.getCache("beachSummaries").clear();
+    getBeachSummariesCache().clear();
   }
 
   /**
-   * Why: 찜 추가 시 실제 DB에 저장되는지 검증 Policy: Repository로 재조회하여 DB 저장 확인, 사용자 간 격리 검증 Contract(Input):
-   * 유효한 user, beachId Contract(Output): UserFavorite 저장, ID/createdAt 자동 생성, 다른 사용자 영향 없음
+   * Why: 찜 추가 시 실제 DB에 저장되는지 검증
+   *
+   * <p>Policy: Repository로 재조회하여 DB 저장 확인, 사용자 간 격리 검증
+   *
+   * <p>Contract(Input): 유효한 user, beachId
+   *
+   * <p>Contract(Output): UserFavorite 저장, ID/createdAt 자동 생성, 다른 사용자 영향 없음
    */
   @Test
   @DisplayName("P0-01: 찜 추가 시 실제 DB에 저장됨")
@@ -97,9 +115,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: DB UNIQUE 제약과 서비스 레이어 중복 체크가 제대로 동작하는지 검증 Policy: existsByUserIdAndBeachId 체크 후 예외 발생,
-   * DB에는 1개만 유지 Contract(Input): 이미 찜한 beachId Contract(Output): IllegalStateException 발생, DB에 중복
-   * 저장 안됨
+   * Why: DB UNIQUE 제약과 서비스 레이어 중복 체크가 제대로 동작하는지 검증
+   *
+   * <p>Policy: existsByUserIdAndBeachId 체크 후 예외 발생, DB에는 1개만 유지
+   *
+   * <p>Contract(Input): 이미 찜한 beachId
+   *
+   * <p>Contract(Output): IllegalStateException 발생, DB에 중복 저장 안됨
    */
   @Test
   @DisplayName("P0-02: 중복 찜 시도 시 예외 발생 (DB UNIQUE 제약)")
@@ -118,8 +140,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 존재하지 않는 해수욕장 찜 시도 시 예외 처리가 제대로 되는지 검증 Policy: beachRepository.findById() 실패 시 즉시 예외, 트랜잭션
-   * 롤백 Contract(Input): 존재하지 않는 UUID Contract(Output): IllegalArgumentException 발생, DB에 저장 안됨
+   * Why: 존재하지 않는 해수욕장 찜 시도 시 예외 처리가 제대로 되는지 검증
+   *
+   * <p>Policy: beachRepository.findById() 실패 시 즉시 예외, 트랜잭션 롤백
+   *
+   * <p>Contract(Input): 존재하지 않는 UUID
+   *
+   * <p>Contract(Output): IllegalArgumentException 발생, DB에 저장 안됨
    */
   @Test
   @DisplayName("P0-03: 존재하지 않는 해수욕장 찜 시 예외 발생")
@@ -138,8 +165,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 찜 제거 시 실제 DB에서 삭제되는지 검증 Policy: deleteByUserIdAndBeachId 실행 후 Repository 재조회로 삭제 확인
-   * Contract(Input): 찜한 상태의 user, beachId Contract(Output): DB에서 해당 레코드 삭제됨
+   * Why: 찜 제거 시 실제 DB에서 삭제되는지 검증
+   *
+   * <p>Policy: deleteByUserIdAndBeachId 실행 후 Repository 재조회로 삭제 확인
+   *
+   * <p>Contract(Input): 찜한 상태의 user, beachId
+   *
+   * <p>Contract(Output): DB에서 해당 레코드 삭제됨
    */
   @Test
   @DisplayName("P0-04: 찜 제거 시 실제 DB에서 삭제됨")
@@ -157,8 +189,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 찜 제거의 멱등성(Idempotent) 보장 검증 Policy: deleteByUserIdAndBeachId는 존재하지 않아도 예외 없이 처리
-   * Contract(Input): 찜하지 않은 상태의 user, beachId Contract(Output): 예외 없이 정상 처리, DB 상태 변화 없음
+   * Why: 찜 제거의 멱등성(Idempotent) 보장 검증
+   *
+   * <p>Policy: deleteByUserIdAndBeachId는 존재하지 않아도 예외 없이 처리
+   *
+   * <p>Contract(Input): 찜하지 않은 상태의 user, beachId
+   *
+   * <p>Contract(Output): 예외 없이 정상 처리, DB 상태 변화 없음
    */
   @Test
   @DisplayName("P0-05: 존재하지 않는 찜 제거 시 에러 없이 처리")
@@ -173,9 +210,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 찜 목록 조회 시 Beach 엔티티와 JOIN이 제대로 동작하는지 검증 Policy: UserFavorite → Beach 연관관계 조회, 사용자별 격리 확인
-   * Contract(Input): 여러 사용자가 각각 여러 해수욕장을 찜한 상태 Contract(Output): 사용자별로 찜한 Beach 목록만 반환, Beach 필드 정상
-   * 로딩
+   * Why: 찜 목록 조회 시 Beach 엔티티와 JOIN이 제대로 동작하는지 검증
+   *
+   * <p>Policy: UserFavorite → Beach 연관관계 조회, 사용자별 격리 확인
+   *
+   * <p>Contract(Input): 여러 사용자가 각각 여러 해수욕장을 찜한 상태
+   *
+   * <p>Contract(Output): 사용자별로 찜한 Beach 목록만 반환, Beach 필드 정상 로딩
    */
   @Test
   @DisplayName("P0-06: 찜 목록 조회 시 Beach 엔티티와 JOIN")
@@ -211,8 +252,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 토글 기능으로 찜 추가가 제대로 동작하는지 검증 Policy: 찜하지 않은 상태에서 토글 시 addFavorite 호출, DB 저장 확인
-   * Contract(Input): 찜하지 않은 상태의 user, beachId Contract(Output): true 반환, DB에 UserFavorite 저장됨
+   * Why: 토글 기능으로 찜 추가가 제대로 동작하는지 검증
+   *
+   * <p>Policy: 찜하지 않은 상태에서 토글 시 addFavorite 호출, DB 저장 확인
+   *
+   * <p>Contract(Input): 찜하지 않은 상태의 user, beachId
+   *
+   * <p>Contract(Output): true 반환, DB에 UserFavorite 저장됨
    */
   @Test
   @DisplayName("P1-01: 토글로 찜 추가 성공")
@@ -229,8 +275,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 토글 기능으로 찜 제거가 제대로 동작하는지 검증 Policy: 이미 찜한 상태에서 토글 시 removeFavorite 호출, DB 삭제 확인
-   * Contract(Input): 이미 찜한 상태의 user, beachId Contract(Output): false 반환, DB에서 UserFavorite 삭제됨
+   * Why: 토글 기능으로 찜 제거가 제대로 동작하는지 검증
+   *
+   * <p>Policy: 이미 찜한 상태에서 토글 시 removeFavorite 호출, DB 삭제 확인
+   *
+   * <p>Contract(Input): 이미 찜한 상태의 user, beachId
+   *
+   * <p>Contract(Output): false 반환, DB에서 UserFavorite 삭제됨
    */
   @Test
   @DisplayName("P1-02: 토글로 찜 제거 성공")
@@ -250,8 +301,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 찜 추가 시 @CacheEvict가 제대로 동작하여 캐시가 무효화되는지 검증 Policy: 해당 사용자(user.id)의 beachSummaries 캐시만 제거,
-   * 다른 사용자 영향 없음 Contract(Input): 캐시에 데이터가 있는 상태에서 찜 추가 Contract(Output): 해당 사용자의 캐시만 null로 변경됨
+   * Why: 찜 추가 시 @CacheEvict가 제대로 동작하여 캐시가 무효화되는지 검증
+   *
+   * <p>Policy: 해당 사용자(user.id)의 beachSummaries 캐시만 제거, 다른 사용자 영향 없음
+   *
+   * <p>Contract(Input): 캐시에 데이터가 있는 상태에서 찜 추가
+   *
+   * <p>Contract(Output): 해당 사용자의 캐시만 null로 변경됨
    */
   @Test
   @DisplayName("P1-03: 찜 추가 시 캐시 무효화")
@@ -259,8 +315,8 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
     // Given: user1과 user2의 캐시에 각각 데이터 추가
     UUID user1CacheKey = user1.getId();
     UUID user2CacheKey = user2.getId();
-    cacheManager.getCache("beachSummaries").put("user:" + user1CacheKey, "user1_cached_data");
-    cacheManager.getCache("beachSummaries").put("user:" + user2CacheKey, "user2_cached_data");
+    getBeachSummariesCache().put("user:" + user1CacheKey, "user1_cached_data");
+    getBeachSummariesCache().put("user:" + user2CacheKey, "user2_cached_data");
 
     printCacheState(cacheManager, "beachSummaries", "Before addFavorite");
     assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user1CacheKey)).isTrue();
@@ -278,8 +334,13 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 찜 제거 시 @CacheEvict가 제대로 동작하여 캐시가 무효화되는지 검증 Policy: 해당 사용자(user.id)의 beachSummaries 캐시만 제거,
-   * 다른 사용자 영향 없음 Contract(Input): 캐시에 데이터가 있는 상태에서 찜 제거 Contract(Output): 해당 사용자의 캐시만 null로 변경됨
+   * Why: 찜 제거 시 @CacheEvict가 제대로 동작하여 캐시가 무효화되는지 검증
+   *
+   * <p>Policy: 해당 사용자(user.id)의 beachSummaries 캐시만 제거, 다른 사용자 영향 없음
+   *
+   * <p>Contract(Input): 캐시에 데이터가 있는 상태에서 찜 제거
+   *
+   * <p>Contract(Output): 해당 사용자의 캐시만 null로 변경됨
    */
   @Test
   @DisplayName("P1-04: 찜 제거 시 캐시 무효화")
@@ -288,8 +349,8 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
     favoriteService.addFavorite(user1, beach1.getId());
     UUID user1CacheKey = user1.getId();
     UUID user2CacheKey = user2.getId();
-    cacheManager.getCache("beachSummaries").put("user:" + user1CacheKey, "user1_cached_data");
-    cacheManager.getCache("beachSummaries").put("user:" + user2CacheKey, "user2_cached_data");
+    getBeachSummariesCache().put("user:" + user1CacheKey, "user1_cached_data");
+    getBeachSummariesCache().put("user:" + user2CacheKey, "user2_cached_data");
 
     printCacheState(cacheManager, "beachSummaries", "Before removeFavorite");
 
@@ -305,9 +366,14 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
-   * Why: 동시 찜 추가 요청 시 UNIQUE 제약과 예외 처리가 안전하게 동작하는지 검증 Policy: CountDownLatch로 동시 요청 시뮬레이션, UNIQUE
-   * 제약으로 1개만 저장 Contract(Input): 10개 스레드가 동시에 같은 user/beach 찜 추가 시도 Contract(Output): 1개만 성공, 9개는
-   * IllegalStateException 또는 DataIntegrityViolationException, DB에 1개만 저장
+   * Why: 동시 찜 추가 요청 시 UNIQUE 제약과 예외 처리가 안전하게 동작하는지 검증
+   *
+   * <p>Policy: CountDownLatch로 동시 요청 시뮬레이션, UNIQUE 제약으로 1개만 저장
+   *
+   * <p>Contract(Input): 10개 스레드가 동시에 같은 user/beach 찜 추가 시도
+   *
+   * <p>Contract(Output): 1개만 성공, 9개는 IllegalStateException 또는 DataIntegrityViolationException, DB에
+   * 1개만 저장
    *
    * <p>예외 처리 전략: - IllegalStateException: Pre-check(exists)에서 차단된 경우 -
    * DataIntegrityViolationException: 트랜잭션 커밋 시점에 DB UNIQUE 제약 위반
