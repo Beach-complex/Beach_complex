@@ -98,11 +98,12 @@ public class EmailVerificationService {
   }
 
   private String createToken(User user) {
-    EmailVerificationToken token = new EmailVerificationToken();
     String rawToken = UUID.randomUUID().toString();
-    token.setUser(user);
-    token.setToken(hashToken(rawToken));
-    token.setExpiresAt(Instant.now().plus(tokenExpirationMinutes, ChronoUnit.MINUTES));
+    EmailVerificationToken token =
+        new EmailVerificationToken(
+            user,
+            hashToken(rawToken),
+            Instant.now().plus(tokenExpirationMinutes, ChronoUnit.MINUTES));
     tokenRepository.save(token);
     return rawToken;
   }
