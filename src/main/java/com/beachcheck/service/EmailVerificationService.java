@@ -114,7 +114,7 @@ public class EmailVerificationService {
       byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
       StringBuilder sb = new StringBuilder(hashed.length * 2);
       for (byte b : hashed) {
-        sb.append(String.format("%02x", b));
+        sb.append(String.format("%02x", b & 0xff));
       }
       return sb.toString();
     } catch (NoSuchAlgorithmException ex) {
