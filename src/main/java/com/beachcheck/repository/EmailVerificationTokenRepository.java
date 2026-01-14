@@ -16,7 +16,7 @@ public interface EmailVerificationTokenRepository
 
   Optional<EmailVerificationToken> findTopByUserIdOrderByCreatedAtDesc(UUID userId);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query(
       "update EmailVerificationToken t set t.usedAt = :usedAt "
           + "where t.user.id = :userId and t.usedAt is null")
