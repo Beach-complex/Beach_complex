@@ -16,11 +16,15 @@ import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.service.UserFavoriteService;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -381,46 +385,58 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("P2-01: 동시 찜 추가 요청 처리 (동시성)")
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  void concurrentAddFavorite_handlesCorrectly() throws InterruptedException {
+  void concurrentAddFavorite_handlesCorrectly()
+      throws ExecutionException, InterruptedException, TimeoutException {
 
     // Given: 10개의 스레드가 동시에 같은 찜 추가 시도
     int threadCount = 10;
-    ExecutorService executorService = Executors.newFixedThreadPool(threadCount); // 병렬 처리 스레드풀
-    CountDownLatch latch = new CountDownLatch(threadCount); // 모든 스레드 완료 대기
+    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
 
-    AtomicInteger successCount = new AtomicInteger(0); // 스레드 안전한 성공 카운터
-    AtomicInteger failCount = new AtomicInteger(0); // 스레드 안전한 실패 카운터
+    try {
+      AtomicInteger successCount = new AtomicInteger(0);
+      AtomicInteger failCount = new AtomicInteger(0);
 
-    // When: 동시 요청
-    for (int i = 0; i < threadCount; i++) {
-      executorService.submit(
-          () -> {
-            try {
-              favoriteService.addFavorite(user1, beach1.getId());
-              successCount.incrementAndGet();
-            } catch (IllegalStateException | DataIntegrityViolationException e) {
-              // 예상되는 실패: Pre-check 또는 DB UNIQUE 제약 위반
-              failCount.incrementAndGet();
-            } catch (Exception e) {
-              // 예상치 못한 예외는 즉시 전파하여 테스트 실패
-              throw new RuntimeException("Unexpected exception in concurrent test", e);
-            } finally {
-              latch.countDown();
-            }
-          });
+      // CompletableFuture 리스트 수집
+      List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+      // When: 동시 요청
+      for (int i = 0; i < threadCount; i++) {
+        CompletableFuture<Void> future =
+            CompletableFuture.runAsync(
+                () -> {
+                  try {
+                    favoriteService.addFavorite(user1, beach1.getId());
+                    successCount.incrementAndGet();
+                  } catch (IllegalStateException | DataIntegrityViolationException e) {
+                    // 예상되는 실패: Pre-check 또는 DB UNIQUE 제약 위반
+                    failCount.incrementAndGet();
+                  }
+                  // 예상치 못한 예외는 CompletableFuture에 캡처되어 get()에서 던져짐
+                },
+                executorService);
+
+        futures.add(future);
+      }
+
+      // 모든 작업 완료 대기 + 예외 표면화 + timeout 설정
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
+
+      // Then: 1개만 성공, 나머지는 실패
+      assertThat(successCount.get()).isEqualTo(1);
+      assertThat(failCount.get()).isEqualTo(9);
+
+      // Then: DB에는 1개만 존재
+      List<UserFavorite> favorites = favoriteRepository.findByUserId(user1.getId());
+      assertThat(favorites).hasSize(1);
+
+      favoriteRepository.deleteAll(); // 테스트 데이터 정리
+
+    } finally {
+      // ExecutorService 정리 보장
+      executorService.shutdown();
+      if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+        executorService.shutdownNow();
+      }
     }
-
-    latch.await(); // 모든 스레드 완료 대기
-    executorService.shutdown();
-
-    // Then: 1개만 성공, 나머지는 실패
-    assertThat(successCount.get()).isEqualTo(1);
-    assertThat(failCount.get()).isEqualTo(9);
-
-    // Then: DB에는 1개만 존재
-    List<UserFavorite> favorites = favoriteRepository.findByUserId(user1.getId());
-    assertThat(favorites).hasSize(1);
-
-    favoriteRepository.deleteAll(); // 테스트 데이터 정리
   }
 }
