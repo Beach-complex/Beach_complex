@@ -3,11 +3,13 @@ package com.beachcheck.controller;
 import com.beachcheck.domain.User;
 import com.beachcheck.dto.auth.request.LogInRequestDto;
 import com.beachcheck.dto.auth.request.RefreshTokenRequestDto;
+import com.beachcheck.dto.auth.request.ResendVerificationRequestDto;
 import com.beachcheck.dto.auth.request.SignUpRequestDto;
 import com.beachcheck.dto.auth.response.AuthResponseDto;
 import com.beachcheck.dto.auth.response.TokenResponseDto;
 import com.beachcheck.dto.auth.response.UserResponseDto;
 import com.beachcheck.service.AuthService;
+import com.beachcheck.service.EmailVerificationService;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -18,7 +20,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.HtmlUtils;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -26,9 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AuthService authService;
+  private final EmailVerificationService emailVerificationService;
 
-  public AuthController(AuthService authService) {
+  public AuthController(
+      AuthService authService, EmailVerificationService emailVerificationService) {
     this.authService = authService;
+    this.emailVerificationService = emailVerificationService;
   }
 
   @PostMapping("/signup")
@@ -61,5 +68,37 @@ public class AuthController {
   public ResponseEntity<UserResponseDto> getCurrentUser(@AuthenticationPrincipal User user) {
     UserResponseDto response = authService.getCurrentUser(user.getId());
     return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/verify-email")
+  public ResponseEntity<String> verifyEmailPage(@RequestParam String token) {
+    // GET은 확인 페이지 제공, 실제 인증은 POST로 처리해 프리페치 오인증을 막는다.
+    String safeToken = HtmlUtils.htmlEscape(token);
+    String body =
+        """
+        <!doctype html>
+        <html><body>
+        <form id="f" method="post" action="/api/auth/verify-email/confirm">
+          <input type="hidden" name="token" value="%s"/>
+        </form>
+        <script>document.getElementById('f').submit();</script>
+        </body></html>
+        """
+            .formatted(safeToken);
+
+    return ResponseEntity.ok().header("Content-Type", "text/html; charset=UTF-8").body(body);
+  }
+
+  @PostMapping("/verify-email/confirm")
+  public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token) {
+    emailVerificationService.verifyToken(token);
+    return ResponseEntity.ok(Map.of("message", "Email verified"));
+  }
+
+  @PostMapping("/resend-verification")
+  public ResponseEntity<Map<String, String>> resendVerification(
+      @Valid @RequestBody ResendVerificationRequestDto request) {
+    emailVerificationService.resendVerification(request.email());
+    return ResponseEntity.ok(Map.of("message", "Verification email resent"));
   }
 }
