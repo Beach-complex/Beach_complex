@@ -75,15 +75,16 @@ public class AuthController {
     // GET은 확인 페이지 제공, 실제 인증은 POST로 처리해 프리페치 오인증을 막는다.
     String safeToken = HtmlUtils.htmlEscape(token);
     String body =
-        "<!doctype html>"
-            + "<html><body>"
-            + "<form id=\"f\" method=\"post\" action=\"/api/auth/verify-email/confirm\">"
-            + "<input type=\"hidden\" name=\"token\" value=\""
-            + safeToken
-            + "\"/>"
-            + "</form>"
-            + "<script>document.getElementById('f').submit();</script>"
-            + "</body></html>";
+        """
+        <!doctype html>
+        <html><body>
+        <form id="f" method="post" action="/api/auth/verify-email/confirm">
+          <input type="hidden" name="token" value="%s"/>
+        </form>
+        <script>document.getElementById('f').submit();</script>
+        </body></html>
+        """
+            .formatted(safeToken);
 
     return ResponseEntity.ok().header("Content-Type", "text/html; charset=UTF-8").body(body);
   }

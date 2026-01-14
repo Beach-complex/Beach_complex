@@ -138,11 +138,15 @@ public class EmailVerificationService {
     String link = baseUrl + "?token=" + token;
     String subject = "Email verification";
     String body =
-        "Please verify your email by clicking the link below:\n\n"
-            + link
-            + "\n\nThis link expires in "
-            + tokenExpirationMinutes
-            + " minutes.";
+        """
+        Please verify your email by clicking the link below:
+
+        %s
+
+        This link expires in %d minutes.
+        """
+            .formatted(link, tokenExpirationMinutes);
+
     emailSenderService.send(fromAddress, to, subject, body);
   }
 }
