@@ -8,7 +8,8 @@ import org.springframework.cache.caffeine.CaffeineCache;
 
 /**
  * Why: 캐시 상태 확인 로직을 재사용 가능하도록 헬퍼 클래스로 분리 Policy: instanceof를 사용한 타입 안전한 캐스팅으로 구현체별 처리
- * Contract(Input): CacheManager와 캐시 이름 Contract(Output): 캐시의 상태 정보 또는 포맷팅된 출력
+ *
+ * <p>Contract(Input): CacheManager와 캐시 이름 Contract(Output): 캐시의 상태 정보 또는 포맷팅된 출력
  *
  * <p>Note: Caffeine 의존성은 test scope로만 추가되어 프로덕션 코드에는 영향 없음 Redis 전환 시 printRedisCacheDetails() 메서드만
  * 추가하면 됨
@@ -16,7 +17,9 @@ import org.springframework.cache.caffeine.CaffeineCache;
 public class CacheTestHelper {
 
   /**
-   * 캐시 상태를 콘솔에 출력 Why: 테스트 디버깅 시 캐시 내용을 시각적으로 확인 Policy: Spring Cache 추상화만 사용하여 캐시 구현체 독립적
+   * 캐시 상태를 콘솔에 출력 Why: 테스트 디버깅 시 캐시 내용을 시각적으로 확인
+   *
+   * <p>Policy: Spring Cache 추상화만 사용하여 캐시 구현체 독립적
    *
    * @param cacheManager Spring CacheManager
    * @param cacheName 캐시 이름
@@ -82,7 +85,9 @@ public class CacheTestHelper {
   }
 
   /**
-   * 모든 캐시 이름 조회 Why: 캐시 상태 전체 점검 시 사용
+   * 모든 캐시 이름 조회
+   *
+   * <p>Why: 캐시 상태 전체 점검 시 사용
    *
    * @param cacheManager Spring CacheManager
    * @return 캐시 이름 목록
@@ -92,7 +97,11 @@ public class CacheTestHelper {
   }
 
   /**
-   * 캐시 구현체별 상세 정보 출력 Why: 구현체별로 다른 방식으로 캐시 내용 조회 Policy: instanceof를 사용한 타입 안전한 캐스팅 (Reflection 없음)
+   * 캐시 구현체별 상세 정보 출력
+   *
+   * <p>Why: 구현체별로 다른 방식으로 캐시 내용 조회
+   *
+   * <p>Policy: instanceof를 사용한 타입 안전한 캐스팅 (Reflection 없음)
    */
   private static void printCacheDetails(Cache cache) {
     // instanceof로 타입 안전하게 체크 및 캐스팅
@@ -111,7 +120,11 @@ public class CacheTestHelper {
   }
 
   /**
-   * Caffeine 캐시 상세 정보 출력 Why: 로컬 캐시는 전체 내용 조회 가능 Policy: Reflection 없이 직접 메서드 호출 (타입 안전)
+   * Caffeine 캐시 상세 정보 출력
+   *
+   * <p>Why: 로컬 캐시는 전체 내용 조회 가능
+   *
+   * <p>Policy: Reflection 없이 직접 메서드 호출 (타입 안전)
    *
    * @param caffeineCache CaffeineCache 인스턴스
    */
