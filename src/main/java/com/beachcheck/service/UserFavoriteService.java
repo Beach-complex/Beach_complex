@@ -70,8 +70,8 @@ public class UserFavoriteService {
         addFavorite(user, beachId);
         return true; // 추가됨
       } catch (IllegalStateException e) {
-        // 동시 요청으로 이미 추가된 경우, 추가된 것으로 간주
-        // (addFavorite가 DataIntegrityViolationException을 IllegalStateException으로 변환)
+        // pre-check에서 중복 감지된 경우 (이미 찜한 상태로 간주)
+        // 주의: DB 레벨 동시성 충돌(DataIntegrityViolationException)은 GlobalExceptionHandler에서 처리
         return true;
       }
     }
