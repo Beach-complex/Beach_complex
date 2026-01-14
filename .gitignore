@@ -50,6 +50,3 @@ target/
 .vscode/
 *.iml
 
-
-# ---------- Claude ----------
-CLAUDE.md
