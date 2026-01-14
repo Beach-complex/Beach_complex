@@ -109,4 +109,20 @@ public class GlobalExceptionHandler {
     pd.setTitle("Data Integrity Violation");
     return pd;
   }
+
+  /** 그 외 모든 예외 처리 (예상치 못한 에러) */
+  @ExceptionHandler(Exception.class)
+  public ProblemDetail handleGeneralException(Exception ex) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "An unexpected error occurred. Please try again later.");
+    problemDetail.setTitle("Internal Server Error");
+    problemDetail.setProperty("errorType", ex.getClass().getSimpleName());
+
+    // 개발 환경에서 디버깅을 위해 스택 트레이스 포함 (프로덕션에서는 제거 권장)
+    problemDetail.setProperty("message", ex.getMessage());
+
+    return problemDetail;
+  }
 }
