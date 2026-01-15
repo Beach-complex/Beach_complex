@@ -37,6 +37,8 @@ spring:
   cache:
     type: caffeine
     cache-names: beachSummaries, facilitySummaries, conditionSnapshots
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m
 
   # Redis 비활성화 (테스트 환경)
   data:
@@ -45,13 +47,13 @@ spring:
         enabled: false
 
 # JWT 설정 (테스트용)
-jwt:
-  secret: test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256
-  access-token-expiration: 3600000   # 1시간
-  refresh-token-expiration: 86400000 # 24시간
-
-# 캐시 설정 (테스트용)
 app:
+  jwt:
+    secret: test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256
+    access-token-expiration: 3600000   # 1시간
+    refresh-token-expiration: 86400000 # 24시간
+
+  # 캐시 설정 (테스트용)
   cache:
     ttl-minutes: 30  # 운영 환경과 동일
 
