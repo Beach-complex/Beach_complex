@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+# Run Spotless auto-formatting (Java)
+if [ -f "./gradlew" ]; then
+  ./gradlew spotlessApply
+  git add -u
+else
+  echo "gradlew not found; skipping Spotless."
+fi
+
+# Secret scan on staged changes
+if [ -x "./scripts/secret-scan.sh" ]; then
+  ./scripts/secret-scan.sh
+else
+  echo "secret-scan.sh not found; skipping secret scan."
+fi

@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+# Secret scan on staged changes before push
+if [ -x "./scripts/secret-scan.sh" ]; then
+  ./scripts/secret-scan.sh
+else
+  echo "secret-scan.sh not found; skipping secret scan."
+fi

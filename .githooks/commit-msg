@@ -1,0 +1,44 @@
+#!/bin/sh
+set -e
+
+MSG_FILE="$1"
+
+# Disallow bracketed types like [feat]
+if grep -qE '^\[[A-Za-z]+\]' "$MSG_FILE"; then
+  echo "Use 'type: subject' format. Bracketed types like [feat] are not allowed."
+  exit 1
+fi
+
+# Allow merge/revert/fixup/squash commits without JIRA key
+if grep -qE '^(Merge|Revert|fixup!|squash!)' "$MSG_FILE"; then
+  exit 0
+fi
+
+if ! grep -qE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+  JIRA=$(echo "$BRANCH" | grep -oE 'PB-[0-9]+' | head -n1 || true)
+  if [ -n "$JIRA" ]; then
+    TMP_FILE=$(mktemp)
+    FIRST_LINE=$(head -n 1 "$MSG_FILE")
+    REST_LINES=$(tail -n +2 "$MSG_FILE")
+    {
+      TYPE=$(echo "$FIRST_LINE" | sed -nE 's/^([a-zA-Z]+):.*/\1/p')
+      SUBJECT=$(echo "$FIRST_LINE" | sed -E 's/^[a-zA-Z]+:[[:space:]]*//')
+      if [ -n "$TYPE" ]; then
+        printf "%s: %s %s\n" "$TYPE" "$JIRA" "$SUBJECT"
+      else
+        printf "%s %s\n" "$JIRA" "$FIRST_LINE"
+      fi
+      printf "%s\n" "$REST_LINES"
+    } > "$TMP_FILE"
+    mv "$TMP_FILE" "$MSG_FILE"
+    exit 0
+  fi
+fi
+
+if grep -qE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
+  exit 0
+fi
+
+echo "JIRA key (e.g., PB-123) is required in commit messages."
+exit 1
