@@ -55,6 +55,9 @@ app:
   cache:
     ttl-minutes: 30  # 운영 환경과 동일
 
+  mail:
+    enabled: false  # 메일 전송 비활성화
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
