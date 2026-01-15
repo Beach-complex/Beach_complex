@@ -37,8 +37,6 @@ spring:
   cache:
     type: caffeine
     cache-names: beachSummaries, facilitySummaries, conditionSnapshots
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=10m
 
   # Redis 비활성화 (테스트 환경)
   data:
