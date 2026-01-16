@@ -370,6 +370,76 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   }
 
   /**
+   * Why: 토글 기능 사용 시 @CacheEvict가 제대로 동작하여 캐시가 무효화되는지 검증
+   *
+   * <p>Policy: toggleFavorite() 호출 시 해당 사용자의 캐시 무효화, 다음 조회 시 DB에서 최신 데이터 반환
+   *
+   * <p>Contract(Input): 캐시에 데이터가 있는 상태에서 토글 실행
+   *
+   * <p>Contract(Output): 캐시가 무효화되고, 재조회 시 DB에서 최신 데이터 가져옴
+   *
+   * <p>Note: toggleFavorite()는 내부적으로 addFavorite() 또는 removeFavorite()를 호출하므로 Spring AOP 프록시를
+   * 통한 @CacheEvict 동작 검증이 필요
+   */
+  @Test
+  @DisplayName("P1-05: 토글 후 캐시 무효화")
+  void toggleFavorite_shouldEvictCache() {
+    // Given: user1과 user2의 캐시에 각각 데이터 추가
+    UUID user1CacheKey = user1.getId();
+    UUID user2CacheKey = user2.getId();
+    getBeachSummariesCache().put("user:" + user1CacheKey, "user1_cached_data");
+    getBeachSummariesCache().put("user:" + user2CacheKey, "user2_cached_data");
+
+    printCacheState(cacheManager, "beachSummaries", "Before toggleFavorite");
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user1CacheKey)).isTrue();
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user2CacheKey)).isTrue();
+
+    // When: user1이 토글 실행 (@CacheEvict 동작, key = user.id)
+    favoriteService.toggleFavorite(user1, beach1.getId());
+    printCacheState(cacheManager, "beachSummaries", "After toggleFavorite");
+
+    // Then: user1의 캐시만 무효화되고, user2의 캐시는 유지됨
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user1CacheKey)).isFalse();
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user2CacheKey)).isTrue();
+    assertThat(getCacheValue(cacheManager, "beachSummaries", "user:" + user2CacheKey))
+        .isEqualTo("user2_cached_data");
+  }
+
+  /**
+   * Why: 직접 addFavorite() 호출 시 @CacheEvict가 정상 작동하는지 검증 (P1-05와 비교군)
+   *
+   * <p>Policy: 외부에서 직접 addFavorite() 호출 시 Spring AOP 프록시를 거쳐 @CacheEvict 적용
+   *
+   * <p>Contract(Input): 캐시에 데이터가 있는 상태에서 직접 addFavorite() 호출
+   *
+   * <p>Contract(Output): 캐시가 무효화됨
+   *
+   * <p>Note: P1-05(toggleFavorite)와 달리 외부 호출이므로 AOP 프록시가 정상 작동함을 검증하는 비교 테스트
+   */
+  @Test
+  @DisplayName("P1-06: 직접 addFavorite 호출 시에도 캐시 무효화")
+  void addFavorite_shouldEvictCache() {
+    // Given: user1과 user2의 캐시에 각각 데이터 추가
+    UUID user1CacheKey = user1.getId();
+    UUID user2CacheKey = user2.getId();
+    getBeachSummariesCache().put("user:" + user1CacheKey, "user1_cached_data");
+    getBeachSummariesCache().put("user:" + user2CacheKey, "user2_cached_data");
+
+    printCacheState(cacheManager, "beachSummaries", "Before addFavorite");
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user1CacheKey)).isTrue();
+
+    // When: user1이 직접 addFavorite 호출 (외부 호출이므로 AOP 프록시 적용됨)
+    favoriteService.addFavorite(user1, beach2.getId());
+    printCacheState(cacheManager, "beachSummaries", "After addFavorite");
+
+    // Then: user1의 캐시만 무효화되고, user2의 캐시는 유지됨 (✅ 정상 무효화됨)
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user1CacheKey)).isFalse();
+    assertThat(hasKey(cacheManager, "beachSummaries", "user:" + user2CacheKey)).isTrue();
+    assertThat(getCacheValue(cacheManager, "beachSummaries", "user:" + user2CacheKey))
+        .isEqualTo("user2_cached_data");
+  }
+
+  /**
    * Why: 동시 찜 추가 요청 시 UNIQUE 제약과 예외 처리가 안전하게 동작하는지 검증
    *
    * <p>Policy: CountDownLatch로 동시 요청 시뮬레이션, UNIQUE 제약으로 1개만 저장
