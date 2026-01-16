@@ -61,6 +61,7 @@ public class UserFavoriteService {
 
   /** 찜 토글 (추가/제거) */
   @Transactional
+  @CacheEvict(value = "beachSummaries", key = "'user:' + #user.id")
   public boolean toggleFavorite(User user, UUID beachId) {
     if (favoriteRepository.existsByUserIdAndBeachId(user.getId(), beachId)) {
       removeFavorite(user, beachId);
