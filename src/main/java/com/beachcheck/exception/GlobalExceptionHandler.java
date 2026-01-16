@@ -3,6 +3,7 @@ package com.beachcheck.exception;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -12,8 +13,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Why: 예외를 ProblemDetail로 매핑해 오류 응답의 일관성을 보장하기 위해. Policy: 예외 유형별로 고정된 HttpStatus와 속성 키를 사용한다.
- * Contract(Input): 예외가 핸들러 메서드로 전달된다. Contract(Output): ProblemDetail에 status와 필요한 속성을 담아 반환한다.
+ * Why: 예외를 ProblemDetail로 매핑해 오류 응답의 일관성을 보장하기 위해.
+ *
+ * <p>Policy: 예외 유형별로 고정된 HttpStatus와 속성 키를 사용한다.
+ *
+ * <p>Contract(Input): 예외가 핸들러 메서드로 전달된다.
+ *
+ * <p>Contract(Output): ProblemDetail에 status와 필요한 속성을 담아 반환한다.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -82,6 +88,32 @@ public class GlobalExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     problemDetail.setTitle("Invalid State");
     return problemDetail;
+  }
+
+  /**
+   * DB 제약 위반 처리 (UNIQUE, FOREIGN KEY 등)
+   *
+   * <p>Why: 트랜잭션 커밋 시점에 발생하는 DB 제약 위반을 일관되게 처리
+   *
+   * <p>Policy: UNIQUE 제약 위반은 409 CONFLICT, 기타는 400 BAD_REQUEST
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+    String message = ex.getMessage();
+
+    // UNIQUE 제약 위반 판별 (찜 중복 등)
+    if (message != null && message.contains("uk_user_beach")) {
+      ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "이미 찜한 해수욕장입니다.");
+      pd.setTitle("Duplicate Favorite");
+      pd.setProperty("constraintName", "uk_user_beach");
+      return pd;
+    }
+
+    // 기타 제약 위반
+    ProblemDetail pd =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "데이터 무결성 제약 위반입니다.");
+    pd.setTitle("Data Integrity Violation");
+    return pd;
   }
 
   /** 그 외 모든 예외 처리 (예상치 못한 에러) */

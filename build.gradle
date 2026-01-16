@@ -44,6 +44,10 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
 
+    // 테스트용 캐시 헬퍼에서 타입 안전하게 사용 (Reflection 제거)
+    testImplementation 'org.springframework:spring-context-support'  // CaffeineCache 클래스 제공
+    testImplementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
     runtimeOnly 'org.postgresql:postgresql'

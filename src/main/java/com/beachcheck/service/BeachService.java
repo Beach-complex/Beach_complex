@@ -24,7 +24,7 @@ public class BeachService {
     this.favoriteService = favoriteService;
   }
 
-  @Cacheable(value = "beachSummaries", key = "#user?.id ?: 'anonymous'")
+  @Cacheable(value = "beachSummaries", key = "'user:' + (#user?.id ?: 'anonymous')")
   public List<BeachDto> findAll(User user) {
     return toBeachDtoList(beachRepository.findAll(), user);
   }

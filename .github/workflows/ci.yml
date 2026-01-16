@@ -55,10 +55,12 @@ jobs:
       # 1회 실행으로 통합 + 상세 로그 옵션 추가
       # Testcontainers 통합 테스트 포함
       - name: Build and Test (Unit + Integration + API)
-        run: ./gradlew test assemble jacocoTestReport --no-daemon --stacktrace
+        run: ./gradlew test assemble jacocoTestReport --no-daemon --stacktrace --debug
         env:
           # Testcontainers가 GitHub Actions에서 Docker를 찾을 수 있도록 설정
           TESTCONTAINERS_RYUK_DISABLED: true
+          # Spring 테스트 프로파일 명시적으로 활성화
+          SPRING_PROFILES_ACTIVE: test
 
 
       # 테스트 실패 시 리포트 업로드
