@@ -4,23 +4,28 @@ paths = [
   "README.md",
   "docs/hooks.md"
 ]
+regexes = [
+  # Ignore env/template placeholders like ${DB_PASSWORD} or ${{ secrets.X }}
+  '''(?i)(password|passwd|pwd|secret|client_secret|jwt_secret|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?\$\{[^}]+\}["']?''',
+  '''(?i)(password|passwd|pwd|secret|client_secret|jwt_secret|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?\$\{\{[^}]+\}\}["']?'''
+]
 
 [[rules]]
 id = "generic-password"
 description = "Detect explicit password assignments"
-regex = '''(?i)(password|passwd|pwd)\s*[:=]\s*.+'''
+regex = '''(?i)(password|passwd|pwd)\s*[:=]\s*["'][^"']+["']'''
 tags = ["password", "credential"]
 
 [[rules]]
 id = "generic-secret"
 description = "Detect explicit secret assignments"
-regex = '''(?i)(secret|client_secret|jwt_secret)\s*[:=]\s*.+'''
+regex = '''(?i)(secret|client_secret|jwt_secret)\s*[:=]\s*["'][^"']+["']'''
 tags = ["secret", "credential"]
 
 [[rules]]
 id = "api-key"
 description = "Detect explicit API key assignments"
-regex = '''(?i)(api[_-]?key|access[_-]?key)\s*[:=]\s*.+'''
+regex = '''(?i)(api[_-]?key|access[_-]?key)\s*[:=]\s*["'][^"']+["']'''
 tags = ["api-key", "credential"]
 
 [[rules]]

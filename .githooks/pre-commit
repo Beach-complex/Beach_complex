@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# GUI tools may not inherit PATH; add common Homebrew locations.
+export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin"
+
 # Run Spotless auto-formatting (Java)
 if [ -f "./gradlew" ]; then
   ./gradlew spotlessApply
