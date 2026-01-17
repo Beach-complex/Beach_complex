@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+MSG_FILE="$1"
+SOURCE="$2"
+
+# Skip for merges or squash commits
+case "$SOURCE" in
+  merge|squash)
+    exit 0
+    ;;
+esac
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+JIRA=$(echo "$BRANCH" | grep -oE 'PB-[0-9]+' | head -n1 || true)
+
+if [ -n "$JIRA" ] && ! grep -qE "(^|[^A-Z0-9])$JIRA([^A-Z0-9]|$)" "$MSG_FILE"; then
+  TMP_FILE=$(mktemp)
+  FIRST_LINE=$(head -n 1 "$MSG_FILE")
+  REST_LINES=$(tail -n +2 "$MSG_FILE")
+  TYPE=$(echo "$FIRST_LINE" | sed -nE 's/^([a-zA-Z]+):.*/\1/p')
+  SUBJECT=$(echo "$FIRST_LINE" | sed -E 's/^[a-zA-Z]+:[[:space:]]*//')
+  if [ -n "$TYPE" ]; then
+    printf "%s: %s %s\n" "$TYPE" "$JIRA" "$SUBJECT" > "$TMP_FILE"
+  else
+    printf "%s %s\n" "$JIRA" "$FIRST_LINE" > "$TMP_FILE"
+  fi
+  printf "%s\n" "$REST_LINES" >> "$TMP_FILE"
+  mv "$TMP_FILE" "$MSG_FILE"
+fi
