@@ -44,6 +44,9 @@ target/
 .env.*
 !.env.example   # 예시 파일만 허용
 
+# Firebase service account key (보안상 절대 커밋 금지)
+**/firebase-service-account.json
+
 # ---------- IDE / OS ----------
 **/.DS_Store
 .idea/
