@@ -60,4 +60,85 @@ public class Notification {
     SENT, // 발송 완료
     FAILED // 발송 실패
   }
+
+  // Getters and Setters
+  public UUID getId() {
+    return id;
+  }
+
+  public void setId(UUID id) {
+    this.id = id;
+  }
+
+  public UUID getUserId() {
+    return userId;
+  }
+
+  public void setUserId(UUID userId) {
+    this.userId = userId;
+  }
+
+  public NotificationType getType() {
+    return type;
+  }
+
+  public void setType(NotificationType type) {
+    this.type = type;
+  }
+
+  public String getTitle() {
+    return title;
+  }
+
+  public void setTitle(String title) {
+    this.title = title;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public void setMessage(String message) {
+    this.message = message;
+  }
+
+  public NotificationStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(NotificationStatus status) {
+    this.status = status;
+  }
+
+  public Instant getSentAt() {
+    return sentAt;
+  }
+
+  public void setSentAt(Instant sentAt) {
+    this.sentAt = sentAt;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+
+  public void setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
+  }
+
+  public String getRecipientToken() {
+    return recipientToken;
+  }
+
+  public void setRecipientToken(String recipientToken) {
+    this.recipientToken = recipientToken;
+  }
 }
