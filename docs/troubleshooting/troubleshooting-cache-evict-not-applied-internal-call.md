@@ -14,7 +14,7 @@
 
 **영향:** 찜 토글 API 사용 시 100% 발생, UX 저하 (사용자가 찜 추가/제거했는데 목록에 반영 안 됨)
 
-**해결:** `toggleFavorite()` 메서드에 `@CacheEvict(value = "userFavorites", key = "#userId")` 직접 추가
+**해결:** `toggleFavorite()` 메서드에 `@CacheEvict(value = "beachSummaries", key = "'user:' + #user.id")` 직접 추가
 
 ---
 
