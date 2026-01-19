@@ -2,7 +2,7 @@ spring:
   application:
     name: beach-complex
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/beach_complex}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:15432/beach_complex}
     username: ${SPRING_DATASOURCE_USERNAME:beach}
     password: ${SPRING_DATASOURCE_PASSWORD:beach}
     driver-class-name: org.postgresql.Driver
