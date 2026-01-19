@@ -1,5 +1,6 @@
 package com.beachcheck.domain;
 
+import com.google.firebase.messaging.Message;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -86,6 +87,30 @@ public class Notification {
     notification.setStatus(NotificationStatus.PENDING);
     notification.setCreatedAt(Instant.now());
     return notification;
+  }
+
+  /**
+   * FCM Message 객체로 변환
+   *
+   * <p>Why: FCM 발송을 위한 Message 객체 생성 로직을 도메인에 캡슐화하여 서비스 계층의 책임 분리
+   *
+   * <p>Policy: - FCM Notification에는 title, body만 포함 - 추가 데이터는 data 필드에 type, userId, timestamp 포함
+   *
+   * @return FCM Message 객체
+   */
+  public Message toFcmMessage() {
+    return Message.builder()
+        .setToken(this.recipientToken)
+        .setNotification(
+            com.google.firebase.messaging.Notification.builder()
+                .setTitle(this.title)
+                .setBody(this.message)
+                .build())
+        // 백그라운드 데이터 처리를 위한 추가 데이터 필드(사용자에게는 보이지 않음, 클라이언트 앱에서 활용 가능)
+        .putData("type", this.type.name())
+        .putData("userId", this.userId.toString())
+        .putData("timestamp", Instant.now().toString())
+        .build();
   }
 
   // Getters and Setters
