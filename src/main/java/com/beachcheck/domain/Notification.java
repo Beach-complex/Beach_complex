@@ -61,6 +61,33 @@ public class Notification {
     FAILED // 발송 실패
   }
 
+  /**
+   * PENDING 상태의 알림 생성
+   *
+   * <p>Why: 알림 발송 시도 전 PENDING 상태로 DB에 먼저 기록하여 발송 이력 추적 및 장애 복구를 가능하게 함
+   *
+   * <p>Policy: - 생성 시점에는 항상 PENDING 상태 - createdAt은 현재 시각으로 자동 설정 - 발송 후 SENT 또는 FAILED로 상태 전환
+   *
+   * @param userId 사용자 ID
+   * @param type 알림 유형
+   * @param title 알림 제목
+   * @param message 알림 내용
+   * @param recipientToken FCM 토큰 또는 수신자 식별 정보
+   * @return PENDING 상태의 Notification 인스턴스
+   */
+  public static Notification createPending(
+      UUID userId, NotificationType type, String title, String message, String recipientToken) {
+    Notification notification = new Notification();
+    notification.setUserId(userId);
+    notification.setType(type);
+    notification.setTitle(title);
+    notification.setMessage(message);
+    notification.setRecipientToken(recipientToken);
+    notification.setStatus(NotificationStatus.PENDING);
+    notification.setCreatedAt(Instant.now());
+    return notification;
+  }
+
   // Getters and Setters
   public UUID getId() {
     return id;
