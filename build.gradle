@@ -95,7 +95,7 @@ tasks.register('reservationServiceTest', Test) {
 tasks.register('installGitHooks', Exec) {
   def osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
   if (osName.contains('windows')) {
-    commandLine "C:\\Program Files\\Git\\bin\\bash.exe", "./scripts/install-githooks.sh"
+    commandLine "powershell.exe", "-ExecutionPolicy", "Bypass", "-File", "./scripts/install-githooks.ps1"
   } else {
     commandLine "sh", "./scripts/install-githooks.sh"
   }
