@@ -1,9 +1,7 @@
 package com.beachcheck.service;
 
-import com.beachcheck.domain.BeachCondition;
 import com.beachcheck.dto.beach.BeachConditionDto;
 import com.beachcheck.repository.BeachConditionRepository;
-import com.beachcheck.util.GeometryUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -28,20 +26,8 @@ public class BeachConditionService {
   public List<BeachConditionDto> findRecentConditions(UUID beachId) {
     Instant threshold = Instant.now().minus(DEFAULT_LOOKBACK);
     return beachConditionRepository.findByBeachIdAndObservedAtAfter(beachId, threshold).stream()
-        .map(this::toDto)
+        .map(BeachConditionDto::from)
         .toList();
-  }
-
-  private BeachConditionDto toDto(BeachCondition condition) {
-    return new BeachConditionDto(
-        condition.getId(),
-        condition.getBeach().getId(),
-        condition.getObservedAt(),
-        condition.getWaterTemperatureCelsius(),
-        condition.getWaveHeightMeters(),
-        condition.getWeatherSummary(),
-        GeometryUtils.extractLatitude(condition.getObservationPoint()),
-        GeometryUtils.extractLongitude(condition.getObservationPoint()));
   }
 
   // TODO: Pull condition telemetry from IoT sensors once MQTT bridge is finalized.
