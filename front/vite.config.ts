@@ -2,9 +2,45 @@
   import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react-swc';
   import path from 'path';
+  import fs from 'fs';
+
+  // Firebase 환경변수를 Service Worker에서 사용할 수 있도록 파일로 생성하는 플러그인
+  function firebaseConfigPlugin() {
+    return {
+      name: 'firebase-config-plugin',
+      // 개발 서버 시작 시 실행
+      configureServer() {
+        generateFirebaseConfig();
+      },
+      // 빌드 시작 시 실행
+      buildStart() {
+        generateFirebaseConfig();
+      }
+    };
+  }
+
+  function generateFirebaseConfig() {
+    const config = {
+      apiKey: process.env.VITE_FIREBASE_API_KEY || '',
+      authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID || '',
+      storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+      messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+      appId: process.env.VITE_FIREBASE_APP_ID || '',
+      measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+    };
+
+    const configContent = `// Auto-generated file - DO NOT EDIT
+// Firebase 환경변수 (Service Worker용)
+self.FIREBASE_CONFIG = ${JSON.stringify(config, null, 2)};
+`;
+
+    const publicDir = path.resolve(__dirname, 'public');
+    fs.writeFileSync(path.join(publicDir, 'firebase-config.js'), configContent);
+  }
 
   export default defineConfig({
-    plugins: [react()],
+    plugins: [react(), firebaseConfigPlugin()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -59,9 +95,11 @@
         '@': path.resolve(__dirname, './src'),
       },
     },
+    publicDir: 'public',
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
+      rollupOptions: {},
     },
     server: {
       port: 3000,
