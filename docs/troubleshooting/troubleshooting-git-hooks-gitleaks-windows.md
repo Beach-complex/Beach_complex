@@ -50,9 +50,9 @@ Invoke-WebRequest : Not Found
 | 근본 원인 | 해결책 |
 | --- | --- |
 | 원인 1: 훅 실행 위치가 레포 루트가 아님 | 1) gitleaks config 경로 고정 |
-| 원인 2: gitleaks 미설치로 Docker fallback 실행 | 3) gitleaks 자동 설치 추가 |
 | 원인 3: Windows에서 `.sh` 스크립트가 실행됨 | 2) Windows는 `.ps1`로 훅 설치 |
-| 원인 4: gitleaks URL 생성 오류 | 3) gitleaks 자동 설치 추가 |
+| 원인 2: gitleaks 미설치로 Docker fallback 실행 | 3) gitleaks 자동 설치 추가 |
+| 원인 4: gitleaks URL 생성 오류 | 4) PowerShell 설치 스크립트 버전 문자열 수정 |
 
 ### 1) gitleaks config 경로 고정
 
@@ -88,6 +88,20 @@ if (osName.contains('windows')) {
 $version = "8.18.4"
 $zipName = "gitleaks_${version}_windows_x64.zip"
 $url = "https://github.com/gitleaks/gitleaks/releases/download/v$version/$zipName"
+```
+
+### 4) PowerShell 설치 스크립트 버전 문자열 수정
+
+`scripts/install-githooks.ps1`에서 버전 문자열의 `v` 접두어를 제거한다.
+
+수정 전:
+```powershell
+$version = "v8.18.4"
+```
+
+수정 후:
+```powershell
+$version = "8.18.4"
 ```
 
 ---
