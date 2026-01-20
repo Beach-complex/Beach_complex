@@ -629,7 +629,9 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @DisplayName("P2-01: 예약 생성 동시 요청 - 하나만 성공")
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   void createReservation_concurrentRequests_onlyOneSuccess()
-      throws InterruptedException, TimeoutException, java.util.concurrent.ExecutionException,
+      throws InterruptedException,
+          TimeoutException,
+          java.util.concurrent.ExecutionException,
           Exception {
     String reservedAtUtc = ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 13);
     String requestBody =
@@ -694,8 +696,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
                 executorService));
       }
 
-      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-          .get(10, TimeUnit.SECONDS);
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
 
       assertThat(successCount.get()).isEqualTo(1);
       assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
