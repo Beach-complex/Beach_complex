@@ -54,10 +54,12 @@
             "@types/leaflet": "^1.9.21",
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "sharp": "^0.34.5",
             "vite": "6.3.5"
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build"
+            "build": "vite build",
+            "generate-icons": "node generate-icons.js"
       }
 }

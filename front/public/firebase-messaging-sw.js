@@ -26,11 +26,11 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification?.title || '새 알림';
     const notificationOptions = {
         body: payload.notification?.body || '',
-        icon: '/icon-192x192.png',        // public 폴더에 아이콘 추가 필요
-        badge: '/badge-72x72.png',        // (선택) 작은 뱃지 아이콘
-        tag: 'beach-notification',        // 같은 tag면 알림이 덮어씌워짐(중복 알림 방지)
-        requireInteraction: true,         // iOS PWA에서 중요: 사용자가 닫을 때까지 표시
-        data: payload.data                // 클릭 시 활용할 데이터(예: URL)
+        icon: '/assets/icons/icon-192x192.png',  // 알림 아이콘
+        badge: '/assets/icons/badge-72x72.png',  // (선택) 작은 뱃지 아이콘
+        tag: 'beach-notification',               // 같은 tag면 알림이 덮어씌워짐(중복 알림 방지)
+        requireInteraction: true,                // iOS PWA에서 중요: 사용자가 닫을 때까지 표시
+        data: payload.data                       // 클릭 시 활용할 데이터(예: URL)
     };
 
     // 브라우저 알림 표시
