@@ -45,6 +45,15 @@ Invoke-WebRequest : Not Found
 
 ## 해결 방법
 
+### 원인-해결 매핑
+
+| 근본 원인 | 해결책 |
+| --- | --- |
+| 원인 1: 훅 실행 위치가 레포 루트가 아님 | 1) gitleaks config 경로 고정 |
+| 원인 2: gitleaks 미설치로 Docker fallback 실행 | 3) gitleaks 자동 설치 추가 |
+| 원인 3: Windows에서 `.sh` 스크립트가 실행됨 | 2) Windows는 `.ps1`로 훅 설치 |
+| 원인 4: gitleaks URL 생성 오류 | 3) gitleaks 자동 설치 추가 |
+
 ### 1) gitleaks config 경로 고정
 
 `scripts/secret-scan.sh`에서 레포 루트 기준으로 경로를 고정한다.
