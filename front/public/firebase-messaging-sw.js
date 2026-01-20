@@ -28,9 +28,9 @@ messaging.onBackgroundMessage((payload) => {
         body: payload.notification?.body || '',
         icon: '/icon-192x192.png',        // public 폴더에 아이콘 추가 필요
         badge: '/badge-72x72.png',        // (선택) 작은 뱃지 아이콘
-        tag: 'beach-notification',        // 같은 tag면 알림이 덮어씌워짐
+        tag: 'beach-notification',        // 같은 tag면 알림이 덮어씌워짐(중복 알림 방지)
         requireInteraction: true,         // iOS PWA에서 중요: 사용자가 닫을 때까지 표시
-        data: payload.data                // 클릭 시 활용할 데이터
+        data: payload.data                // 클릭 시 활용할 데이터(예: URL)
     };
 
     // 브라우저 알림 표시
@@ -43,18 +43,25 @@ self.addEventListener('notificationclick', (event) => {
 
     event.notification.close();  // 알림 닫기
 
+    // TODO: 알림 데이터에서 URL 추출하여 특정 페이지로 이동(나중에 백엔드에서 기능별 알림 발송 구현할때 할것)
+
     // 앱 열기 (또는 특정 페이지로 이동)
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            // 현재 앱의 도메인 (예: http://localhost:3000/)
+            const urlToOpen = new URL('/', self.location.origin).href;
+
             // 이미 열려있는 탭이 있으면 해당 탭 포커스
+            // 같은 도메인의 어떤 페이지든 열려있으면 새 탭 생성 방지
             for (const client of clientList) {
-                if (client.url === '/' && 'focus' in client) {
+                if (client.url.startsWith(self.location.origin) && 'focus' in client) {
                     return client.focus();
                 }
             }
+
             // 열려있는 탭 없으면 새 탭 열기
             if (clients.openWindow) {
-                return clients.openWindow('/');
+                return clients.openWindow(urlToOpen);
             }
         })
     );
