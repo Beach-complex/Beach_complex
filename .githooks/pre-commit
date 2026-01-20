@@ -7,7 +7,6 @@ export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin"
 # Run Spotless auto-formatting (Java)
 if [ -f "./gradlew" ]; then
   ./gradlew spotlessApply
-  git add -u
 else
   echo "gradlew not found; skipping Spotless."
 fi
