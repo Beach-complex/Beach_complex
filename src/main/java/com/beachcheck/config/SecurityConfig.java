@@ -98,6 +98,8 @@ public class SecurityConfig {
                     .permitAll()
 
                     // ✅ 해변 조회는 공개, 찜 토글(임시)도 공개
+                    .requestMatchers(HttpMethod.GET, "/api/beaches/reservations")
+                    .authenticated()
                     .requestMatchers(HttpMethod.GET, "/api/beaches/**")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/favorites/**")

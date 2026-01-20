@@ -3,6 +3,7 @@ package com.beachcheck.exception;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -100,12 +101,34 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
     String message = ex.getMessage();
+    String constraintName = null;
+    Throwable cause = ex.getCause();
+    while (cause != null) {
+      if (cause instanceof ConstraintViolationException constraintViolationException) {
+        constraintName = constraintViolationException.getConstraintName();
+        break;
+      }
+      cause = cause.getCause();
+    }
 
     // UNIQUE 제약 위반 판별 (찜 중복 등)
-    if (message != null && message.contains("uk_user_beach")) {
+    if ("uk_user_beach".equals(constraintName)
+        || (message != null && message.contains("uk_user_beach"))) {
       ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "이미 찜한 해수욕장입니다.");
       pd.setTitle("Duplicate Favorite");
       pd.setProperty("constraintName", "uk_user_beach");
+      return pd;
+    }
+
+    if ("uk_reservation_user_beach_time".equals(constraintName)
+        || (message != null && message.contains("uk_reservation_user_beach_time"))) {
+      ProblemDetail pd =
+          ProblemDetail.forStatusAndDetail(
+              HttpStatus.CONFLICT, ErrorCode.RESERVATION_DUPLICATE.getDefaultMessage());
+      pd.setTitle(ErrorCode.RESERVATION_DUPLICATE.getCode());
+      pd.setProperty("code", ErrorCode.RESERVATION_DUPLICATE.getCode());
+      pd.setProperty("details", null);
+      pd.setProperty("constraintName", "uk_reservation_user_beach_time");
       return pd;
     }
 
