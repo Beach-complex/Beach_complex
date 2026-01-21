@@ -113,11 +113,11 @@ export const saveFcmTokenToBackend = async (token: string, accessToken: string):
         });
 
         if (!response.ok) {
-            throw new Error(`FCM 토큰 저장 실패: ${response.status}`);
+            throw new Error(`FCM 토큰 전송 실패: ${response.status}`);
         }
 
-        console.log('FCM 토큰 백엔드 저장 완료');
+        console.log('FCM 토큰 백엔드 전송 완료');
     } catch (error) {
-        console.error('FCM 토큰 백엔드 저장 실패:', error);
+        console.error('FCM 토큰 백엔드 전송 실패:', error);
     }
 };

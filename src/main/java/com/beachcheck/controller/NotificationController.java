@@ -49,7 +49,7 @@ public class NotificationController {
     User dbUser =
         userRepository
             .findById(user.getId())
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
 
     dbUser.setFcmToken(request.fcmToken());
     userRepository.save(dbUser);
@@ -84,7 +84,7 @@ public class NotificationController {
     User dbUser =
         userRepository
             .findById(user.getId())
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
 
     dbUser.setNotificationEnabled(request.enabled());
     userRepository.save(dbUser);
