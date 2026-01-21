@@ -1,5 +1,7 @@
 # [Troubleshooting] toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생
 
+**컴포넌트:** api
+
 ## ✅ 상태: 해결됨
 
 **해결 날짜:** 2026-01-16

@@ -1,4 +1,6 @@
-# Windows Git Hooks + gitleaks 설치/실행 트러블슈팅
+﻿# Windows Git Hooks + gitleaks 설치/실행 트러블슈팅
+
+**컴포넌트:** infra
 
 ## 문제 상황
 
@@ -309,3 +311,6 @@ INF no leaks found
 
 ### 3) 자동 설치는 버전 문자열 규칙이 중요
 - `v` 접두어 위치가 잘못되면 404로 실패.
+
+해결 날짜 : 2026/1/20
+
