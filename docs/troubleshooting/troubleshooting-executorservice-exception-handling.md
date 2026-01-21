@@ -1,5 +1,7 @@
 # ExecutorService.submit() 예외 처리 문제 해결
 
+**컴포넌트:** api
+
 ## 문제 상황
 
 동시성 테스트에서 `ExecutorService.submit()`을 사용했을 때, 워커 스레드에서 발생한 예외가 메인 스레드로 전달되지 않는 문제가 발생했습니다.
