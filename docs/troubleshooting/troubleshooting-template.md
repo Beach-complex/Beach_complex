@@ -9,7 +9,7 @@
 
 - **Mode:** `DEV` / `OPS`
 - **Status:** `Open` / `In Progress` / `Resolved` / `Won't Fix`
-- **작성자:** <!-- 이름/핸들 -->
+- **작성자:** <!-- 이름(@githubid) -->
 - **작성일:** <!-- YYYY-MM-DD -->
 - **컴포넌트:** <!-- 예: api, auth, reservation, db, infra, batch -->
 - **환경:** <!-- local / dev / staging / prod -->
@@ -23,6 +23,14 @@
 - **무슨 문제였나:** <!-- 한 문장 -->
 - **원인:** <!-- 한 문장, 근거 기반 -->
 - **해결:** <!-- 한 문장, 변경 포인트 -->
+
+## 1-1) 학습 포인트 (최대 3개)
+
+> 감상/다짐 금지. “다음에 시간을 줄이는 것”만. Rule of thumb은 필수, 나머지는 선택.
+
+- **Fast checks (3):** (1) Log: ___  (2) Config/Env: ___  (3) Infra/Dependency: ___
+- **Rule of thumb (필수, 1문장):** ___
+- **Anti-pattern (선택):** ___
 
 ---
 
