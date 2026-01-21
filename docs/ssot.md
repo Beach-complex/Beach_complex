@@ -330,7 +330,7 @@ cd Beach_complex
 
 2. **Docker Compose로 데이터베이스 실행**
 ```bash
-docker-compose up -d
+docker-compose up -d postgres redis
 ```
 
 3. **백엔드 실행**
