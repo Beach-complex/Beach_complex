@@ -19,16 +19,19 @@ firebase.initializeApp(self.FIREBASE_CONFIG);
 
 const messaging = firebase.messaging();
 
+
+// TODO: 백그라운드 메세지 수신 시 알림 커스터마이징 필요시 아래 코드 수정(지금은 기본 알림 사용, notificationTitle 작동 안함)
 // 백그라운드 메시지 수신
 messaging.onBackgroundMessage((payload) => {
     console.log('[Service Worker] 백그라운드 메시지 수신:', payload);
 
-    const notificationTitle = payload.notification?.title || '새 알림';
+    const originalTitle = payload.notification?.title || '새 알림';
+    const notificationTitle = `[백그라운드] ${originalTitle}`;
     const notificationOptions = {
         body: payload.notification?.body || '',
         icon: '/assets/icons/icon-192x192.png',  // 알림 아이콘
-        badge: '/assets/icons/badge-72x72.png',  // (선택) 작은 뱃지 아이콘
-        tag: 'beach-notification',               // 같은 tag면 알림이 덮어씌워짐(중복 알림 방지)
+        badge: '/assets/icons/badge-72x72.png',  // 작은 뱃지 아이콘
+        tag: 'beach-notification-background',    // 같은 tag면 알림이 덮어씌워짐(중복 알림 방지)
         requireInteraction: true,                // iOS PWA에서 중요: 사용자가 닫을 때까지 표시
         data: payload.data                       // 클릭 시 활용할 데이터(예: URL)
     };
