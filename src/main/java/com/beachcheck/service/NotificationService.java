@@ -2,7 +2,6 @@ package com.beachcheck.service;
 
 import com.beachcheck.domain.Notification;
 import com.beachcheck.domain.Notification.NotificationStatus;
-import com.beachcheck.domain.Notification.NotificationType;
 import com.beachcheck.repository.NotificationRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;

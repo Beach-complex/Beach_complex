@@ -2,7 +2,6 @@ package com.beachcheck.controller;
 
 import com.beachcheck.domain.Notification;
 import com.beachcheck.domain.User;
-import com.beachcheck.dto.notification.NotificationResponseDto;
 import com.beachcheck.repository.NotificationRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.service.NotificationService;
