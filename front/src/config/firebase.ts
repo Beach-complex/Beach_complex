@@ -55,9 +55,18 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
         if (permission === 'granted') {
             console.log('알림 권한 허용됨');
 
-            // 2. FCM 토큰 발급
+            // 2. 기존 Service Worker 등록 가져오기 (중복 등록 방지)
+            const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+
+            if (!registration) {
+                console.error('Service Worker가 등록되지 않았습니다.');
+                return null;
+            }
+
+            // 3. FCM 토큰 발급 (기존 등록된 Service Worker 사용)
             const token = await getToken(messaging, {
-                vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
+                vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+                serviceWorkerRegistration: registration
             });
 
             console.log('FCM 토큰 발급 성공:', token);
