@@ -523,6 +523,8 @@ export default function App() {
             setSelectedBeach(null);
           }
         }}
+        authUser={authState?.user ?? null}
+        accessToken={authState?.accessToken ?? null}
       />
     );
   }

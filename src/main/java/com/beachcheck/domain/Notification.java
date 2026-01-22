@@ -53,7 +53,8 @@ public class Notification {
     PEAK_AVOID, // 피크 타임 회피 알림
     DATE_REMINDER, // 지정 날짜 알림
     FAVORITE_UPDATE, // 찜한 해변 정보 변경
-    WEATHER_ALERT // 기상 특보
+    WEATHER_ALERT, // 기상 특보
+    TEST // 테스트 알림
   }
 
   public enum NotificationStatus {

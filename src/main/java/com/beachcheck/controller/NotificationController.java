@@ -1,7 +1,11 @@
 package com.beachcheck.controller;
 
+import com.beachcheck.domain.Notification;
 import com.beachcheck.domain.User;
+import com.beachcheck.dto.notification.NotificationResponseDto;
+import com.beachcheck.repository.NotificationRepository;
 import com.beachcheck.repository.UserRepository;
+import com.beachcheck.service.NotificationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +21,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationController {
 
   private final UserRepository userRepository;
+  private final NotificationRepository notificationRepository;
+  private final NotificationService notificationService;
 
-  public NotificationController(UserRepository userRepository) {
+  public NotificationController(
+      UserRepository userRepository,
+      NotificationRepository notificationRepository,
+      NotificationService notificationService) {
     this.userRepository = userRepository;
+    this.notificationRepository = notificationRepository;
+    this.notificationService = notificationService;
   }
 
   /**
@@ -91,6 +102,50 @@ public class NotificationController {
 
     return ResponseEntity.ok(
         new NotificationSettingsResponse("알림 설정이 변경되었습니다.", dbUser.getNotificationEnabled()));
+  }
+
+  /**
+   * 테스트 알림 발송 (개발자 모드용)
+   *
+   * <p>Why: 개발/디버깅 시 FCM 토큰이 정상적으로 저장되었는지, 알림이 제대로 도착하는지 즉시 확인
+   *
+   * <p>Policy: 로그인한 사용자 본인에게만 테스트 알림 발송, FCM 토큰이 없으면 실패
+   *
+   * <p>Contract(Input): 없음 (인증된 사용자 정보 사용)
+   *
+   * <p>Contract(Output):
+   *
+   * <ul>
+   *   <li>202 ACCEPTED: 알림 발송 요청 접수 (백그라운드에서 처리)
+   *   <li>400 BAD REQUEST: FCM 토큰 없음
+   * </ul>
+   */
+  @PostMapping("/test")
+  public ResponseEntity<Void> sendTestNotification(@AuthenticationPrincipal User user) {
+
+    User dbUser =
+        userRepository
+            .findById(user.getId())
+            .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+
+    if (dbUser.getFcmToken() == null || dbUser.getFcmToken().isEmpty()) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    // 1. 알림 엔티티 생성 및 저장 (동기 - 요청 손실 방지)
+    Notification notification =
+        Notification.createPending(
+            dbUser.getId(),
+            Notification.NotificationType.TEST,
+            "테스트 알림",
+            "알림이 정상적으로 작동합니다!",
+            dbUser.getFcmToken());
+    notification = notificationRepository.save(notification);
+
+    // 2. 비동기로 알림 발송 (메시지 큐 도입 대비)
+    notificationService.sendPushNotification(notification.getId());
+
+    return ResponseEntity.accepted().build();
   }
 
   // DTOs

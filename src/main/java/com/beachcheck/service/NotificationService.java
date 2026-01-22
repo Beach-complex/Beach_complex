@@ -28,48 +28,51 @@ public class NotificationService {
   }
 
   /**
-   * FCM 푸시 알림 발송
+   * FCM 푸시 알림 발송 (비동기)
    *
-   * <p>Why: Firebase Cloud Messaging을 통해 사용자에게 실시간 푸시 알림을 전송하기 위함.
+   * <p>Why: Firebase Cloud Messaging을 통해 사용자에게 실시간 푸시 알림을 전송하기 위함 (메시지 큐 도입 대비)
    *
    * <p>Policy: - 알림 발송은 비동기로 처리되어 메인 스레드를 블로킹하지 않음 - 발송 성공/실패 여부를 DB에 기록하여 추적 가능 - FCM 토큰이 유효하지 않으면
-   * FAILED 상태로 기록
+   * FAILED 상태로 기록 - 알림 엔티티는 컨트롤러에서 이미 생성/저장된 상태
    *
-   * <p>Contract(Input): - userId: NULL 불가 - title: NULL 불가, 최대 500자 - body: NULL 불가, 최대 1000자 -
-   * fcmToken: NULL 불가, 유효한 FCM 토큰 - type: NULL 불가, NotificationType Enum 값
+   * <p>Contract(Input): - notificationId: NULL 불가, 이미 저장된 알림 ID
    *
-   * <p>Contract(Output): - 발송 성공 시 SENT 상태로 DB 저장 - 발송 실패 시 FAILED 상태 및 에러 메시지 저장
+   * <p>Contract(Output): - 발송 성공 시 SENT 상태로 DB 업데이트 - 발송 실패 시 FAILED 상태 및 에러 메시지 저장
    */
   @Async("notificationTaskExecutor")
-  public void sendPushNotification(
-      UUID userId, String title, String body, String fcmToken, NotificationType type) {
+  public void sendPushNotification(UUID notificationId) {
 
-    // 1. 알림 엔티티 생성 및 저장 (PENDING 상태)
-    Notification notification = Notification.createPending(userId, type, title, body, fcmToken);
-    notification = notificationRepository.save(notification); // ID 생성 위해 저장
+    Notification notification =
+        notificationRepository
+            .findById(notificationId)
+            .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
 
     try {
-      // 2. FCM 메시지 구성 및 발송
+      // 1. FCM 메시지 구성 및 발송
       Message message = notification.toFcmMessage();
       String response = FirebaseMessaging.getInstance().send(message);
 
-      // 3. 발송 성공 기록
+      // 2. 발송 성공 기록
       notification.setStatus(NotificationStatus.SENT);
       notification.setSentAt(Instant.now());
       notificationRepository.save(notification);
 
-      log.info("FCM Delivery success: userId={}, type={}, response={}", userId, type, response);
+      log.info(
+          "FCM Delivery success: userId={}, type={}, response={}",
+          notification.getUserId(),
+          notification.getType(),
+          response);
 
     } catch (FirebaseMessagingException e) {
-      // 4. 발송 실패 기록
+      // 3. 발송 실패 기록
       notification.setStatus(NotificationStatus.FAILED);
       notification.setErrorMessage(e.getMessage());
       notificationRepository.save(notification);
 
       log.error(
           "FCM Delivery fail: userId={}, type={}, error={}, errorCode={}",
-          userId,
-          type,
+          notification.getUserId(),
+          notification.getType(),
           e.getMessage(),
           e.getErrorCode());
     }
