@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, Bell, CheckCircle, XCircle } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BottomNavigation } from './BottomNavigation';
 import type { UserResponseDto } from '../types/auth';
+import { getMessaging, onMessage } from 'firebase/messaging';
 
 interface DeveloperModeViewProps {
   onNavigate: (view: string) => void;
@@ -168,6 +169,44 @@ export function DeveloperModeView({ onNavigate, authUser, accessToken }: Develop
       onNavigate('mypage');
     }
   };
+
+  // 포그라운드 FCM 메시지 리스너
+  useEffect(() => {
+    try {
+      const messaging = getMessaging();
+
+      // 포그라운드 메시지 수신 리스너 등록
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('[DeveloperMode] 포그라운드 메시지 수신:', payload);
+
+        // 브라우저 알림 표시
+        if (Notification.permission === 'granted') {
+          const originalTitle = payload.notification?.title || '새 알림';
+          const notificationTitle = `[포그라운드] ${originalTitle}`;
+          const notificationOptions = {
+            body: payload.notification?.body || '',
+            icon: '/assets/icons/icon-192x192.png',
+            badge: '/assets/icons/badge-72x72.png',
+            tag: 'beach-notification-foreground',
+            data: payload.data
+          };
+
+          new Notification(notificationTitle, notificationOptions);
+        }
+
+        // 성공 메시지 표시
+        setTestNotificationSuccess(true);
+        setTimeout(() => setTestNotificationSuccess(null), 5000);
+      });
+
+      // 컴포넌트 언마운트 시 리스너 제거
+      return () => {
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('[DeveloperMode] 포그라운드 메시지 리스너 등록 실패:', error);
+    }
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-background pb-20">
