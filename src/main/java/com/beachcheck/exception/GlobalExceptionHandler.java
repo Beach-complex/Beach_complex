@@ -1,5 +1,6 @@
 package com.beachcheck.exception;
 
+import com.beachcheck.db.DBConstraints;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import com.beachcheck.db.DBConstraints;
+
 /**
  * Why: 예외를 ProblemDetail로 매핑해 오류 응답의 일관성을 보장하기 위해.
  *
