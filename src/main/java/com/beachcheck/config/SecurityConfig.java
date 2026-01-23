@@ -55,7 +55,7 @@ public class SecurityConfig {
                     (request, response, authException) -> {
                       ProblemDetail problemDetail =
                           ProblemDetail.forStatusAndDetail(
-                              HttpStatus.UNAUTHORIZED, "Authentication required");
+                              HttpStatus.UNAUTHORIZED, "인증이 필요합니다");
                       problemDetail.setTitle(ErrorCode.UNAUTHORIZED.getCode());
                       problemDetail.setProperty("code", ErrorCode.UNAUTHORIZED.getCode());
                       problemDetail.setProperty("details", null);
