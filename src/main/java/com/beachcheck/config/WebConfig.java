@@ -27,7 +27,7 @@ public class WebConfig {
   @Bean
   public Jackson2ObjectMapperBuilder jackson2ObjectMapperBuilder() {
     return Jackson2ObjectMapperBuilder.json()
-        .failOnUnknownProperties(false)
+        .failOnUnknownProperties(true)
         .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
   }
 
