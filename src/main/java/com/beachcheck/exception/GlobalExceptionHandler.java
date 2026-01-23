@@ -12,7 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import com.beachcheck.db.DBConstraints;
 /**
  * Why: 예외를 ProblemDetail로 매핑해 오류 응답의 일관성을 보장하기 위해.
  *
@@ -112,23 +112,23 @@ public class GlobalExceptionHandler {
     }
 
     // UNIQUE 제약 위반 판별 (찜 중복 등)
-    if ("uk_user_beach".equals(constraintName)
-        || (message != null && message.contains("uk_user_beach"))) {
+    if (DBConstraints.UK_USER_BEACH.equals(constraintName)
+        || (message != null && message.contains(DBConstraints.UK_USER_BEACH))) {
       ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "이미 찜한 해수욕장입니다.");
       pd.setTitle("Duplicate Favorite");
-      pd.setProperty("constraintName", "uk_user_beach");
+      pd.setProperty("constraintName", DBConstraints.UK_USER_BEACH);
       return pd;
     }
 
-    if ("uk_reservation_user_beach_time".equals(constraintName)
-        || (message != null && message.contains("uk_reservation_user_beach_time"))) {
+    if (DBConstraints.UK_RESERVATION_USER_BEACH_TIME.equals(constraintName)
+        || (message != null && message.contains(DBConstraints.UK_RESERVATION_USER_BEACH_TIME))) {
       ProblemDetail pd =
           ProblemDetail.forStatusAndDetail(
               HttpStatus.CONFLICT, ErrorCode.RESERVATION_DUPLICATE.getDefaultMessage());
       pd.setTitle(ErrorCode.RESERVATION_DUPLICATE.getCode());
       pd.setProperty("code", ErrorCode.RESERVATION_DUPLICATE.getCode());
       pd.setProperty("details", null);
-      pd.setProperty("constraintName", "uk_reservation_user_beach_time");
+      pd.setProperty("constraintName", DBConstraints.UK_RESERVATION_USER_BEACH_TIME);
       return pd;
     }
 
