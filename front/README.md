@@ -185,7 +185,7 @@ docker compose exec postgres psql -U beach -d beach_complex -c \
 
 ```bash
 # 1. 클론
-git clone <repository>
+git clone https://github.com/Beach-complex/Beach_complex.git
 cd Beach_complex/front
 
 # 2. 설치
