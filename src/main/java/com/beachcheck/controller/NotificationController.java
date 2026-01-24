@@ -7,6 +7,7 @@ import com.beachcheck.repository.UserRepository;
 import com.beachcheck.service.NotificationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -152,7 +153,7 @@ public class NotificationController {
 
   public record FcmTokenResponse(String message) {}
 
-  public record NotificationSettingsRequest(Boolean enabled) {}
+  public record NotificationSettingsRequest(@NotNull Boolean enabled) {}
 
   public record NotificationSettingsResponse(String message, Boolean enabled) {}
 }
