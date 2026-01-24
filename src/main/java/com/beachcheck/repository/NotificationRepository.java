@@ -44,13 +44,13 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
   Page<Notification> findByStatusOrderByCreatedAtDesc(NotificationStatus status, Pageable pageable);
 
   /**
-   * 특정 기간 동안 발송 실패한 알림 개수 조회
+   * 특정 기간 동안 발송 상태별 알림 개수 조회
    *
    * <p>Why: 알림 시스템 모니터링 및 장애 감지
    *
    * @param status 알림 상태
    * @param after 시작 시간
-   * @return 실패한 알림 개수
+   * @return 발송 상태별 알림 개수
    */
   long countByStatusAndCreatedAtAfter(NotificationStatus status, Instant after);
 
