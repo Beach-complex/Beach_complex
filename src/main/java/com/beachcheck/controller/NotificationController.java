@@ -50,7 +50,7 @@ public class NotificationController {
    *
    * <ul>
    *   <li>200 OK: 토큰 저장 성공
-   *   <li>404 NOT FOUND: 사용자를 찾을 수 없음
+   *   <li>400 BAD REQUEST: 잘못된 입력값
    * </ul>
    */
   @PostMapping("/fcm-token")
@@ -85,7 +85,7 @@ public class NotificationController {
    *
    * <ul>
    *   <li>200 OK: 설정 변경 성공
-   *   <li>404 NOT FOUND: 사용자를 찾을 수 없음
+   *   <li>400 BAD REQUEST: 잘못된 입력값
    * </ul>
    */
   @PutMapping("/settings")
