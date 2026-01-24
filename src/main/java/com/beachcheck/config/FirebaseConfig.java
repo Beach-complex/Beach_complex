@@ -37,14 +37,12 @@ public class FirebaseConfig {
   public FirebaseApp firebaseApp() throws IOException {
     // Why: Firebase Admin SDK가 이미 초기화된 경우 재초기화를 방지
     if (!FirebaseApp.getApps().isEmpty()) {
-      log.info("FirebaseApp already initialized");
+      log.info("FirebaseApp이 이미 초기화되어 있습니다. 기존 인스턴스를 반환합니다.");
       return FirebaseApp.getInstance();
     }
 
-    try {
-      // Why: 서비스 계정 키 파일을 classpath에서 로드
-      InputStream serviceAccount =
-          new ClassPathResource("firebase-service-account.json").getInputStream();
+    try (InputStream serviceAccount =
+        new ClassPathResource("firebase-service-account.json").getInputStream()) {
 
       FirebaseOptions options =
           FirebaseOptions.builder()
@@ -52,14 +50,14 @@ public class FirebaseConfig {
               .build();
 
       FirebaseApp app = FirebaseApp.initializeApp(options);
-      log.info("FirebaseApp initialized successfully");
+      log.info("FirebaseApp이 성공적으로 초기화되었습니다.");
       return app;
 
     } catch (IOException e) {
       log.error(
-          "Failed to initialize Firebase: {}. "
-              + "Please ensure firebase-service-account.json exists in src/main/resources/",
-          e.getMessage());
+          "FirebaseApp을 초기화하는 데 실패했습니다. "
+              + "firebase-service-account.json가 src/main/resources/에 존재하는지 확인해주세요.",
+          e);
       throw e;
     }
   }
