@@ -641,7 +641,6 @@ class ReservationControllerIntegrationTest extends ApiTest {
     try {
       AtomicInteger successCount = new AtomicInteger(0);
       AtomicInteger conflictCount = new AtomicInteger(0);
-      AtomicInteger conflictContractCount = new AtomicInteger(0);
       AtomicInteger unexpectedCount = new AtomicInteger(0);
 
       List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -674,9 +673,9 @@ class ReservationControllerIntegrationTest extends ApiTest {
                       }
 
                       var json = objectMapper.readTree(responseBody);
-                      if ("RESERVATION_DUPLICATE".equals(json.path("title").asText())
-                          && "RESERVATION_DUPLICATE".equals(json.path("code").asText())) {
-                        conflictContractCount.incrementAndGet();
+                      if (!"RESERVATION_DUPLICATE".equals(json.path("title").asText())
+                          || !"RESERVATION_DUPLICATE".equals(json.path("code").asText())) {
+                        throw new AssertionError("Unexpected problem detail: " + responseBody); 
                       }
                     } else {
                       String responseBody = mvcResult.getResponse().getContentAsString();
@@ -699,7 +698,6 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
       assertThat(successCount.get()).isEqualTo(1);
       assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
-      assertThat(conflictContractCount.get()).isGreaterThan(0);
       assertThat(unexpectedCount.get()).isZero();
 
       var reservations = reservationRepository.findByUserId(user.getId());
