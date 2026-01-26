@@ -8,6 +8,9 @@
 # 3. 모든 배포 환경(docker-compose)에서 "local" 프로파일 사용
 
 spring:
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false  # ISO-8601 형식 사용
   config:
     activate:
       on-profile: test  # test 프로파일에서만 활성화

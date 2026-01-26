@@ -1,8 +1,10 @@
 package com.beachcheck.exception;
 
+import com.beachcheck.db.DBConstraints;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -100,12 +102,34 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
     String message = ex.getMessage();
+    String constraintName = null;
+    Throwable cause = ex.getCause();
+    while (cause != null) {
+      if (cause instanceof ConstraintViolationException constraintViolationException) {
+        constraintName = constraintViolationException.getConstraintName();
+        break;
+      }
+      cause = cause.getCause();
+    }
 
     // UNIQUE 제약 위반 판별 (찜 중복 등)
-    if (message != null && message.contains("uk_user_beach")) {
+    if (DBConstraints.UK_USER_BEACH.equals(constraintName)
+        || (message != null && message.contains(DBConstraints.UK_USER_BEACH))) {
       ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "이미 찜한 해수욕장입니다.");
       pd.setTitle("Duplicate Favorite");
-      pd.setProperty("constraintName", "uk_user_beach");
+      pd.setProperty("constraintName", DBConstraints.UK_USER_BEACH);
+      return pd;
+    }
+
+    if (DBConstraints.UK_RESERVATION_USER_BEACH_TIME.equals(constraintName)
+        || (message != null && message.contains(DBConstraints.UK_RESERVATION_USER_BEACH_TIME))) {
+      ProblemDetail pd =
+          ProblemDetail.forStatusAndDetail(
+              HttpStatus.CONFLICT, ErrorCode.RESERVATION_DUPLICATE.getDefaultMessage());
+      pd.setTitle(ErrorCode.RESERVATION_DUPLICATE.getCode());
+      pd.setProperty("code", ErrorCode.RESERVATION_DUPLICATE.getCode());
+      pd.setProperty("details", null);
+      pd.setProperty("constraintName", DBConstraints.UK_RESERVATION_USER_BEACH_TIME);
       return pd;
     }
 

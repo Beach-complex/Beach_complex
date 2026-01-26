@@ -1,10 +1,15 @@
 package com.beachcheck.config;
 
+import com.beachcheck.exception.ErrorCode;
 import com.beachcheck.security.JwtAuthenticationFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,13 +34,41 @@ public class SecurityConfig {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
   }
 
+  /**
+   * Why: 인증 실패 응답을 ProblemDetail로 통일해 클라이언트 계약을 보호한다.
+   *
+   * <p>Policy: 401 + application/problem+json + code/title 일관성을 유지한다.
+   *
+   * <p>Contract(Output): code=UNAUTHORIZED, title=인증이 필요합니다, status=401.
+   */
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper)
+      throws Exception {
     http.csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .formLogin(f -> f.disable())
         .httpBasic(b -> b.disable())
+        .exceptionHandling(
+            e ->
+                e.authenticationEntryPoint(
+                    (request, response, authException) -> {
+                      ProblemDetail problemDetail =
+                          ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "인증이 필요합니다");
+                      problemDetail.setTitle(ErrorCode.UNAUTHORIZED.getCode());
+                      problemDetail.setProperty("code", ErrorCode.UNAUTHORIZED.getCode());
+                      problemDetail.setProperty("details", null);
+
+                      response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                      response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+                      try {
+                        objectMapper.writeValue(response.getWriter(), problemDetail);
+                      } catch (Exception writeEx) {
+                        if (!response.isCommitted()) {
+                          response.sendError(HttpStatus.UNAUTHORIZED.value());
+                        }
+                      }
+                    }))
         .authorizeHttpRequests(
             auth ->
                 auth
@@ -64,6 +97,8 @@ public class SecurityConfig {
                     .permitAll()
 
                     // ✅ 해변 조회는 공개, 찜 토글(임시)도 공개
+                    .requestMatchers(HttpMethod.GET, "/api/beaches/reservations")
+                    .authenticated()
                     .requestMatchers(HttpMethod.GET, "/api/beaches/**")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/favorites/**")
