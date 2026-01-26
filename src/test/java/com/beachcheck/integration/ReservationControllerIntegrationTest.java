@@ -190,8 +190,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @Test
   @DisplayName("P0-06: reservedAtUtc 누락 400")
   void createReservation_missingReservedAtUtc_returnsBadRequest() throws Exception {
-    String requestBody =
-    objectMapper.writeValueAsString(java.util.Map.of("eventId", "EVENT-ONLY"));
+    String requestBody = objectMapper.writeValueAsString(java.util.Map.of("eventId", "EVENT-ONLY"));
 
     mockMvc
         .perform(
@@ -306,7 +305,6 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @DisplayName("P0-13: 예약 취소 재시도 - 404")
   void cancelReservation_afterDelete_returnsNotFound() throws Exception {
     // Why: 삭제 후 재요청이 404로 떨어지는지 확인해 멱등성/방어 동작을 보장한다.
-    // Why: 삭제된 유저 토큰은 인증 필터에서 사용자 조회 실패로 401 처리된다.
     String reservedAtUtc = ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 11);
     String reservationId =
         ReservationTestFixtures.createReservationAndGetId(
