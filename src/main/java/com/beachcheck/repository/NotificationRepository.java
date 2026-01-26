@@ -35,7 +35,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
   /**
    * 상태별 알림 조회 (관리자용)
    *
-   * <p>Why: 관리자가 실패한 알림을 모니터링하기 위함
+   * <p>Why: 관리자가 상태별 알림을 모니터링하기 위함
    *
    * @param status 알림 상태
    * @param pageable 페이징 정보
