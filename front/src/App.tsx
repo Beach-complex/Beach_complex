@@ -503,6 +503,7 @@ export default function App() {
           }
         }}
         authUser={authState?.user ?? null}
+        accessToken={authState?.accessToken ?? null}
         onRequestAuth={handleAuthRequest}
         onSignOut={handleSignOut}
       />
@@ -522,6 +523,8 @@ export default function App() {
             setSelectedBeach(null);
           }
         }}
+        authUser={authState?.user ?? null}
+        accessToken={authState?.accessToken ?? null}
       />
     );
   }

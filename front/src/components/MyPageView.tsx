@@ -8,10 +8,12 @@ import { Switch } from './ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import type { UserResponseDto } from '../types/auth';
+import { requestNotificationPermission, saveFcmTokenToBackend } from '../config/firebase';
 
 interface MyPageViewProps {
   onNavigate: (view: string) => void;
   authUser?: UserResponseDto | null;
+  accessToken?: string | null;
   onRequestAuth?: (mode: 'login' | 'signup') => void;
   onSignOut?: () => void;
 }
@@ -53,6 +55,7 @@ function CloudWeatherIcon() {
 export function MyPageView({
   onNavigate,
   authUser,
+  accessToken,
   onRequestAuth,
   onSignOut,
 }: MyPageViewProps) {
@@ -144,10 +147,10 @@ export function MyPageView({
     setThemeMode(mode);
     if (typeof window !== 'undefined') {
       localStorage.setItem('beachcheck_theme', mode);
-      
+
       const root = document.documentElement;
       const body = document.body;
-      
+
       if (mode === 'dark') {
         root.classList.add('dark');
         body.classList.add('dark');
@@ -166,6 +169,25 @@ export function MyPageView({
       }
 
       window.dispatchEvent(new Event('themechange'));
+    }
+  };
+
+  const handleRequestNotification = async () => {
+    try {
+      const token = await requestNotificationPermission();
+      if (token) {
+        if (accessToken) {
+          await saveFcmTokenToBackend(token, accessToken);
+          alert('알림 권한이 허용되었습니다!');
+        } else {
+          alert('로그인이 필요합니다.');
+        }
+      } else {
+        alert('알림 권한이 거부되었습니다.');
+      }
+    } catch (error) {
+      console.error('알림 권한 요청 실패:', error);
+      alert('알림 권한 요청 중 오류가 발생했습니다.');
     }
   };
 
@@ -283,7 +305,16 @@ export function MyPageView({
 
       <div className="p-4">
         <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] mb-4 text-foreground">알림</h3>
-        
+
+        {authUser && (
+          <button
+            onClick={handleRequestNotification}
+            className="w-full mb-4 p-3 bg-[#007DFC] text-white rounded-lg font-['Noto_Sans_KR:Medium',_sans-serif] text-[14px] hover:bg-[#0067d1] transition shadow-sm flex items-center justify-center gap-2"
+          >
+            알림 권한 요청
+          </button>
+        )}
+
         <div className="bg-card dark:bg-gray-800 rounded-xl shadow-sm divide-y divide-border border border-border">
           <div className="flex items-center justify-between p-4">
             <div className="flex-1">

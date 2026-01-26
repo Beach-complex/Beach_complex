@@ -57,6 +57,13 @@ public class User implements UserDetails {
   @Enumerated(EnumType.STRING)
   private AuthProvider authProvider; // Email, Google, Kakao
 
+  @Column(name = "fcm_token", length = 500)
+  private String fcmToken;
+
+  // 알림 수신 동의 여부
+  @Column(name = "notification_enabled", nullable = false)
+  private Boolean notificationEnabled = true; // opt-out 방식
+
   @PrePersist
   public void onCreate() {
     Instant now = Instant.now();
@@ -183,6 +190,22 @@ public class User implements UserDetails {
 
   public void setAuthProvider(AuthProvider authProvider) {
     this.authProvider = authProvider;
+  }
+
+  public String getFcmToken() {
+    return fcmToken;
+  }
+
+  public void setFcmToken(String fcmToken) {
+    this.fcmToken = fcmToken;
+  }
+
+  public Boolean getNotificationEnabled() {
+    return notificationEnabled;
+  }
+
+  public void setNotificationEnabled(Boolean notificationEnabled) {
+    this.notificationEnabled = notificationEnabled;
   }
 
   public enum Role {

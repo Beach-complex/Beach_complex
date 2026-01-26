@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity, Bell, CheckCircle, XCircle } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BottomNavigation } from './BottomNavigation';
+import type { UserResponseDto } from '../types/auth';
+import { getMessaging, onMessage } from 'firebase/messaging';
 
 interface DeveloperModeViewProps {
   onNavigate: (view: string) => void;
+  authUser?: UserResponseDto | null;
+  accessToken?: string | null;
 }
 
 function WaveLogo() {
@@ -148,8 +152,10 @@ const getHeatmapColor = (value: number): string => {
   }
 };
 
-export function DeveloperModeView({ onNavigate }: DeveloperModeViewProps) {
+export function DeveloperModeView({ onNavigate, authUser, accessToken }: DeveloperModeViewProps) {
   const [activeTab, setActiveTab] = useState('mypage');
+  const [testNotificationLoading, setTestNotificationLoading] = useState(false);
+  const [testNotificationSuccess, setTestNotificationSuccess] = useState<boolean | null>(null);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -163,6 +169,44 @@ export function DeveloperModeView({ onNavigate }: DeveloperModeViewProps) {
       onNavigate('mypage');
     }
   };
+
+  // 포그라운드 FCM 메시지 리스너
+  useEffect(() => {
+    try {
+      const messaging = getMessaging();
+
+      // 포그라운드 메시지 수신 리스너 등록
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('[DeveloperMode] 포그라운드 메시지 수신:', payload);
+
+        // 브라우저 알림 표시
+        if (Notification.permission === 'granted') {
+          const originalTitle = payload.notification?.title || '새 알림';
+          const notificationTitle = `[포그라운드] ${originalTitle}`;
+          const notificationOptions = {
+            body: payload.notification?.body || '',
+            icon: '/assets/icons/icon-192x192.png',
+            badge: '/assets/icons/badge-72x72.png',
+            tag: 'beach-notification-foreground',
+            data: payload.data
+          };
+
+          new Notification(notificationTitle, notificationOptions);
+        }
+
+        // 성공 메시지 표시
+        setTestNotificationSuccess(true);
+        setTimeout(() => setTestNotificationSuccess(null), 5000);
+      });
+
+      // 컴포넌트 언마운트 시 리스너 제거
+      return () => {
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('[DeveloperMode] 포그라운드 메시지 리스너 등록 실패:', error);
+    }
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-background pb-20">
@@ -585,7 +629,7 @@ export function DeveloperModeView({ onNavigate }: DeveloperModeViewProps) {
           <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-[11px] text-muted-foreground mb-4">
             실시간 API 상태 확인
           </p>
-          
+
           <div className="space-y-3">
             {apiStatusData.map((api, idx) => (
               <div key={idx} className="flex items-center justify-between bg-muted dark:bg-gray-700 rounded-lg p-3">
@@ -602,6 +646,136 @@ export function DeveloperModeView({ onNavigate }: DeveloperModeViewProps) {
             ))}
           </div>
         </div>
+
+        {/* Notification Test Section */}
+        {authUser && (
+          <div className="bg-card dark:bg-gray-800 rounded-xl p-4 border border-border shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Bell className="w-5 h-5 text-[#007DFC]" />
+              <h3 className="font-['Noto_Sans_KR:Bold',_sans-serif] text-foreground">
+                알림 테스트
+              </h3>
+            </div>
+            <p className="font-['Noto_Sans_KR:Regular',_sans-serif] text-[11px] text-muted-foreground mb-4">
+              FCM 토큰 상태 확인 및 테스트 알림 발송
+            </p>
+
+            {/* Test Notification Button */}
+            <button
+              onClick={async () => {
+                if (!accessToken) {
+                  alert('로그인이 필요합니다.');
+                  return;
+                }
+
+                setTestNotificationLoading(true);
+                setTestNotificationSuccess(null);
+
+                try {
+                  const response = await fetch('/api/notifications/test', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${accessToken}`,
+                    },
+                  });
+
+                  if (!response.ok) {
+                    if (response.status === 400) {
+                      alert('FCM 토큰이 등록되지 않았습니다. 먼저 알림 권한을 허용해주세요.');
+                      setTestNotificationSuccess(false);
+                    } else {
+                      alert('테스트 알림 발송에 실패했습니다.');
+                      setTestNotificationSuccess(false);
+                    }
+                    return;
+                  }
+
+                  // 202 Accepted - 요청 접수됨
+                  setTestNotificationSuccess(true);
+                } catch (error) {
+                  console.error('테스트 알림 요청 실패:', error);
+                  alert('테스트 알림 요청 중 오류가 발생했습니다.');
+                  setTestNotificationSuccess(false);
+                } finally {
+                  setTestNotificationLoading(false);
+                }
+              }}
+              disabled={testNotificationLoading}
+              className="w-full mb-4 p-3 bg-[#007DFC] text-white rounded-lg font-['Noto_Sans_KR:Medium',_sans-serif] text-[13px] hover:bg-[#0067d1] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {testNotificationLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  발송 요청 중...
+                </>
+              ) : (
+                <>
+                  <Bell className="w-4 h-4" />
+                  테스트 알림 발송
+                </>
+              )}
+            </button>
+
+            {/* Test Result */}
+            {testNotificationSuccess !== null && (
+              <div
+                className={`p-3 rounded-lg border ${
+                  testNotificationSuccess
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {testNotificationSuccess ? (
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1">
+                    <p
+                      className={`font-['Noto_Sans_KR:Medium',_sans-serif] text-[12px] ${
+                        testNotificationSuccess
+                          ? 'text-green-800 dark:text-green-300'
+                          : 'text-red-800 dark:text-red-300'
+                      }`}
+                    >
+                      {testNotificationSuccess
+                        ? '테스트 알림 발송 요청이 접수되었습니다. 잠시 후 알림을 확인해주세요.'
+                        : '테스트 알림 발송에 실패했습니다.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Notification Permission Status */}
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="font-['Noto_Sans_KR:Medium',_sans-serif] text-[11px] text-muted-foreground mb-2">
+                브라우저 알림 권한 상태
+              </p>
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    typeof Notification !== 'undefined' && Notification.permission === 'granted'
+                      ? 'bg-green-500'
+                      : Notification.permission === 'denied'
+                      ? 'bg-red-500'
+                      : 'bg-yellow-500'
+                  }`}
+                />
+                <span className="font-['Noto_Sans_KR:Regular',_sans-serif] text-[12px] text-foreground">
+                  {typeof Notification !== 'undefined'
+                    ? Notification.permission === 'granted'
+                      ? '허용됨'
+                      : Notification.permission === 'denied'
+                      ? '거부됨'
+                      : '미설정'
+                    : '지원 안 됨'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Navigation */}

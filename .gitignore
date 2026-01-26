@@ -41,8 +41,15 @@ target/
 
 # ---------- Env & Secrets ----------
 .env
-.env.*
-!.env.example   # 예시 파일만 허용
+.env.local
+.env.*.local
+# .env.example은 추적됨 (팀원을 위한 템플릿)
+
+# Firebase service account key (보안상 절대 커밋 금지)
+**/firebase-service-account.json
+
+# Firebase 자동 생성 설정 파일 (환경변수 포함)
+front/public/firebase-config.js
 
 # ---------- IDE / OS ----------
 **/.DS_Store

@@ -80,6 +80,8 @@ app:
     ttl-minutes: 30
   telemetry:
     lookback-hours: 24
+  firebase:
+    enabled: true
   # TODO: Externalize telemetry endpoints to configuration server when available.
   environment:
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/beach_complex
