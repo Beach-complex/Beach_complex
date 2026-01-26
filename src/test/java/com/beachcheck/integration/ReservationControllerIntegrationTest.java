@@ -574,7 +574,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
                 () -> {
                   try {
                     var mvcResult =
-                        performCreateReservation(authHeader(localUser), localBeach.getId(), requestBody)
+                        performCreateReservation(
+                                authHeader(localUser), localBeach.getId(), requestBody)
                             .andReturn();
                     int status = mvcResult.getResponse().getStatus();
 
@@ -634,8 +635,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
     }
   }
 
-  private ResultActions performCreateReservation(String authHeader, Object beachId, String requestBody)
-      throws Exception {
+  private ResultActions performCreateReservation(
+      String authHeader, Object beachId, String requestBody) throws Exception {
     var requestBuilder =
         post("/api/beaches/{beachId}/reservations", beachId)
             .contentType(MediaType.APPLICATION_JSON)
