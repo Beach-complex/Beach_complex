@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,12 +90,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, "EVENT-123");
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.reservationId").isNotEmpty())
         .andExpect(jsonPath("$.status").value("CONFIRMED"))
@@ -111,12 +107,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -130,20 +121,10 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated());
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isConflict())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -157,12 +138,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", UUID.randomUUID())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), UUID.randomUUID(), requestBody)
         .andExpect(status().isNotFound())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -176,11 +152,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(null, beach.getId(), requestBody)
         .andExpect(status().isUnauthorized())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -192,12 +164,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void createReservation_missingReservedAtUtc_returnsBadRequest() throws Exception {
     String requestBody = objectMapper.writeValueAsString(java.util.Map.of("eventId", "EVENT-ONLY"));
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
   }
@@ -207,12 +174,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void createReservation_blankReservedAtUtc_returnsBadRequest() throws Exception {
     String requestBody = ReservationTestFixtures.buildCreateRequestBody(objectMapper, "", null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
   }
@@ -223,12 +185,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, "2026-01-17T25:00:00Z", null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -242,12 +199,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, "EVENT-NOW");
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.reservedAtUtc").value(reservedAtUtc));
   }
@@ -259,12 +211,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", "not-a-uuid")
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), "not-a-uuid", requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
   }
@@ -291,12 +238,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, eventId);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.eventId").value(eventId));
   }
@@ -339,12 +281,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated());
 
     mockMvc
@@ -363,12 +300,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
         ReservationTestFixtures.buildCreateRequestBody(
             objectMapper, ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 1), longEventId);
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
   }
@@ -380,12 +312,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, "EVENT-999");
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated());
 
     mockMvc
@@ -402,12 +329,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, "EVENT-DB");
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated());
 
     var reservations = reservationRepository.findByUserId(user.getId());
@@ -586,12 +508,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
         ReservationTestFixtures.buildCreateRequestBody(
             objectMapper, reservedAtUtc, "EVENT-USER-MISSING");
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isUnauthorized())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -606,12 +523,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, "   ");
 
-    mockMvc
-        .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
-                .header("Authorization", authHeader(user))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+    performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isCreated());
 
     var reservations = reservationRepository.findByUserId(user.getId());
@@ -662,12 +574,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
                 () -> {
                   try {
                     var mvcResult =
-                        mockMvc
-                            .perform(
-                                post("/api/beaches/{beachId}/reservations", localBeach.getId())
-                                    .header("Authorization", authHeader(localUser))
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(requestBody))
+                        performCreateReservation(authHeader(localUser), localBeach.getId(), requestBody)
                             .andReturn();
                     int status = mvcResult.getResponse().getStatus();
 
@@ -725,5 +632,17 @@ class ReservationControllerIntegrationTest extends ApiTest {
         executorService.shutdownNow();
       }
     }
+  }
+
+  private ResultActions performCreateReservation(String authHeader, Object beachId, String requestBody)
+      throws Exception {
+    var requestBuilder =
+        post("/api/beaches/{beachId}/reservations", beachId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody);
+    if (authHeader != null) {
+      requestBuilder.header("Authorization", authHeader);
+    }
+    return mockMvc.perform(requestBuilder);
   }
 }
