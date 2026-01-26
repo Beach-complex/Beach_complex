@@ -636,6 +636,18 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
+    String localBeachCode = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
+    String localUserEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    Beach localBeach =
+        beachRepository.save(
+            createBeachWithLocation(localBeachCode, "Test Beach", 129.1603, 35.1587));
+
+    User localUser = userRepository.save(createUser(localUserEmail, "Test User"));
+    User localOtherUser =
+        userRepository.save(
+            createUser(
+                "other_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com", "Other"));
+
     int threadCount = 10;
     ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
     try {
@@ -652,8 +664,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
                     var mvcResult =
                         mockMvc
                             .perform(
-                                post("/api/beaches/{beachId}/reservations", beach.getId())
-                                    .header("Authorization", authHeader(user))
+                                post("/api/beaches/{beachId}/reservations", localBeach.getId())
+                                    .header("Authorization", authHeader(localUser))
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(requestBody))
                             .andReturn();
@@ -700,14 +712,14 @@ class ReservationControllerIntegrationTest extends ApiTest {
       assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
       assertThat(unexpectedCount.get()).isZero();
 
-      var reservations = reservationRepository.findByUserId(user.getId());
+      var reservations = reservationRepository.findByUserId(localUser.getId());
       assertThat(reservations).hasSize(1);
       assertThat(reservations.get(0).getReservedAt()).isEqualTo(Instant.parse(reservedAtUtc));
     } finally {
-      reservationRepository.deleteAll(reservationRepository.findByUserId(user.getId()));
-      userRepository.deleteById(user.getId());
-      userRepository.deleteById(otherUser.getId());
-      beachRepository.deleteById(beach.getId());
+      reservationRepository.deleteAll(reservationRepository.findByUserId(localUser.getId()));
+      userRepository.deleteById(localUser.getId());
+      userRepository.deleteById(localOtherUser.getId());
+      beachRepository.deleteById(localBeach.getId());
       executorService.shutdown();
       if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
         executorService.shutdownNow();
