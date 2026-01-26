@@ -25,7 +25,7 @@ public final class ReservationTestFixtures {
    *
    * <p>비고: 이 헬퍼는 상태 코드를 함께 검증하므로, 기대 상태가 명확할 때만 사용한다.
    */
-  public static String createReservationAndGetId(
+  private static String createReservationAndGetIdWithStatus(
       MockMvc mockMvc,
       ObjectMapper objectMapper,
       String authHeader,
@@ -52,7 +52,7 @@ public final class ReservationTestFixtures {
   }
 
   /** 성공 경로(201 Created) 전용 헬퍼. */
-  public static String createReservationAndGetId(
+  public static String createReservationAndGetIdSuccess(
       MockMvc mockMvc,
       ObjectMapper objectMapper,
       String authHeader,
@@ -60,7 +60,7 @@ public final class ReservationTestFixtures {
       String reservedAtUtc,
       String eventId)
       throws Exception {
-    return createReservationAndGetId(
+    return createReservationAndGetIdWithStatus(
         mockMvc, objectMapper, authHeader, beachId, reservedAtUtc, eventId, status().isCreated());
   }
 

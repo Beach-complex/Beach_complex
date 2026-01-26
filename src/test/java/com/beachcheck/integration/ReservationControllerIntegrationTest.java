@@ -249,7 +249,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
     // Why: 삭제 후 재요청이 404로 떨어지는지 확인해 멱등성/방어 동작을 보장한다.
     String reservedAtUtc = ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 11);
     String reservationId =
-        ReservationTestFixtures.createReservationAndGetId(
+        ReservationTestFixtures.createReservationAndGetIdSuccess(
             mockMvc, objectMapper, authHeader(user), beach.getId(), reservedAtUtc, null);
 
     mockMvc
@@ -363,7 +363,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void cancelReservation_success_returnsNoContent() throws Exception {
     String reservedAtUtc = ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 7);
     String reservationId =
-        ReservationTestFixtures.createReservationAndGetId(
+        ReservationTestFixtures.createReservationAndGetIdSuccess(
             mockMvc, objectMapper, authHeader(user), beach.getId(), reservedAtUtc, null);
 
     mockMvc
@@ -417,7 +417,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void cancelReservation_otherUser_returnsNotFound() throws Exception {
     String reservedAtUtc = ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 8);
     String reservationId =
-        ReservationTestFixtures.createReservationAndGetId(
+        ReservationTestFixtures.createReservationAndGetIdSuccess(
             mockMvc, objectMapper, authHeader(user), beach.getId(), reservedAtUtc, null);
 
     mockMvc
@@ -438,7 +438,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void cancelReservation_removedFromMyReservations() throws Exception {
     String reservedAtUtc = ReservationTestFixtures.futureReservedAtUtc(FIXED_NOW, 14);
     String reservationId =
-        ReservationTestFixtures.createReservationAndGetId(
+        ReservationTestFixtures.createReservationAndGetIdSuccess(
             mockMvc, objectMapper, authHeader(user), beach.getId(), reservedAtUtc, null);
 
     mockMvc
