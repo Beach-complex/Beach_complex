@@ -4,12 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.beachcheck.dto.reservation.ReservationCreateRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -66,11 +65,7 @@ public final class ReservationTestFixtures {
 
   public static String buildCreateRequestBody(
       ObjectMapper objectMapper, String reservedAtUtc, String eventId) throws Exception {
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("reservedAtUtc", reservedAtUtc);
-    if (eventId != null) {
-      payload.put("eventId", eventId);
-    }
+    ReservationCreateRequest payload = new ReservationCreateRequest(reservedAtUtc, eventId);
     return objectMapper.writeValueAsString(payload);
   }
 
