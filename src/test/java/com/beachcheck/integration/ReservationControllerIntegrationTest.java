@@ -675,7 +675,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
                       var json = objectMapper.readTree(responseBody);
                       if (!"RESERVATION_DUPLICATE".equals(json.path("title").asText())
                           || !"RESERVATION_DUPLICATE".equals(json.path("code").asText())) {
-                        throw new AssertionError("Unexpected problem detail: " + responseBody); 
+                        throw new AssertionError("Unexpected problem detail: " + responseBody);
                       }
                     } else {
                       String responseBody = mvcResult.getResponse().getContentAsString();
