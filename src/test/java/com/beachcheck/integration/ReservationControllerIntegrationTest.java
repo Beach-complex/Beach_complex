@@ -190,7 +190,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @Test
   @DisplayName("P0-06: reservedAtUtc 누락 400")
   void createReservation_missingReservedAtUtc_returnsBadRequest() throws Exception {
-    String requestBody = "{}";
+    String requestBody =
+    objectMapper.writeValueAsString(java.util.Map.of("eventId", "EVENT-ONLY"));
 
     mockMvc
         .perform(
