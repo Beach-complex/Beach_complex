@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.beachcheck.base.ApiTest;
 import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
+import com.beachcheck.fixture.ApiRoutes;
 import com.beachcheck.fixture.ReservationTestFixtures;
 import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.ReservationRepository;
@@ -221,10 +222,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void cancelReservation_invalidReservationId_returnsBadRequest() throws Exception {
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    "not-a-uuid")
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), "not-a-uuid")
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isBadRequest())
         .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
@@ -254,19 +252,13 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    reservationId)
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), reservationId)
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNoContent());
 
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    reservationId)
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), reservationId)
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNotFound())
         .andExpect(
@@ -285,7 +277,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
         .andExpect(status().isCreated());
 
     mockMvc
-        .perform(get("/api/beaches/reservations").header("Authorization", authHeader(user)))
+        .perform(get(ApiRoutes.MY_RESERVATIONS).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].reservationId").isNotEmpty())
         .andExpect(jsonPath("$[0].status").value("CONFIRMED"))
@@ -316,7 +308,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
         .andExpect(status().isCreated());
 
     mockMvc
-        .perform(get("/api/beaches/reservations").header("Authorization", authHeader(user)))
+        .perform(get(ApiRoutes.MY_RESERVATIONS).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].reservedAtUtc").value(reservedAtUtc))
         .andExpect(jsonPath("$[0].beachId").value(beach.getId().toString()));
@@ -342,7 +334,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @DisplayName("P0-18: 내 예약 목록 조회 - 인증 없음 401")
   void getMyReservations_missingAuth_returnsUnauthorized() throws Exception {
     mockMvc
-        .perform(get("/api/beaches/reservations"))
+        .perform(get(ApiRoutes.MY_RESERVATIONS))
         .andExpect(status().isUnauthorized())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -353,7 +345,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @DisplayName("P0-19: 내 예약 목록 조회 - 예약 없음 빈 배열")
   void getMyReservations_empty_returnsEmptyList() throws Exception {
     mockMvc
-        .perform(get("/api/beaches/reservations").header("Authorization", authHeader(user)))
+        .perform(get(ApiRoutes.MY_RESERVATIONS).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(0));
   }
@@ -368,10 +360,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    reservationId)
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), reservationId)
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNoContent());
 
@@ -386,10 +375,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   void cancelReservation_notFound_returnsNotFound() throws Exception {
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    UUID.randomUUID())
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), UUID.randomUUID())
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNotFound())
         .andExpect(
@@ -401,11 +387,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   @DisplayName("P0-22: 예약 취소 실패 - 인증 없음 401")
   void cancelReservation_missingAuth_returnsUnauthorized() throws Exception {
     mockMvc
-        .perform(
-            delete(
-                "/api/beaches/{beachId}/reservations/{reservationId}",
-                beach.getId(),
-                UUID.randomUUID()))
+        .perform(delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), UUID.randomUUID()))
         .andExpect(status().isUnauthorized())
         .andExpect(
             ReservationTestFixtures.problemDetail(
@@ -422,10 +404,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    reservationId)
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), reservationId)
                 .header("Authorization", authHeader(otherUser)))
         .andExpect(status().isNotFound())
         .andExpect(
@@ -442,21 +421,18 @@ class ReservationControllerIntegrationTest extends ApiTest {
             mockMvc, objectMapper, authHeader(user), beach.getId(), reservedAtUtc, null);
 
     mockMvc
-        .perform(get("/api/beaches/reservations").header("Authorization", authHeader(user)))
+        .perform(get(ApiRoutes.MY_RESERVATIONS).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1));
 
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    reservationId)
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), reservationId)
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNoContent());
 
     mockMvc
-        .perform(get("/api/beaches/reservations").header("Authorization", authHeader(user)))
+        .perform(get(ApiRoutes.MY_RESERVATIONS).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(0));
   }
@@ -470,7 +446,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     mockMvc
         .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
+            post(ApiRoutes.BEACH_RESERVATIONS, beach.getId())
                 .header("Authorization", authHeader(user))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
@@ -481,16 +457,13 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     mockMvc
         .perform(
-            delete(
-                    "/api/beaches/{beachId}/reservations/{reservationId}",
-                    beach.getId(),
-                    reservationId)
+            delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), reservationId)
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNoContent());
 
     mockMvc
         .perform(
-            post("/api/beaches/{beachId}/reservations", beach.getId())
+            post(ApiRoutes.BEACH_RESERVATIONS, beach.getId())
                 .header("Authorization", authHeader(user))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
@@ -638,7 +611,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
   private ResultActions performCreateReservation(
       String authHeader, Object beachId, String requestBody) throws Exception {
     var requestBuilder =
-        post("/api/beaches/{beachId}/reservations", beachId)
+        post(ApiRoutes.BEACH_RESERVATIONS, beachId)
             .contentType(MediaType.APPLICATION_JSON)
             .content(requestBody);
     if (authHeader != null) {

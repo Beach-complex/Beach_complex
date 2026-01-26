@@ -39,7 +39,7 @@ public final class ReservationTestFixtures {
     String responseBody =
         mockMvc
             .perform(
-                post("/api/beaches/{beachId}/reservations", beachId)
+                post(ApiRoutes.BEACH_RESERVATIONS, beachId)
                     .header("Authorization", authHeader)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
