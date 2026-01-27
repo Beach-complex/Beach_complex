@@ -66,7 +66,7 @@ Accepted
   - Martin Fowler — Branch by Abstraction: https://martinfowler.com/bliki/BranchByAbstraction.html
   - AWS — Branch by abstraction pattern: https://docs.aws.amazon.com/prescriptive-guidance/latest/modernization-decomposing-monoliths/branch-by-abstraction.html
 - 관련 이슈 / PR
-  - (팀에서 링크 추가)
+  - issue-163 [Docs] PB-77 PR정책 변경에 따른 이슈템플릿, pr템플릿 변경
 
 ## 작성일자
 2026-01-27
