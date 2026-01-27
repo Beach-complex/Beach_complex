@@ -1,7 +1,7 @@
 # ADR-004: 코드 포맷 자동화 도입 (Spotless + google-java-format)
 
 ## 상태
-Proposed
+Accepted
 
 ## 컨텍스트
 - 현재 코드베이스는 공백/들여쓰기/줄바꿈 스타일이 혼재되어 있으며, 리뷰 시 스타일 이슈가 반복적으로 발생한다.
