@@ -52,7 +52,7 @@ Accepted
 - 미채택: 중간 PR이 반쪽이 되어 리뷰 가치가 떨어지고 머지 전략이 꼬이기 쉽다. (대신 “완결된 작은 단위 + 의존성 체인”으로 해결한다.)
 
 ## 참고
-- 공식 문서 링크
+### 공식 문서 링크
   - GitHub — Helping others review your changes: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/helping-others-review-your-changes
   - Microsoft Engineering Playbook — Pull Requests: https://microsoft.github.io/code-with-engineering-playbook/code-reviews/pull-requests/
   - Google Engineering Practices — Small CLs: https://google.github.io/eng-practices/review/developer/small-cls.html
@@ -65,7 +65,7 @@ Accepted
   - Martin Fowler — Parallel Change: https://martinfowler.com/bliki/ParallelChange.html
   - Martin Fowler — Branch by Abstraction: https://martinfowler.com/bliki/BranchByAbstraction.html
   - AWS — Branch by abstraction pattern: https://docs.aws.amazon.com/prescriptive-guidance/latest/modernization-decomposing-monoliths/branch-by-abstraction.html
-- 관련 이슈 / PR
+### 관련 이슈 / PR
   - issue-163 [Docs] PB-77 PR정책 변경에 따른 이슈템플릿, pr템플릿 변경
 
 ## 작성일자
