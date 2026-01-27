@@ -19,8 +19,7 @@
 | ADR-003 | 인증 방식 | JWT 기반 토큰 인증 | (문서 추가 예정) |
 | ADR-004 | 자동 코드 포맷팅 도입 | 자동 포맷팅 도구 도입 | [ADR-004-Adopt-Automated-Code-Formatting](./ADR-004-Adopt-Automated-Code-Formatting.md) |
 | ADR-005 | 예약 통합 테스트 전략 | 예약 도메인 통합 테스트 전략 수립 | [ADR-005-reservation-integration-test-strategy](./ADR-005-reservation-integration-test-strategy.md) |
-| ADR-006 | Small PR 리뷰/브랜치 전략 | Small PR Review & Branching Strategy | [ADR-006-small-pr-review-and-branching-strategy](./ADR-006-small-pr-review-and-branching-strategy.md) |
-| ADR-007 | Small PR 운영 정책 (배포 전 CI) | Small PR Operating Policy (Pre-deploy CI) | [ADR-007-small-pr-operating-policy-pre-deploy-ci](./ADR-007-small-pr-operating-policy-pre-deploy-ci.md) |
+| ADR-006 | 작은 PR 리뷰·브랜치 전략 | Stacked PR 우선, 향후 Trunk+Flag | [adr-006-small-pr-review-branch-strategy](./adr-006-small-pr-review-branch-strategy.md) |
 
 ## 4. 기술 결정 문서 템플릿
 
