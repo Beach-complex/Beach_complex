@@ -61,7 +61,7 @@ app:
 
   mail:
     enabled: false  # 메일 전송 비활성화
-    
+    default-from: no-reply@test.com
 
   firebase:
     enabled: false  # Firebase 비활성화

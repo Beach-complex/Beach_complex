@@ -31,7 +31,7 @@ java.lang.IllegalArgumentException: app.mail.default-from must be configured
 
 ### 추후 근본 해결
 - `enabled=false`일 때 메일 Sender 빈이 생성되지 않도록 **조건부 빈** 구성
-- 또는 **Null Object Pattern**으로 분리
+- 또는 **Noop 구현**으로 분리
 
 ---
 
@@ -352,31 +352,32 @@ app:
 
 **문제점:**
 - `EmailVerificationService`가 `EmailSenderService`를 필수 의존하면 DI가 깨짐
-- 해결책: Null Object Pattern 필요
+- 해결책: Noop 구현 필요
 
-#### 방법 B: 인터페이스 + Null Object Pattern (추천) ⭐
+#### 방법 B: 인터페이스 + Noop 구현 (추천) ⭐
 
-**1단계: 인터페이스 도입 (범용 이메일 전송)**
+**1단계: 인터페이스 도입**
 
 ```java
 public interface EmailSender {
-    void send(String from, String to, String subject, String body);
+    void sendVerificationEmail(String to, String code);
+    void sendPasswordResetEmail(String to, String resetLink);
 }
 ```
 
-**2단계: 실제 구현 (SMTP)**
+**2단계: 실제 구현**
 
 ```java
 @Service
 @ConditionalOnProperty(
-    prefix = "app.mail",
-    name = "enabled",
+    prefix = "app.mail", 
+    name = "enabled", 
     havingValue = "true"
 )
 public class SmtpEmailSender implements EmailSender {
     private final JavaMailSender mailSender;
     private final String defaultFrom;
-
+    
     public SmtpEmailSender(
             JavaMailSender mailSender,
             @Value("${app.mail.default-from}") String defaultFrom) {
@@ -384,67 +385,54 @@ public class SmtpEmailSender implements EmailSender {
         this.mailSender = mailSender;
         this.defaultFrom = defaultFrom;
     }
-
+    
     @Override
-    public void send(String from, String to, String subject, String body) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        String resolvedFrom = (from == null || from.isBlank()) ? defaultFrom : from;
-        message.setFrom(resolvedFrom);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        mailSender.send(message);
+    public void sendVerificationEmail(String to, String code) {
+        // 실제 메일 발송 로직
     }
 }
 ```
 
-**3단계: Null Object 구현 (테스트/개발 환경용)**
+**3단계: Noop 구현**
 
 ```java
 @Service
 @ConditionalOnProperty(
-    prefix = "app.mail",
-    name = "enabled",
+    prefix = "app.mail", 
+    name = "enabled", 
     havingValue = "false",
-    matchIfMissing = true  // 설정 없으면 기본적으로 Null Object 사용
+    matchIfMissing = true  // 설정 없으면 기본적으로 Noop
 )
 public class NoopEmailSender implements EmailSender {
-
+    
     private static final Logger log = LoggerFactory.getLogger(NoopEmailSender.class);
-
+    
     @Override
-    public void send(String from, String to, String subject, String body) {
-        log.info("[NOOP] Would send email - from: {}, to: {}, subject: {}",
-                 from, to, subject);
+    public void sendVerificationEmail(String to, String code) {
+        log.info("[NOOP] Would send verification email to: {}, code: {}", to, code);
+    }
+    
+    @Override
+    public void sendPasswordResetEmail(String to, String resetLink) {
+        log.info("[NOOP] Would send password reset email to: {}, link: {}", to, resetLink);
     }
 }
 ```
 
-**4단계: EmailVerificationService 수정**
+**4단계: 서비스 계층 수정**
 
 ```java
 @Service
-@Transactional
+@RequiredArgsConstructor
 public class EmailVerificationService {
-
-    private final EmailSender emailSender;  // ← 인터페이스 의존 (타입만 변경)
-    private final EmailVerificationTokenRepository tokenRepository;
-    private final UserRepository userRepository;
-
-    // 생성자 및 기타 메서드는 동일
-
-    private void sendEmail(String to, String token) {
-        String link = baseUrl + "?token=" + token;
-        String subject = "이메일 인증";
-        String body = """
-            아래 링크를 클릭하여 이메일을 인증해주세요:
-
-            %s
-
-            이 링크는 %d분 후에 만료됩니다.
-            """.formatted(link, tokenExpirationMinutes);
-
-        emailSender.send(fromAddress, to, subject, body);  // ← 메서드 호출 동일
+    
+    private final EmailSender emailSender;  // ← 인터페이스 의존
+    private final VerificationCodeRepository verificationCodeRepository;
+    
+    public void sendVerificationEmail(String email) {
+        String code = generateCode();
+        verificationCodeRepository.save(new VerificationCode(email, code));
+        emailSender.sendVerificationEmail(email, code);  // ← 추상화
     }
 }
 ```
@@ -453,7 +441,7 @@ public class EmailVerificationService {
 - ✅ 테스트 환경에서 메일 관련 설정 불필요
 - ✅ 운영 환경에서만 필수 설정 검증
 - ✅ 외부 의존성이 통합테스트 안정성을 깨지 않음
-- ✅ 로그로 메일 발송 의도 확인 가능 (Null Object Pattern)
+- ✅ 로그로 메일 발송 의도 확인 가능
 
 #### 방법 C: 테스트 Mock 처리 (대안)
 
@@ -516,7 +504,7 @@ public EmailSenderService(..., String defaultFrom) {
 
 **해결책:**
 - 조건부 빈 등록 (`@ConditionalOnProperty`)
-- Null Object Pattern으로 외부 의존성 분리
+- Noop 구현으로 외부 의존성 분리
 
 ### 3. 로컬 vs CI 환경 차이의 중요성
 
@@ -685,7 +673,7 @@ git rebase origin/main  # 또는 merge
 - [x] CI 통과 확인
 
 ### 향후 개선 사항
-- [ ] `enabled=false`가 실제로 빈 생성을 막도록 조건부 빈 + Null Object Pattern 설계 반영 (PR 분리 권장)
+- [ ] `enabled=false`가 실제로 빈 생성을 막도록 조건부/Noop 설계 반영 (PR 분리 권장)
 - [ ] 메일 관련 설정의 "필수 검증"은 prod에서만 강제되도록 위치 조정
 - [ ] CI에서 테스트 리포트 자동 업로드 설정
 - [ ] 설정 파일 검증 테스트 추가
@@ -703,7 +691,7 @@ git rebase origin/main  # 또는 merge
   ↓
   질문: 테스트 환경에서도 필수인가?
   ↓
-  NO → 조건부 빈 + Null Object Pattern
+  NO → 조건부 빈 + Noop 구현
   YES → 테스트 설정 파일 업데이트
 ```
 
@@ -715,7 +703,7 @@ git rebase origin/main  # 또는 merge
 @ConditionalOnProperty(prefix="app.mail", name="enabled", havingValue="true")
 public class SmtpEmailSender implements EmailSender { }
 
-// Null Object 구현
+// Noop 구현
 @Service
 @ConditionalOnProperty(prefix="app.mail", name="enabled", havingValue="false", matchIfMissing=true)
 public class NoopEmailSender implements EmailSender { }
@@ -767,7 +755,7 @@ public class NoopEmailSender implements EmailSender { }
 
 ### 해결의 핵심
 1. **임시:** 테스트 설정에 더미 값 추가 → CI 복구
-2. **근본:** 조건부 빈 + Null Object Pattern → 외부 의존성 분리
+2. **근본:** 조건부 빈 + Noop 구현 → 외부 의존성 분리
 
 ### 교훈
 - ✅ 통합테스트는 전체 Context를 로딩한다 - "내가 안 쓰는 빈"도 영향
