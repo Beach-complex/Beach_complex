@@ -14,6 +14,9 @@ assignees: ""
 - [ ] 기술 부채 청산 (Deprecated 라이브러리 교체 등)
 - 기타:
 
+### 구체적 목적
+
+
 ## 대상 모듈/코드
 - (예: UserAuthService의 login 메소드)
 - (예: /utils/date-formatter.js 전체)
