@@ -14,13 +14,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Why: 이메일 인증 토큰의 생성, 전송, 검증, 재전송을 관리해 계정 신뢰성을 확보하기 위해.
+ *
+ * <p>Policy: 토큰은 SHA-256 해시로 저장되며, 만료/재전송 쿨다운 정책을 적용한다.
+ *
+ * <p>Contract(Input/Output): 메서드별로 토큰 생성, 검증, 재전송 기능을 제공한다.
+ */
 @Service
 @Transactional
 public class EmailVerificationService {
 
   private final EmailVerificationTokenRepository tokenRepository;
   private final UserRepository userRepository;
-  private final EmailSenderService emailSenderService;
+  private final EmailSender emailSender;
 
   private final String baseUrl;
   private final long tokenExpirationMinutes;
@@ -30,23 +37,32 @@ public class EmailVerificationService {
   public EmailVerificationService(
       EmailVerificationTokenRepository tokenRepository,
       UserRepository userRepository,
-      EmailSenderService emailSenderService,
+      EmailSender emailSender,
       @Value("${app.email-verification.base-url}") String baseUrl,
       @Value("${app.email-verification.token-expiration-minutes:30}") long tokenExpirationMinutes,
       @Value("${app.email-verification.resend-cooldown-minutes:3}") long resendCooldownMinutes,
       @Value("${app.email-verification.from-address:}") String fromAddress) {
     this.tokenRepository = tokenRepository;
     this.userRepository = userRepository;
-    this.emailSenderService = emailSenderService;
+    this.emailSender = emailSender;
     this.baseUrl = baseUrl;
     this.tokenExpirationMinutes = tokenExpirationMinutes;
     this.resendCooldownMinutes = resendCooldownMinutes;
     this.fromAddress = fromAddress;
   }
 
+  /**
+   * Why: 이메일 인증 토큰을 생성해 사용자에게 전송한다.
+   *
+   * <p>Policy: 토큰은 SHA-256 해시로 저장되며, 만료 정책이 적용된다.
+   *
+   * <p>Contract(Input): user는 인증 이메일을 받을 대상 사용자이다.
+   *
+   * <p>Contract(Output): 인증 이메일이 전송된다.
+   */
   public void sendVerification(User user) {
     String rawToken = createToken(user);
-    sendEmail(user.getEmail(), rawToken);
+    sendVerificationEmail(user.getEmail(), rawToken);
   }
 
   /**
@@ -63,13 +79,13 @@ public class EmailVerificationService {
     EmailVerificationToken token =
         tokenRepository
             .findByToken(hashed)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
+            .orElseThrow(() -> new IllegalArgumentException("유효 하지 않은 인증 토큰입니다."));
 
     if (token.isUsed()) {
-      throw new IllegalStateException("Verification token already used");
+      throw new IllegalStateException("이미 사용된 인증 토큰입니다.");
     }
     if (token.isExpired()) {
-      throw new IllegalStateException("Verification token expired");
+      throw new IllegalStateException("만료된 인증 토큰입니다.");
     }
 
     User user = token.getUser();
@@ -93,7 +109,7 @@ public class EmailVerificationService {
               tokenRepository.markAllUnusedAsUsed(user.getId(), Instant.now());
 
               String rawToken = createToken(user);
-              sendEmail(user.getEmail(), rawToken);
+              sendVerificationEmail(user.getEmail(), rawToken);
             });
   }
 
@@ -119,10 +135,17 @@ public class EmailVerificationService {
       }
       return sb.toString();
     } catch (NoSuchAlgorithmException ex) {
-      throw new IllegalStateException("SHA-256 not available", ex);
+      throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", ex);
     }
   }
 
+  /**
+   * Why: 인증 이메일 재전송 시 쿨다운 정책을 적용해 남용을 방지한다.
+   *
+   * <p>Contract(Input): userId는 재전송 요청 사용자의 ID이다.
+   *
+   * <p>Contract(Output): 쿨다운 위반 시 예외를 던진다
+   */
   private void enforceCooldown(UUID userId) {
     tokenRepository
         .findTopByUserIdOrderByCreatedAtDesc(userId)
@@ -130,24 +153,24 @@ public class EmailVerificationService {
             last -> {
               Instant limit = last.getCreatedAt().plus(resendCooldownMinutes, ChronoUnit.MINUTES);
               if (Instant.now().isBefore(limit)) {
-                throw new IllegalStateException("Verification email recently sent");
+                throw new IllegalStateException("인증 이메일이 최근에 발송되었습니다. 잠시 후 다시 시도해주세요.");
               }
             });
   }
 
-  private void sendEmail(String to, String token) {
+  private void sendVerificationEmail(String to, String token) {
     String link = baseUrl + "?token=" + token;
-    String subject = "Email verification";
+    String subject = "이메일 인증";
     String body =
         """
-        Please verify your email by clicking the link below:
+        아래 링크를 클릭하여 이메일을 인증해주세요:
 
         %s
 
-        This link expires in %d minutes.
+        이 링크는 %d분 후에 만료됩니다.
         """
             .formatted(link, tokenExpirationMinutes);
 
-    emailSenderService.send(fromAddress, to, subject, body);
+    emailSender.send(fromAddress, to, subject, body);
   }
 }
