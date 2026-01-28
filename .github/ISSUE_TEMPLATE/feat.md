@@ -13,12 +13,19 @@ assignees: ""
 ### 왜 필요한가? (User value / Problem)
 -
 
+### Out of scope / Non-goals (필요 시)
+> 혼란을 방지하기 위해 명시적으로 제외하는 항목
+- ❌
+- ❌
+
 ### 비즈니스/기술적 배경
 -
 
 ---
 
+<details><summary>전체 설계 (선택사항)</summary>
 ## 전체 설계 (How)
+
 ### 핵심 아이디어/접근법
 -
 
@@ -35,7 +42,9 @@ assignees: ""
 
 ---
 
-## PR 분할 전략 (300라인 초과 시 필수)
+</details>
+
+## PR 분할 전략 (리뷰어가 부담을 느끼질 않도록)
 - [ ] Single PR (300라인 이하 예상)
 - [ ] Stacked PR (의존성 체인)
 - [ ] Parallel Change (Expand-Migrate-Contract)
@@ -61,6 +70,7 @@ assignees: ""
 ---
 
 ## 영향 범위
+- [ ] ⚠️ Breaking change (무엇이 깨지는지 / 마이그레이션 전략: )
 - [ ] API 스펙 변경 (요약: )
 - [ ] DB 스키마 변경 (마이그레이션: )
 - [ ] 설정/환경변수 변경 (항목: )
@@ -70,12 +80,7 @@ assignees: ""
 
 ---
 
-## Breaking Changes / 호환성
-- [ ] Breaking change 없음
-- [ ] Breaking change 있음 (무엇이 깨지는지 / 마이그레이션 전략: )
-
----
-
+<details><summary>롤아웃/관측</summary>
 ## 롤아웃/관측 (배포 전략)
 ### Feature Flag / 단계적 배포
 - [ ] 사용 안함
@@ -87,6 +92,8 @@ assignees: ""
 ### 모니터링/알림
 - 확인할 대시보드/지표:
 - 에러 키워드:
+
+</details>
 
 ---
 
@@ -107,6 +114,8 @@ assignees: ""
 
 ---
 
+<details><summary>증빙/참고 자료</summary>
+
 ## 증빙/참고 자료
 ### 설계/기획
 - 목업/디자인:
@@ -117,3 +126,5 @@ assignees: ""
 - 스크린샷/영상:
 - 로그/메트릭:
 - 배포 결과:
+
+</details>

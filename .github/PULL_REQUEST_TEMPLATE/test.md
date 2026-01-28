@@ -1,8 +1,9 @@
 # 🧪 Test PR
 
 ## 🔗 이슈 링크 (필수)
-- Jira: PB-
-- GitHub: Closes #
+- Jira: https://parkjaehong.atlassian.net/browse/PB-
+- GitHub: Related # (필수)
+- GitHub: Closes # (Final PR만)
 
 > PR 제목: `PB-123 Test: <짧은 요약>`
 
@@ -13,16 +14,31 @@
 - 전체 이슈 #XXX의 X/X 단계
 - 선행 PR: #XXX
 
-### 이 PR에서 추가한 테스트
-- [ ] Unit (XX개 케이스)
-- [ ] Integration (XX개 케이스)
-- [ ] E2E (XX개 케이스)
+### 변경/추가 테스트 상세
+- [ ] 신규 테스트 추가
+  - Unit: XX개 (상세: )
+  - Integration: XX개 (상세: )
+  - E2E: XX개 (상세: )
+- [ ] 기존 테스트 수정 (개수: , 이유: )
+- [ ] 테스트 삭제 (개수: , 이유: )
+- [ ] 테스트 데이터/픽스처 변경 (상세: )
 
 ### 대상 모듈/시나리오
 1.
 2.
 
 ---
+
+## ✅ 이 PR이 커버하는 TC (필수)
+### Covers (이 PR에서 구현)
+- TC1:
+- TC2:
+
+### Not covered (후속 작업)
+- TC3: (이유: ) → PR #XXX 또는 이슈 #XXX
+- TC4: (이유: ) → PR #XXX 또는 이슈 #XXX
+
+**---
 
 ## ✅ 테스트 실행 결과 (필수)
 ### 로컬
@@ -34,10 +50,7 @@
 ### CI
 - (자동 첨부)
 
-### 커버리지
-- 변화: +X.X%
-
----
+---**
 
 ## 🌐 영향 범위 체크 (필수)
 - [ ] 런타임 코드 변경 (요약: )

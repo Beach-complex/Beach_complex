@@ -1,8 +1,9 @@
 # ✨ Feature PR
 
 ## 🔗 이슈 링크 (필수)
-- Jira: PB-
-- GitHub: Closes # (선택)
+- Jira: https://parkjaehong.atlassian.net/browse/PB-
+- GitHub: Related # (필수)
+- GitHub: Closes # (Final PR만)
 
 > PR 제목: `PB-123 <짧은 요약>`
 
@@ -19,9 +20,14 @@
 
 ---
 
-## ✅ AC (이 PR 범위만) (필수)
-- [ ] AC1:
-- [ ] AC2:
+## ✅ 이 PR이 커버하는 AC (필수)
+### Covers (이 PR에서 완료)
+- AC1:
+- AC2:
+
+### Not covered (후속 작업)
+- AC3: (이유: ) → PR #XXX 또는 이슈 #XXX
+- AC4: (이유: ) → PR #XXX 또는 이슈 #XXX
 
 ---
 
