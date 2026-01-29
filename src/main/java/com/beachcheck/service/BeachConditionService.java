@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BeachConditionService {
 
   private static final Duration DEFAULT_LOOKBACK = Duration.ofHours(24);
+  private static final String SORT_OBSERVED_AT = "observedAt";
 
   private final BeachConditionRepository beachConditionRepository;
 
@@ -25,7 +27,10 @@ public class BeachConditionService {
   @Cacheable(value = "conditionSnapshots", key = "#beachId")
   public List<BeachConditionDto> findRecentConditions(UUID beachId) {
     Instant threshold = Instant.now().minus(DEFAULT_LOOKBACK);
-    return beachConditionRepository.findByBeachIdAndObservedAtAfter(beachId, threshold).stream()
+    return beachConditionRepository
+        .findByBeachIdAndObservedAtAfter(
+            beachId, threshold, Sort.by(Sort.Direction.DESC, SORT_OBSERVED_AT))
+        .stream()
         .map(BeachConditionDto::from)
         .toList();
   }
