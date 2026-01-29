@@ -10,7 +10,15 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailSendException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class EmailVerificationService {
+
+  private final Logger log = LoggerFactory.getLogger(EmailVerificationService.class);
 
   private final EmailVerificationTokenRepository tokenRepository;
   private final UserRepository userRepository;
@@ -62,7 +72,8 @@ public class EmailVerificationService {
    */
   public void sendVerification(User user) {
     String rawToken = createToken(user);
-    sendVerificationEmail(user.getEmail(), rawToken);
+    String verificationLink = baseUrl + "?token=" + rawToken;
+    sendVerificationEmailAsync(user.getEmail(), verificationLink);
   }
 
   /**
@@ -109,7 +120,7 @@ public class EmailVerificationService {
               tokenRepository.markAllUnusedAsUsed(user.getId(), Instant.now());
 
               String rawToken = createToken(user);
-              sendVerificationEmail(user.getEmail(), rawToken);
+              sendVerificationEmailAsync(user.getEmail(), rawToken);
             });
   }
 
@@ -158,8 +169,14 @@ public class EmailVerificationService {
             });
   }
 
-  private void sendVerificationEmail(String to, String token) {
-    String link = baseUrl + "?token=" + token;
+  @Async("emailTaskExecutor")
+  @Retryable(
+      retryFor = {MailSendException.class},
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 5000, multiplier = 2) // 지수 백오프 (5초, 2배 증가)
+      )
+  protected void sendVerificationEmailAsync(String to, String verificationLink) {
+
     String subject = "이메일 인증";
     String body =
         """
@@ -169,8 +186,17 @@ public class EmailVerificationService {
 
         이 링크는 %d분 후에 만료됩니다.
         """
-            .formatted(link, tokenExpirationMinutes);
+            .formatted(verificationLink, tokenExpirationMinutes);
 
+    log.info("이메일 발송 시도 - to: {}", to);
     emailSender.send(fromAddress, to, subject, body);
+    log.info("이메일 발송 성공 - to: {}", to);
+  }
+
+  @Recover
+  private void recoverFromEmailFailure(MailSendException e, String to) {
+    log.error("이메일 발송 최종 실패 (3회 재시도 완료): to={}", to, e);
+
+    // TODO: 향후 관리자 알림 또는 재발송 큐 추가 가능
   }
 }
