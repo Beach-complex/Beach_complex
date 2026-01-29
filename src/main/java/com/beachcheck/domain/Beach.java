@@ -28,7 +28,7 @@ public class Beach {
 
   @Column(nullable = false, length = 255)
   private String name;
-
+  // TODO: status 상태를 enum으로 변경
   @Column(nullable = false, length = 32)
   private String status;
 
