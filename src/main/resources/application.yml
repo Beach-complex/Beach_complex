@@ -63,7 +63,7 @@ management:
     port: ${MANAGEMENT_SERVER_PORT:8081}
   health:
     mail:
-      enabled: false # 메일 서버 헬스체크 비활성화(NoopEmailSender 사용 시 문제 방지)
+      enabled: true  # 운영 환경에서 메일 서버 상태 확인 활성화
 
 logging:
   level:
@@ -110,4 +110,4 @@ app:
     from-address: ${APP_EMAIL_FROM_ADDRESS:${SPRING_MAIL_USERNAME:}}
   mail:
     default-from: ${APP_MAIL_DEFAULT_FROM:${SPRING_MAIL_USERNAME:}}
-    enabled: true
+    enabled: true # 운영 환경에서 메일 전송 활성화
