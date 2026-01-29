@@ -2,6 +2,8 @@ package com.beachcheck.integration;
 
 import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
 import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -121,24 +123,45 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
   @Test
   @DisplayName("P0-04: 로그인 사용자 찜 여부(isFavorite) 반영")
   void detailScenario_isFavorite_reflectsUserFavorites() throws Exception {
-    // Given: 로그인 사용자와 찜한 해수욕장이 있다.
+    // Given: 로그인 사용자와 찜한 해수욕장, 찜하지 않은 해수욕장이 있다.
     String uniqueEmail = "fav_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
     User user = userRepository.save(createUser(uniqueEmail, "Favorite User"));
 
-    Beach beach = createBeach("Favorite Beach", "normal");
-    userFavoriteRepository.save(new UserFavorite(user, beach));
+    String codePrefix = "FAV_GROUP_" + UUID.randomUUID().toString().substring(0, 8);
+    Beach favoriteBeach =
+        createBeachWithLocation(codePrefix + "_A", "Favorite Beach", 129.1603, 35.1587);
+    favoriteBeach.setStatus("normal");
+    favoriteBeach = beachRepository.save(favoriteBeach);
+
+    Beach otherBeach =
+        createBeachWithLocation(codePrefix + "_B", "Other Beach", 129.1603, 35.1587);
+    otherBeach.setStatus("normal");
+    otherBeach = beachRepository.save(otherBeach);
+
+    userFavoriteRepository.save(new UserFavorite(user, favoriteBeach));
 
     // When: 인증된 상태로 beaches 조회 API를 호출한다.
-    // Then: 해당 해수욕장이 isFavorite=true로 반환된다.
+    // Then: 해당 해수욕장이 isFavorite=true, 찜하지 않은 해수욕장은 false로 반환된다.
     mockMvc
         .perform(
             get(ApiRoutes.BEACHES)
-                .param("q", beach.getCode())
+                .param("q", codePrefix)
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].id").value(beach.getId().toString()))
-        .andExpect(jsonPath("$[0].isFavorite").value(true));
+        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(
+            jsonPath(
+                "$[*].id",
+                containsInAnyOrder(
+                    favoriteBeach.getId().toString(), otherBeach.getId().toString())))
+        .andExpect(
+            jsonPath(
+                "$[?(@.id=='" + favoriteBeach.getId().toString() + "')].isFavorite",
+                hasItem(true)))
+        .andExpect(
+            jsonPath(
+                "$[?(@.id=='" + otherBeach.getId().toString() + "')].isFavorite",
+                hasItem(false)));
   }
 
   @Test
