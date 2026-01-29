@@ -133,8 +133,7 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
     favoriteBeach.setStatus("normal");
     favoriteBeach = beachRepository.save(favoriteBeach);
 
-    Beach otherBeach =
-        createBeachWithLocation(codePrefix + "_B", "Other Beach", 129.1603, 35.1587);
+    Beach otherBeach = createBeachWithLocation(codePrefix + "_B", "Other Beach", 129.1603, 35.1587);
     otherBeach.setStatus("normal");
     otherBeach = beachRepository.save(otherBeach);
 
@@ -144,9 +143,7 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
     // Then: 해당 해수욕장이 isFavorite=true, 찜하지 않은 해수욕장은 false로 반환된다.
     mockMvc
         .perform(
-            get(ApiRoutes.BEACHES)
-                .param("q", codePrefix)
-                .header("Authorization", authHeader(user)))
+            get(ApiRoutes.BEACHES).param("q", codePrefix).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$", hasSize(2)))
         .andExpect(
@@ -156,12 +153,10 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
                     favoriteBeach.getId().toString(), otherBeach.getId().toString())))
         .andExpect(
             jsonPath(
-                "$[?(@.id=='" + favoriteBeach.getId().toString() + "')].isFavorite",
-                hasItem(true)))
+                "$[?(@.id=='" + favoriteBeach.getId().toString() + "')].isFavorite", hasItem(true)))
         .andExpect(
             jsonPath(
-                "$[?(@.id=='" + otherBeach.getId().toString() + "')].isFavorite",
-                hasItem(false)));
+                "$[?(@.id=='" + otherBeach.getId().toString() + "')].isFavorite", hasItem(false)));
   }
 
   @Test
