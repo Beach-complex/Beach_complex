@@ -2,6 +2,7 @@ package com.beachcheck.integration;
 
 import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
 import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -57,8 +58,8 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
         .andExpect(jsonPath("$", hasSize(1)))
         .andExpect(jsonPath("$[0].id").value(beach.getId().toString()))
         .andExpect(jsonPath("$[0].status").value("busy"))
-        .andExpect(jsonPath("$[0].latitude").isNumber())
-        .andExpect(jsonPath("$[0].longitude").isNumber());
+        .andExpect(jsonPath("$[0].latitude", closeTo(beach.getLocation().getY(), 0.000001)))
+        .andExpect(jsonPath("$[0].longitude", closeTo(beach.getLocation().getX(), 0.000001)));
 
     mockMvc
         .perform(get(ApiRoutes.BEACH_CONDITIONS_RECENT, beach.getId()))
@@ -67,8 +68,8 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
         .andExpect(jsonPath("$[0].beachId").value(beach.getId().toString()))
         .andExpect(jsonPath("$[0].observedAt").value(newer.toString()))
         .andExpect(jsonPath("$[0].weatherSummary").isNotEmpty())
-        .andExpect(jsonPath("$[0].latitude").isNumber())
-        .andExpect(jsonPath("$[0].longitude").isNumber())
+        .andExpect(jsonPath("$[0].latitude", closeTo(beach.getLocation().getY(), 0.000001)))
+        .andExpect(jsonPath("$[0].longitude", closeTo(beach.getLocation().getX(), 0.000001)))
         .andExpect(jsonPath("$[1].observedAt").value(older.toString()));
 
     mockMvc
@@ -80,8 +81,8 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
         .andExpect(jsonPath("$[0].category").value("SHOWER"))
         .andExpect(jsonPath("$[1].name").value("B Toilet"))
         .andExpect(jsonPath("$[1].category").value("TOILET"))
-        .andExpect(jsonPath("$[0].latitude").isNumber())
-        .andExpect(jsonPath("$[0].longitude").isNumber());
+        .andExpect(jsonPath("$[0].latitude", closeTo(beach.getLocation().getY(), 0.000001)))
+        .andExpect(jsonPath("$[0].longitude", closeTo(beach.getLocation().getX(), 0.000001)));
   }
 
   @Test
