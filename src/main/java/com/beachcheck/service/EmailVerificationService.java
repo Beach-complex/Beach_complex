@@ -152,9 +152,15 @@ public class EmailVerificationService {
   /**
    * Why: 인증 이메일 재전송 시 쿨다운 정책을 적용해 남용을 방지한다.
    *
+   * <p>Policy: 사용자가 수동으로 "재전송" 버튼을 클릭할 때 작동하는 비즈니스 계층의 스팸 방지 메커니즘이다. 마지막 토큰 생성
+   * 시각으로부터 설정된 쿨다운 시간(기본 3분)이 경과하지 않으면 재전송을 차단한다.
+   *
    * <p>Contract(Input): userId는 재전송 요청 사용자의 ID이다.
    *
-   * <p>Contract(Output): 쿨다운 위반 시 예외를 던진다
+   * <p>Contract(Output): 쿨다운 위반 시 IllegalStateException을 던진다.
+   *
+   * <p>Note: 이 메서드는 {@link #sendVerificationEmailAsync}의 @Retryable 백오프와는 다른 목적을 가진다.
+   * enforceCooldown은 사용자 행동 제어(비즈니스 규칙), @Retryable은 SMTP 장애 복구(기술 계층)이다.
    */
   private void enforceCooldown(UUID userId) {
     tokenRepository
@@ -168,6 +174,23 @@ public class EmailVerificationService {
             });
   }
 
+  /**
+   * Why: 이메일 인증 메일을 비동기로 발송하며, SMTP 서버 장애 시 자동 재시도를 수행한다.
+   *
+   * <p>Policy: 기술 계층의 장애 복구 메커니즘으로, MailSendException 발생 시 지수 백오프 전략으로 최대 3회 자동
+   * 재시도한다. (5초 → 10초 → 20초 대기). 회원가입 API는 즉시 응답하며, 이메일 발송은 백그라운드에서 처리된다.
+   *
+   * <p>Contract(Input): to는 수신자 이메일 주소, verificationLink는 인증 링크 전체 URL이다.
+   *
+   * <p>Contract(Output): 이메일 발송 성공 시 로그 기록. 3회 재시도 후 실패 시 {@link
+   * #recoverFromEmailFailure}가 호출된다.
+   *
+   * <p>Note: 이 메서드는 {@link #enforceCooldown}의 쿨다운과는 다른 목적을 가진다. @Retryable은 SMTP 장애
+   * 자동 복구(기술 계층), enforceCooldown은 사용자 스팸 방지(비즈니스 계층)이다.
+   *
+   * @see org.springframework.scheduling.annotation.Async
+   * @see org.springframework.retry.annotation.Retryable
+   */
   @Async("emailTaskExecutor")
   @Retryable(
       retryFor = {MailSendException.class},
