@@ -19,6 +19,8 @@ spring:
   # application.yml의 datasource 설정을 무효화
   datasource:
     url: jdbc:tc:postgresql:///testdb  # Testcontainers JDBC URL
+    hikari:
+      connection-init-sql: "SET TIME ZONE 'UTC'"
 
   # JPA 설정
   jpa:
