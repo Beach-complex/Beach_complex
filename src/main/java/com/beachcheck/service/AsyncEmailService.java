@@ -42,7 +42,7 @@ public class AsyncEmailService {
    * Why: 이메일 인증 메일을 비동기로 발송하며, SMTP 서버 장애 시 자동 재시도를 수행한다.
    *
    * <p>Policy: 기술 계층의 장애 복구 메커니즘으로, MailSendException 발생 시 지수 백오프 전략으로 최대 3회 자동 재시도한다. (5초 → 10초 →
-   * 20초 대기). 회원가입 API는 즉시 응답하며, 이메일 발송은 백그라운드에서 처리된다.
+   * 20초 대기). 회원가입 API는 즉시 응답하며, 이메일 발송은 백그라운드에서 처리된다. maxAttempts=4는 최초 시도 1회 + 재시도 3회를 의미한다.
    *
    * <p>Contract(Input): to는 수신자 이메일 주소, verificationLink는 인증 링크 전체 URL이다.
    *
@@ -54,8 +54,8 @@ public class AsyncEmailService {
   @Async("emailTaskExecutor")
   @Retryable(
       retryFor = {MailSendException.class},
-      maxAttempts = 3,
-      backoff = @Backoff(delay = 5000, multiplier = 2) // 지수 백오프 (5초, 2배 증가)
+      maxAttempts = 4, // 최초 1회 + 재시도 3회 = 총 4회
+      backoff = @Backoff(delay = 5000, multiplier = 2) // 지수 백오프 (5초, 10초, 20초)
       )
   public void sendVerificationEmailAsync(String to, String verificationLink) {
 
