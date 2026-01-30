@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { SignupEmailSentAfter } from "./SignupEmailSentView";
 
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
@@ -51,6 +52,8 @@ export function AuthView({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showEmailSent, setShowEmailSent] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
   const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
@@ -166,18 +169,10 @@ export function AuthView({
         email: signupForm.email.trim(),
         password: signupForm.password,
       });
-      setLoginForm((prev) => ({
-        ...prev,
-        email: signupForm.email.trim(),
-        password: "",
-      }));
-      setSignupForm({
-        name: "",
-        email: signupForm.email.trim(),
-        password: "",
-      });
-      setMode("login");
-      setFormNotice("회원가입이 완료되었습니다. 로그인해 주세요.");
+
+      // 이메일 인증 안내 화면 표시
+      setSignupEmail(signupForm.email.trim());
+      setShowEmailSent(true);
     } catch (error) {
       if (error instanceof ApiError) {
         setFormError(error.message);
@@ -189,6 +184,20 @@ export function AuthView({
       setIsSubmitting(false);
     }
   };
+
+  // 이메일 발송 안내 화면 표시
+  if (showEmailSent) {
+    return (
+      <SignupEmailSentAfter
+        email={signupEmail}
+        onClose={() => {
+          setShowEmailSent(false);
+          setMode("login");
+          setFormNotice("이메일 인증 후 로그인해 주세요.");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-background max-w-[480px] mx-auto">

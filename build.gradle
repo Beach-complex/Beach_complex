@@ -40,6 +40,8 @@ dependencies {
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'  // 로컬 캐시 라이브러리
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'com.google.firebase:firebase-admin:9.7.0'      // Firebase Admin SDK
+    implementation 'org.springframework.retry:spring-retry'        // 스프링 재시도 라이브러리
+    implementation 'org.springframework:spring-aspects'          // 스프링 AOP
 
     // Testcontainers
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'

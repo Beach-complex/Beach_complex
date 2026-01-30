@@ -113,3 +113,16 @@ export async function refreshToken(
     body: payload,
   });
 }
+
+export type ResendVerificationRequest = {
+  email: string;
+};
+
+export async function resendVerification(
+  payload: ResendVerificationRequest,
+): Promise<void> {
+  return requestJson<void>("/api/auth/resend-verification", {
+    method: "POST",
+    body: payload,
+  });
+}
