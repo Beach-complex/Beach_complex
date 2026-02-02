@@ -137,6 +137,12 @@ class AuthServiceTest {
       // When: 로그인 호출
       assertThatThrownBy(() -> authService.logIn(request))
           .isInstanceOf(BadCredentialsException.class);
+
+      // Then: 실패 시 토큰/저장 부작용 없음
+      then(jwtUtils).shouldHaveNoInteractions();
+      then(refreshTokenRepository).should(never()).revokeAllByUser(any());
+      then(refreshTokenRepository).should(never()).save(any());
+      then(userRepository).should(never()).save(any());
     }
 
     static List<Arguments> login_badCredentials_cases() {
@@ -163,8 +169,11 @@ class AuthServiceTest {
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("Account is disabled");
 
-      // Then: 토큰 회수 없음
+      // Then: 실패 시 토큰/저장 부작용 없음
+      then(jwtUtils).shouldHaveNoInteractions();
       then(refreshTokenRepository).should(never()).revokeAllByUser(any());
+      then(refreshTokenRepository).should(never()).save(any());
+      then(userRepository).should(never()).save(any());
     }
 
     @Test
