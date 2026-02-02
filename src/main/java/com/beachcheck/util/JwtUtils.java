@@ -86,4 +86,8 @@ public class JwtUtils {
   public long getAccessTokenExpiration() {
     return accessTokenExpiration / 1000; // Convert to seconds
   }
+
+  public long getRefreshTokenExpirationMillis() {
+    return refreshTokenExpiration;
+  }
 }
