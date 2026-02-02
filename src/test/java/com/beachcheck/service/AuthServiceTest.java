@@ -30,6 +30,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,6 +56,8 @@ class AuthServiceTest {
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtUtils jwtUtils;
   @Mock private EmailVerificationService emailVerificationService;
+  @Captor private ArgumentCaptor<User> userCaptor;
+  @Captor private ArgumentCaptor<RefreshToken> refreshTokenCaptor;
 
   @InjectMocks private AuthService authService;
 
@@ -82,7 +85,6 @@ class AuthServiceTest {
       UserResponseDto response = authService.signUp(request);
 
       // Then: 비활성 사용자 생성 및 검증 메일 전송
-      ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
       then(userRepository).should().save(userCaptor.capture());
       User saved = userCaptor.getValue();
       assertThat(saved.getEmail()).isEqualTo(EMAIL);
@@ -197,14 +199,12 @@ class AuthServiceTest {
       // Then: 토큰 발급 및 마지막 로그인 시각 갱신
       then(refreshTokenRepository).should().revokeAllByUser(user);
 
-      ArgumentCaptor<RefreshToken> tokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
-      then(refreshTokenRepository).should().save(tokenCaptor.capture());
-      RefreshToken savedToken = tokenCaptor.getValue();
+      then(refreshTokenRepository).should().save(refreshTokenCaptor.capture());
+      RefreshToken savedToken = refreshTokenCaptor.getValue();
       assertThat(savedToken.getUser()).isEqualTo(user);
       assertThat(savedToken.getToken()).isEqualTo(REFRESH_TOKEN);
       assertThat(savedToken.getExpiresAt()).isNotNull();
 
-      ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
       then(userRepository).should().save(userCaptor.capture());
       assertThat(userCaptor.getValue().getLastLoginAt()).isNotNull();
 
