@@ -44,7 +44,7 @@ public class AuthService {
   @Transactional
   public UserResponseDto signUp(SignUpRequestDto request) {
     if (userRepository.existsByEmail(request.email())) {
-      throw new IllegalArgumentException("Email already exists");
+      throw new IllegalArgumentException("이미 가입된 이메일입니다.");
     }
 
     User user = new User();
@@ -66,14 +66,14 @@ public class AuthService {
     User user =
         userRepository
             .findByEmail(request.email())
-            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+            .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
     if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-      throw new BadCredentialsException("Invalid email or password");
+      throw new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다.");
     }
 
     if (!user.getEnabled()) {
-      throw new IllegalStateException("Account is disabled");
+      throw new IllegalStateException("비활성화된 계정입니다.");
     }
 
     // 기존 refresh token 무효화
@@ -104,7 +104,7 @@ public class AuthService {
     RefreshToken refreshToken =
         refreshTokenRepository
             .findByToken(refreshTokenStr)
-            .orElseThrow(() -> new EntityNotFoundException("Refresh token not found"));
+            .orElseThrow(() -> new EntityNotFoundException("리프레시 토큰을 찾을 수 없습니다."));
 
     refreshToken.setRevoked(true);
     refreshTokenRepository.save(refreshToken);
@@ -115,14 +115,14 @@ public class AuthService {
     RefreshToken refreshToken =
         refreshTokenRepository
             .findByToken(refreshTokenStr)
-            .orElseThrow(() -> new EntityNotFoundException("Refresh token not found"));
+            .orElseThrow(() -> new EntityNotFoundException("리프레시 토큰을 찾을 수 없습니다."));
 
     if (refreshToken.getRevoked()) {
-      throw new IllegalStateException("Refresh token has been revoked");
+      throw new IllegalStateException("폐기된 리프레시 토큰입니다.");
     }
 
     if (refreshToken.isExpired()) {
-      throw new IllegalStateException("Refresh token has expired");
+      throw new IllegalStateException("만료된 리프레시 토큰입니다.");
     }
 
     User user = refreshToken.getUser();
@@ -135,7 +135,7 @@ public class AuthService {
     User user =
         userRepository
             .findById(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
     return UserResponseDto.from(user);
   }
 }

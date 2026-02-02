@@ -37,7 +37,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AuthService 단위 테스트")
+@DisplayName("인증 서비스 단위 테스트")
 class AuthServiceTest {
 
   private static final String EMAIL = "test@example.com";
@@ -109,7 +109,7 @@ class AuthServiceTest {
       // When: 회원가입 호출
       assertThatThrownBy(() -> authService.signUp(request))
           .isInstanceOf(IllegalArgumentException.class)
-          .hasMessageContaining("Email already exists");
+          .hasMessageContaining("이미 가입된 이메일");
 
       // Then: 저장/메일 전송 없음
       then(userRepository).should(never()).save(any());
@@ -167,7 +167,7 @@ class AuthServiceTest {
       // When: 로그인 호출
       assertThatThrownBy(() -> authService.logIn(request))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("Account is disabled");
+          .hasMessageContaining("비활성화된 계정");
 
       // Then: 실패 시 토큰/저장 부작용 없음
       then(jwtUtils).shouldHaveNoInteractions();
@@ -177,7 +177,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("토큰 발급 및 lastLoginAt 갱신")
+    @DisplayName("토큰 발급 및 마지막 로그인 시각 갱신")
     void logIn_success_generatesTokensAndUpdatesUser() {
       // Given: 정상 로그인
       User user = user("user@example.com", "encoded", true);
@@ -194,7 +194,7 @@ class AuthServiceTest {
       // When: 로그인 호출
       AuthResponseDto response = authService.logIn(request);
 
-      // Then: 토큰 발급 및 lastLoginAt 갱신
+      // Then: 토큰 발급 및 마지막 로그인 시각 갱신
       then(refreshTokenRepository).should().revokeAllByUser(user);
 
       ArgumentCaptor<RefreshToken> tokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
@@ -222,7 +222,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("토큰 없음 예외")
     void refresh_tokenNotFound_throws() {
-      // Given: 존재하지 않는 refresh token
+      // Given: 존재하지 않는 리프레시 토큰
       given(refreshTokenRepository.findByToken("missing")).willReturn(Optional.empty());
 
       // When: 토큰 갱신 호출
@@ -233,7 +233,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("취소된 토큰 예외")
     void refresh_revoked_throws() {
-      // Given: 취소된 refresh token
+      // Given: 취소된 리프레시 토큰
       RefreshToken token = new RefreshToken();
       token.setToken("revoked");
       token.setRevoked(true);
@@ -243,13 +243,13 @@ class AuthServiceTest {
       // When: 토큰 갱신 호출
       assertThatThrownBy(() -> authService.refresh("revoked"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("revoked");
+          .hasMessageContaining("폐기된 리프레시 토큰");
     }
 
     @Test
     @DisplayName("만료된 토큰 예외")
     void refresh_expired_throws() {
-      // Given: 만료된 refresh token
+      // Given: 만료된 리프레시 토큰
       RefreshToken token = new RefreshToken();
       token.setToken("expired");
       token.setRevoked(false);
@@ -259,13 +259,13 @@ class AuthServiceTest {
       // When: 토큰 갱신 호출
       assertThatThrownBy(() -> authService.refresh("expired"))
           .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("expired");
+          .hasMessageContaining("만료된 리프레시 토큰");
     }
 
     @Test
     @DisplayName("정상 토큰 갱신")
     void refresh_success_returnsAccessToken() {
-      // Given: 정상 refresh token
+      // Given: 정상 리프레시 토큰
       User user = user("user@example.com", "encoded", true);
       RefreshToken token =
           refreshTokenBuilder().token("ok").user(user).revoked(false).expiresAt(VALID_AT).build();
@@ -277,7 +277,7 @@ class AuthServiceTest {
       // When: 토큰 갱신 호출
       TokenResponseDto response = authService.refresh("ok");
 
-      // Then: 새 access token 반환
+      // Then: 새 액세스 토큰 반환
       assertThat(response.accessToken()).isEqualTo("new-access");
       assertThat(response.tokenType()).isEqualTo("Bearer");
       assertThat(response.expiresIn()).isEqualTo(ACCESS_EXPIRES_IN);
@@ -291,7 +291,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("토큰 없음 예외")
     void logOut_tokenNotFound_throws() {
-      // Given: 존재하지 않는 refresh token
+      // Given: 존재하지 않는 리프레시 토큰
       given(refreshTokenRepository.findByToken("missing")).willReturn(Optional.empty());
 
       // When: 로그아웃 호출
@@ -302,7 +302,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("토큰 취소 처리")
     void logOut_success_revokesToken() {
-      // Given: 정상 refresh token
+      // Given: 정상 리프레시 토큰
       RefreshToken token = refreshTokenBuilder().token("ok").revoked(false).build();
       given(refreshTokenRepository.findByToken("ok")).willReturn(Optional.of(token));
 
