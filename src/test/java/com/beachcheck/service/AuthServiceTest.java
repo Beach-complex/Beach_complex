@@ -192,6 +192,7 @@ class AuthServiceTest {
       given(jwtUtils.getAccessTokenExpiration()).willReturn(ACCESS_EXPIRES_IN);
       given(refreshTokenRepository.save(any(RefreshToken.class)))
           .willAnswer(invocation -> invocation.getArgument(0));
+      assertThat(user.getLastLoginAt()).isNull();
 
       // When: 로그인 호출
       AuthResponseDto response = authService.logIn(request);
@@ -205,8 +206,7 @@ class AuthServiceTest {
       assertThat(savedToken.getToken()).isEqualTo(REFRESH_TOKEN);
       assertThat(savedToken.getExpiresAt()).isNotNull();
 
-      then(userRepository).should().save(userCaptor.capture());
-      assertThat(userCaptor.getValue().getLastLoginAt()).isNotNull();
+      assertThat(user.getLastLoginAt()).isNotNull();
 
       assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
       assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
