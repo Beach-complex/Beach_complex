@@ -54,7 +54,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,beans, threaddump
+        include: health,info,metrics,prometheus
+        # TODO: 프로필 분리 시 dev/prod별 엔드포인트 세밀 제어
   endpoint:
     health:
       probes:
