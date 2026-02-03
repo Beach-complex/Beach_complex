@@ -19,6 +19,7 @@ import com.beachcheck.repository.UserRepository;
 import com.beachcheck.util.JwtUtils;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -48,8 +49,10 @@ class AuthServiceTest {
   private static final String NAME = "Tester";
   private static final String ACCESS_TOKEN = "access";
   private static final String REFRESH_TOKEN = "refresh";
-  private static final long ACCESS_EXPIRES_IN = 3600L;
-  private static final long REFRESH_EXPIRES_IN_MILLIS = 86_400_000L;
+  private static final Duration ACCESS_TOKEN_DURATION = Duration.ofHours(1);
+  private static final Duration REFRESH_TOKEN_DURATION = Duration.ofDays(1);
+  private static final long ACCESS_EXPIRES_IN_SECONDS = ACCESS_TOKEN_DURATION.getSeconds();
+  private static final long REFRESH_EXPIRES_IN_MILLIS = REFRESH_TOKEN_DURATION.toMillis();
   private static final Instant FIXED_NOW = Instant.parse("2026-01-01T00:00:00Z");
   private static final Instant EXPIRED_AT = Instant.parse("2000-01-01T00:00:00Z");
   private static final Instant VALID_AT = Instant.parse("2099-01-01T00:00:00Z");
@@ -193,7 +196,7 @@ class AuthServiceTest {
       given(passwordEncoder.matches(request.password(), user.getPassword())).willReturn(true);
       given(jwtUtils.generateAccessToken(user)).willReturn(ACCESS_TOKEN);
       given(jwtUtils.generateRefreshToken(user)).willReturn(REFRESH_TOKEN);
-      given(jwtUtils.getAccessTokenExpiration()).willReturn(ACCESS_EXPIRES_IN);
+      given(jwtUtils.getAccessTokenExpiration()).willReturn(ACCESS_EXPIRES_IN_SECONDS);
       given(jwtUtils.getRefreshTokenExpirationMillis()).willReturn(REFRESH_EXPIRES_IN_MILLIS);
       given(clock.instant()).willReturn(FIXED_NOW);
       given(refreshTokenRepository.save(any(RefreshToken.class)))
@@ -211,16 +214,17 @@ class AuthServiceTest {
       assertThat(savedToken.getUser()).isEqualTo(user);
       assertThat(savedToken.getToken()).isEqualTo(REFRESH_TOKEN);
       assertThat(savedToken.getExpiresAt()).isAfter(FIXED_NOW);
-      assertThat(savedToken.getExpiresAt()).isAfter(FIXED_NOW.plusSeconds(ACCESS_EXPIRES_IN));
       assertThat(savedToken.getExpiresAt())
-          .isBeforeOrEqualTo(FIXED_NOW.plusMillis(REFRESH_EXPIRES_IN_MILLIS));
+          .isAfter(FIXED_NOW.plusSeconds(ACCESS_EXPIRES_IN_SECONDS));
+      assertThat(savedToken.getExpiresAt())
+          .isEqualTo(FIXED_NOW.plusMillis(REFRESH_EXPIRES_IN_MILLIS));
 
       assertThat(user.getLastLoginAt()).isEqualTo(FIXED_NOW);
 
       assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
       assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
       assertThat(response.tokenType()).isEqualTo("Bearer");
-      assertThat(response.expiresIn()).isEqualTo(ACCESS_EXPIRES_IN);
+      assertThat(response.expiresIn()).isEqualTo(ACCESS_EXPIRES_IN_SECONDS);
     }
   }
 
@@ -281,7 +285,7 @@ class AuthServiceTest {
 
       given(refreshTokenRepository.findByToken("ok")).willReturn(Optional.of(token));
       given(jwtUtils.generateAccessToken(user)).willReturn("new-access");
-      given(jwtUtils.getAccessTokenExpiration()).willReturn(ACCESS_EXPIRES_IN);
+      given(jwtUtils.getAccessTokenExpiration()).willReturn(ACCESS_EXPIRES_IN_SECONDS);
 
       // When: 토큰 갱신 호출
       TokenResponseDto response = authService.refresh("ok");
@@ -289,7 +293,7 @@ class AuthServiceTest {
       // Then: 새 액세스 토큰 반환
       assertThat(response.accessToken()).isEqualTo("new-access");
       assertThat(response.tokenType()).isEqualTo("Bearer");
-      assertThat(response.expiresIn()).isEqualTo(ACCESS_EXPIRES_IN);
+      assertThat(response.expiresIn()).isEqualTo(ACCESS_EXPIRES_IN_SECONDS);
     }
   }
 
