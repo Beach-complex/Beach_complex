@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class EmailVerificationService {
   private final AsyncEmailService asyncEmailService;
   private final EmailVerificationTokenRepository tokenRepository;
   private final UserRepository userRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   private final String baseUrl;
   private final long tokenExpirationMinutes;
@@ -41,12 +43,14 @@ public class EmailVerificationService {
       AsyncEmailService asyncEmailService,
       EmailVerificationTokenRepository tokenRepository,
       UserRepository userRepository,
+      ApplicationEventPublisher eventPublisher,
       @Value("${app.email-verification.base-url}") String baseUrl,
       @Value("${app.email-verification.token-expiration-minutes:30}") long tokenExpirationMinutes,
       @Value("${app.email-verification.resend-cooldown-minutes:3}") long resendCooldownMinutes) {
     this.asyncEmailService = asyncEmailService;
     this.tokenRepository = tokenRepository;
     this.userRepository = userRepository;
+    this.eventPublisher = eventPublisher;
     this.baseUrl = baseUrl;
     this.tokenExpirationMinutes = tokenExpirationMinutes;
     this.resendCooldownMinutes = resendCooldownMinutes;
@@ -64,7 +68,7 @@ public class EmailVerificationService {
   public void sendVerification(User user) {
     String rawToken = createToken(user);
     String verificationLink = baseUrl + "?token=" + rawToken;
-    asyncEmailService.sendVerificationEmailAsync(user.getEmail(), verificationLink); // 다른 클래스 호출
+    eventPublisher.publishEvent(new EmailVerificationEvent(user.getEmail(), verificationLink));
   }
 
   /**
@@ -112,7 +116,8 @@ public class EmailVerificationService {
 
               String rawToken = createToken(user);
               String verificationLink = baseUrl + "?token=" + rawToken;
-              asyncEmailService.sendVerificationEmailAsync(user.getEmail(), verificationLink);
+              eventPublisher.publishEvent(
+                  new EmailVerificationEvent(user.getEmail(), verificationLink));
             });
   }
 
