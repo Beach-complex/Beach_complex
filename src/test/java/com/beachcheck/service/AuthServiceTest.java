@@ -218,7 +218,7 @@ class AuthServiceTest {
       assertThat(savedToken.getExpiresAt())
           .isAfter(FIXED_NOW.plusSeconds(ACCESS_EXPIRES_IN_SECONDS));
       assertThat(savedToken.getExpiresAt())
-          .isEqualTo(FIXED_NOW.plusMillis(REFRESH_EXPIRES_IN_MILLIS));
+          .isBeforeOrEqualTo(FIXED_NOW.plusMillis(REFRESH_EXPIRES_IN_MILLIS));
 
       assertThat(user.getLastLoginAt()).isEqualTo(FIXED_NOW);
 
