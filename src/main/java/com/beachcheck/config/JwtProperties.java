@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
+  // TODO(OAuth): OAuth 토큰 정책 도입 시 만료/리프레시 정책 및 키 관리 전략 재정의.
   private String secret;
   private long accessTokenExpiration;
   private long refreshTokenExpiration;

@@ -55,6 +55,7 @@ app:
     secret: test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256
     access-token-expiration: 3600000   # 1시간
     refresh-token-expiration: 86400000 # 24시간
+  # TODO(OAuth): 테스트 환경용 OAuth provider 설정 추가.
 
   # 캐시 설정 (테스트용)
   cache:

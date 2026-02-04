@@ -26,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Validated
 public class ReservationController {
 
+  // TODO(OAuth): OAuth 도입 시 인증 Principal 타입(User vs OAuth2User) 통일 및 401 처리 경로(필터/컨트롤러) 중복 정리.
   private final ReservationService reservationService;
 
   public ReservationController(ReservationService reservationService) {

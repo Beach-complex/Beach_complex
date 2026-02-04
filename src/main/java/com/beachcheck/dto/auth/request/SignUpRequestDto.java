@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+// TODO(OAuth): OAuth 가입 요청 DTO 및 입력 검증 정책 분리 필요.
 public record SignUpRequestDto(
     @NotBlank(message = "Email is required") @Email(message = "Invalid email format") String email,
     @NotBlank(message = "Password is required")

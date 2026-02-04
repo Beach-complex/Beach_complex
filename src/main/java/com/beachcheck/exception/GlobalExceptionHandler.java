@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+  // TODO(OAuth): OAuth 로그인/토큰 교환 실패 등 OAuth 전용 예외를 ProblemDetail로 표준화(에러코드/메시지 계약 포함).
   @ExceptionHandler(ApiException.class)
   public ProblemDetail handleApiException(ApiException ex) {
     ErrorCode code = ex.getErrorCode();

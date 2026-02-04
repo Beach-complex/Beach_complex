@@ -11,6 +11,7 @@ import { Label } from "./ui/label";
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
 
+// TODO(OAuth): Google/Kakao 등 OAuth 로그인 도입 시 Email/Password 폼과 분리(버튼/리다이렉트/콜백 처리 포함).
 interface AuthViewProps {
   initialMode?: "login" | "signup";
   notice?: string | null;

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class BeachController {
 
+  // TODO(OAuth): OAuth 도입 시 인증 Principal 타입(User vs OAuth2User) 통일 및 비로그인(null) 처리 정책 재점검.
   private final BeachService beachService;
 
   public BeachController(BeachService beachService) {

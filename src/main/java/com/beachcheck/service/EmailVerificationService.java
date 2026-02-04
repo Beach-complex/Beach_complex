@@ -61,6 +61,7 @@ public class EmailVerificationService {
    * <p>Contract(Output): 인증 이메일이 전송된다.
    */
   public void sendVerification(User user) {
+    // TODO(OAuth): OAuth 가입자는 email verification 정책을 스킵하거나 대체 흐름 적용.
     String rawToken = createToken(user);
     sendVerificationEmail(user.getEmail(), rawToken);
   }

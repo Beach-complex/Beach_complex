@@ -47,6 +47,8 @@ public class AuthService {
 
   @Transactional
   public UserResponseDto signUp(SignUpRequestDto request) {
+    // TODO(OAuth): OAuth 가입/연동 시 이메일/비밀번호 기반 플로우와 분리하고,
+    // TODO(OAuth): 중복 계정 병합 정책 및 email verification 정책 재정의.
     if (userRepository.existsByEmail(request.email())) {
       throw new IllegalArgumentException("이미 가입된 이메일입니다.");
     }
@@ -67,6 +69,7 @@ public class AuthService {
 
   @Transactional
   public AuthResponseDto logIn(LogInRequestDto request) {
+    // TODO(OAuth): OAuth 로그인/첫 가입 플로우 추가 시 기존 이메일 로그인과 서비스/테스트 구조 분리.
     User user =
         userRepository
             .findByEmail(request.email())

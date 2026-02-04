@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/favorites")
 public class UserFavoriteController {
 
+  // TODO(OAuth): OAuth 도입 시 인증 Principal 타입(User vs OAuth2User) 통일 및 user null 처리 정책 정리.
   private final UserFavoriteService favoriteService;
 
   public UserFavoriteController(UserFavoriteService favoriteService) {

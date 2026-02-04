@@ -42,6 +42,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("인증 서비스 단위 테스트")
 class AuthServiceTest {
+  // TODO(OAuth): OAuth 로그인/연동 플로우 추가 시 테스트 케이스 구조 분리 및 시나리오 확장.
 
   private static final String EMAIL = "test@example.com";
   private static final String DUP_EMAIL = "dup@example.com";

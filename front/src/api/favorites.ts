@@ -19,6 +19,7 @@ function createAuthHeaders(): HeadersInit {
   };
 
   if (token) {
+    // TODO(OAuth): tokenType이 Bearer 고정이 아닐 수 있으므로 저장된 tokenType을 사용하도록 통일.
     headers['Authorization'] = `Bearer ${token}`;
   }
 

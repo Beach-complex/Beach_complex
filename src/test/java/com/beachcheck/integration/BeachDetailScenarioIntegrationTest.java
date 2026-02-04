@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 class BeachDetailScenarioIntegrationTest extends ApiTest {
+  // TODO(OAuth): OAuth 인증 도입 시 Authorization 헤더 생성/인증 경로 테스트 시나리오 확장.
 
   @Autowired private BeachRepository beachRepository;
   @Autowired private BeachConditionRepository beachConditionRepository;

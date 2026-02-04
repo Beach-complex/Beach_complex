@@ -266,6 +266,7 @@ export default function App() {
     fetch(`/api/beaches?${params}`, {
       signal: controller.signal,
       headers: authState?.accessToken ? {
+        // TODO(OAuth): tokenType이 Bearer 고정이 아닐 수 있으므로 저장된 tokenType을 사용하도록 통일.
         'Authorization': `Bearer ${authState.accessToken}`
       } : {}
     })

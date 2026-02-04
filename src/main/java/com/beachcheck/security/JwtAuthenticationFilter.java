@@ -22,6 +22,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final JwtUtils jwtUtils;
   private final UserRepository userRepository;
 
+  // TODO(OAuth): OAuth 클레임/권한 매핑 정책 확정 시 인증 객체 생성 로직 보완.
+
   public JwtAuthenticationFilter(JwtUtils jwtUtils, UserRepository userRepository) {
     this.jwtUtils = jwtUtils;
     this.userRepository = userRepository;

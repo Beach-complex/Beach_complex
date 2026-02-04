@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
+  // TODO(OAuth): OAuth 도입 시 인증 Principal 타입(User vs OAuth2User) 통일 및 user 식별/권한 계약 재점검.
   private final UserRepository userRepository;
   private final NotificationRepository notificationRepository;
   private final NotificationService notificationService;
