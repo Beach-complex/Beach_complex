@@ -1,4 +1,4 @@
-﻿# 기술 결정 기록
+# 기술 결정 기록
 
 ## 1. 목적
 - 프로젝트에서 사용하기로 한 주요 기술/라이브러리/아키텍처 결정과 그 이유를 기록합니다.
@@ -12,14 +12,15 @@
 
 ## 3. 기술 결정 목록
 
-| ID | 주제 | 요약 결정 | 상세 문서 |
-|------|------------------------|-----------------------------------|----------------------------------------------------|
-| ADR-001 | 백엔드 프레임워크 선택 | Spring Boot 사용 | [ADR-001-백엔드-프레임워크-선택](./ADR-001-backend-framework.md) |
-| ADR-002 | DB 선택 | PostgreSQL 사용 | (문서 추가 예정) |
-| ADR-003 | 인증 방식 | JWT 기반 토큰 인증 | (문서 추가 예정) |
-| ADR-004 | 자동 코드 포맷팅 도입 | 자동 포맷팅 도구 도입 | [ADR-004-Adopt-Automated-Code-Formatting](./ADR-004-Adopt-Automated-Code-Formatting.md) |
-| ADR-005 | 예약 통합 테스트 전략 | 예약 도메인 통합 테스트 전략 수립 | [ADR-005-reservation-integration-test-strategy](./ADR-005-reservation-integration-test-strategy.md) |
+| ID | 주제 | 요약 결정                        | 상세 문서 |
+|------|------------------------|------------------------------|----------------------------------------------------|
+| ADR-001 | 백엔드 프레임워크 선택 | Spring Boot 사용               | [ADR-001-백엔드-프레임워크-선택](./ADR-001-backend-framework.md) |
+| ADR-002 | DB 선택 | PostgreSQL 사용                | (문서 추가 예정) |
+| ADR-003 | 인증 방식 | JWT 기반 토큰 인증                 | (문서 추가 예정) |
+| ADR-004 | 자동 코드 포맷팅 도입 | 자동 포맷팅 도구 도입                 | [ADR-004-Adopt-Automated-Code-Formatting](./ADR-004-Adopt-Automated-Code-Formatting.md) |
+| ADR-005 | 예약 통합 테스트 전략 | 예약 도메인 통합 테스트 전략 수립          | [ADR-005-reservation-integration-test-strategy](./ADR-005-reservation-integration-test-strategy.md) |
 | ADR-006 | 작은 PR 리뷰·브랜치 전략 | Stacked PR 우선, 향후 Trunk+Flag | [adr-006-small-pr-review-branch-strategy](./adr-006-small-pr-review-branch-strategy.md) |
+| ADR-007 | 푸시 알림 이벤트 브로커 선택 | Outbox + RabbitMQ 채택         | [ADR-007-rabbitmq-push-notification-broker](./ADR-007-rabbitmq-push-notification-broker.md) |
 
 ## 4. 기술 결정 문서 템플릿
 
