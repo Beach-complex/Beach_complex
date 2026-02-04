@@ -50,6 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Contract(Output): 201 응답 필드 또는 명시된 에러 코드(RESERVATION_* / BEACH_NOT_FOUND / 401).
  */
 class ReservationControllerIntegrationTest extends ApiTest {
+  // TODO(OAuth): OAuth 인증 도입 시 Authorization 헤더 생성/인증 경로 테스트 시나리오 확장.
 
   @Autowired private UserRepository userRepository;
 

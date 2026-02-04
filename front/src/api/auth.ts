@@ -15,6 +15,7 @@ export type LogInRequest = {
   password: string;
 };
 
+// TODO(OAuth): OAuth 로그인(인가 코드/ID 토큰) 도입 시 요청 타입 및 엔드포인트(/oauth2/authorization, callback 등) 추가.
 export type SignUpRequest = {
   email: string;
   password: string;

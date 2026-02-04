@@ -96,6 +96,7 @@ app:
     secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production}
     access-token-expiration: 3600000  # 1시간 (밀리초)
     refresh-token-expiration: 2592000000  # 30일 (밀리초)
+  # TODO(OAuth): OAuth provider(client-id/secret/redirect-uri) 설정 추가.
   security:
     allowed-origins:
         # CORS 설정

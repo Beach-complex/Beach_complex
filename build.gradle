@@ -26,6 +26,7 @@ configurations {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    // TODO(OAuth): OAuth 로그인 도입 시 spring-boot-starter-oauth2-client(및 provider 설정) 추가 검토.
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-cache'

@@ -26,9 +26,12 @@ public class User implements UserDetails {
   @GeneratedValue(strategy = GenerationType.AUTO)
   private UUID id;
 
+  // TODO(OAuth): OAuth provider는 email이 없거나(또는 변경될 수) 있으므로, 식별자(provider+sub) 도입 및 email UNIQUE 정책
+  // 재검토.
   @Column(nullable = false, unique = true, columnDefinition = "VARCHAR")
   private String email;
 
+  // TODO(OAuth): OAuth 계정은 password를 저장하지 않을 수 있으므로, nullable/더미값 정책 또는 인증정보 테이블 분리 필요.
   @Column(nullable = false, columnDefinition = "VARCHAR")
   private String password;
 
@@ -39,6 +42,7 @@ public class User implements UserDetails {
   @Column(nullable = false, columnDefinition = "VARCHAR(20)")
   private Role role = Role.USER;
 
+  // TODO(OAuth): OAuth 가입자의 enabled 기본값 및 이메일 인증 정책(스킵/대체)을 provider별로 명확히 분리.
   @Column(nullable = false)
   private Boolean enabled = true;
 
@@ -55,6 +59,7 @@ public class User implements UserDetails {
   private String timezone;
 
   @Enumerated(EnumType.STRING)
+  // TODO(OAuth): OAuth 도입 시 provider별 필수 필드/정책(비밀번호, enabled, email-verified 등) 분리.
   private AuthProvider authProvider; // Email, Google, Kakao
 
   @Column(name = "fcm_token", length = 500)

@@ -18,6 +18,7 @@ public enum ErrorCode {
 
   BEACH_NOT_FOUND(HttpStatus.NOT_FOUND, "BEACH_NOT_FOUND", "Beach not found"),
 
+  // TODO(OAuth): OAuth 로그인/연동 실패 케이스(인가 코드 오류, provider 응답 오류 등)별 ErrorCode 추가 검토.
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication required"),
   VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed"),
   INVALID_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid request"),
