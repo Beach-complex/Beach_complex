@@ -40,12 +40,14 @@ public class AuthController {
 
   @PostMapping("/signup")
   public ResponseEntity<UserResponseDto> signUp(@Valid @RequestBody SignUpRequestDto request) {
+    // TODO(OAuth): OAuth 가입/연동 엔드포인트 추가 시 URL/응답 계약 재정의.
     UserResponseDto user = authService.signUp(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(user);
   }
 
   @PostMapping("/login")
   public ResponseEntity<AuthResponseDto> logIn(@Valid @RequestBody LogInRequestDto request) {
+    // TODO(OAuth): OAuth 인가 코드/토큰 교환 엔드포인트 추가 및 클라이언트 계약 정리.
     AuthResponseDto response = authService.logIn(request);
     return ResponseEntity.ok(response);
   }
@@ -66,6 +68,7 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<UserResponseDto> getCurrentUser(@AuthenticationPrincipal User user) {
+    // TODO(OAuth): OAuth2Login(세션)/JWT를 병행할 경우 principal 매핑(User vs OAuth2User) 및 인증 실패 응답 계약 정리.
     UserResponseDto response = authService.getCurrentUser(user.getId());
     return ResponseEntity.ok(response);
   }

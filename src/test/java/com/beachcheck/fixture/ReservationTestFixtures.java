@@ -19,6 +19,7 @@ public final class ReservationTestFixtures {
 
   private ReservationTestFixtures() {}
 
+  // TODO(OAuth): OAuth 인증 도입 시 Authorization 헤더 생성/포맷(Bearer) 및 인증 실패 케이스를 테스트 헬퍼에 반영.
   /**
    * 예약을 생성하고 reservationId를 반환한다.
    *

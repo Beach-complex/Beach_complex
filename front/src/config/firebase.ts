@@ -116,6 +116,7 @@ export const saveFcmTokenToBackend = async (token: string, accessToken: string):
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                // TODO(OAuth): tokenType이 Bearer 고정이 아닐 수 있으므로 저장된 tokenType 기반으로 Authorization 헤더 구성.
                 'Authorization': `Bearer ${accessToken}`
             },
             body: JSON.stringify({ fcmToken: token })

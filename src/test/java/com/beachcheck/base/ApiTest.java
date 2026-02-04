@@ -29,6 +29,8 @@ public abstract class ApiTest {
 
   @Autowired protected JwtUtils jwtUtils; // JWT 토큰 생성/검증용
 
+  // TODO(OAuth): OAuth 토큰/클레임 구조 확정 시 테스트 인증 헬퍼 분리 또는 확장.
+
   /** JWT 토큰 생성 헬퍼 메서드 Why: 인증된 요청 테스트 시 사용 */
   protected String generateToken(User user) {
     return jwtUtils.generateAccessToken(user);

@@ -30,6 +30,7 @@ public class FavoriteTestFixtures {
   }
 
   public static User createUser(String email, String name) {
+    // TODO(OAuth): OAuth 사용자 테스트 케이스 추가 시 authProvider/providerId 및 password 정책 분리.
     User user = new User();
     user.setId(randomUUID());
     user.setEmail(email);

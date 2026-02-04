@@ -675,6 +675,7 @@ export function DeveloperModeView({ onNavigate, authUser, accessToken }: Develop
                   const response = await fetch('/api/notifications/test', {
                     method: 'POST',
                     headers: {
+                      // TODO(OAuth): tokenType이 Bearer 고정이 아닐 수 있으므로 저장된 tokenType 기반으로 Authorization 헤더 구성.
                       'Authorization': `Bearer ${accessToken}`,
                     },
                   });

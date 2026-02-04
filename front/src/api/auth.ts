@@ -15,6 +15,7 @@ export type LogInRequest = {
   password: string;
 };
 
+// TODO(OAuth): OAuth 로그인(인가 코드/ID 토큰) 도입 시 요청 타입 및 엔드포인트(/oauth2/authorization, callback 등) 추가.
 export type SignUpRequest = {
   email: string;
   password: string;
@@ -109,6 +110,19 @@ export async function refreshToken(
   payload: RefreshTokenRequest,
 ): Promise<TokenResponseDto> {
   return requestJson<TokenResponseDto>("/api/auth/refresh", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export type ResendVerificationRequest = {
+  email: string;
+};
+
+export async function resendVerification(
+  payload: ResendVerificationRequest,
+): Promise<void> {
+  return requestJson<void>("/api/auth/resend-verification", {
     method: "POST",
     body: payload,
   });

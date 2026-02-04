@@ -7,6 +7,7 @@ export interface StoredAuth extends AuthResponseDto {
 const AUTH_STORAGE_KEY = "beachcheck_auth";
 let cachedAuth: StoredAuth | null = null;
 
+// TODO(OAuth): OAuth 도입 시 refresh token 회전/만료 정책 및 tokenType(예: Bearer) 사용 방식 통일.
 function getStorage(): Storage | null {
   if (typeof window === "undefined") {
     return null;

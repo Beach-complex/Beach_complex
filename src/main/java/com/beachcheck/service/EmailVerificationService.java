@@ -10,7 +10,10 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,30 +28,32 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class EmailVerificationService {
 
+  private final Logger log = LoggerFactory.getLogger(EmailVerificationService.class);
+
+  private final AsyncEmailService asyncEmailService;
   private final EmailVerificationTokenRepository tokenRepository;
   private final UserRepository userRepository;
-  private final EmailSender emailSender;
+  private final ApplicationEventPublisher eventPublisher;
 
   private final String baseUrl;
   private final long tokenExpirationMinutes;
   private final long resendCooldownMinutes;
-  private final String fromAddress;
 
   public EmailVerificationService(
+      AsyncEmailService asyncEmailService,
       EmailVerificationTokenRepository tokenRepository,
       UserRepository userRepository,
-      EmailSender emailSender,
+      ApplicationEventPublisher eventPublisher,
       @Value("${app.email-verification.base-url}") String baseUrl,
       @Value("${app.email-verification.token-expiration-minutes:30}") long tokenExpirationMinutes,
-      @Value("${app.email-verification.resend-cooldown-minutes:3}") long resendCooldownMinutes,
-      @Value("${app.email-verification.from-address:}") String fromAddress) {
+      @Value("${app.email-verification.resend-cooldown-minutes:3}") long resendCooldownMinutes) {
+    this.asyncEmailService = asyncEmailService;
     this.tokenRepository = tokenRepository;
     this.userRepository = userRepository;
-    this.emailSender = emailSender;
+    this.eventPublisher = eventPublisher;
     this.baseUrl = baseUrl;
     this.tokenExpirationMinutes = tokenExpirationMinutes;
     this.resendCooldownMinutes = resendCooldownMinutes;
-    this.fromAddress = fromAddress;
   }
 
   /**
@@ -61,8 +66,10 @@ public class EmailVerificationService {
    * <p>Contract(Output): 인증 이메일이 전송된다.
    */
   public void sendVerification(User user) {
+    // TODO(OAuth): OAuth 가입자는 email verification 정책을 스킵하거나 대체 흐름 적용.
     String rawToken = createToken(user);
-    sendVerificationEmail(user.getEmail(), rawToken);
+    String verificationLink = baseUrl + "?token=" + rawToken;
+    eventPublisher.publishEvent(new EmailVerificationEvent(user.getEmail(), verificationLink));
   }
 
   /**
@@ -109,7 +116,9 @@ public class EmailVerificationService {
               tokenRepository.markAllUnusedAsUsed(user.getId(), Instant.now());
 
               String rawToken = createToken(user);
-              sendVerificationEmail(user.getEmail(), rawToken);
+              String verificationLink = baseUrl + "?token=" + rawToken;
+              eventPublisher.publishEvent(
+                  new EmailVerificationEvent(user.getEmail(), verificationLink));
             });
   }
 
@@ -142,9 +151,15 @@ public class EmailVerificationService {
   /**
    * Why: 인증 이메일 재전송 시 쿨다운 정책을 적용해 남용을 방지한다.
    *
+   * <p>Policy: 사용자가 수동으로 "재전송" 버튼을 클릭할 때 작동하는 비즈니스 계층의 스팸 방지 메커니즘이다. 마지막 토큰 생성 시각으로부터 설정된 쿨다운 시간(기본
+   * 3분)이 경과하지 않으면 재전송을 차단한다.
+   *
    * <p>Contract(Input): userId는 재전송 요청 사용자의 ID이다.
    *
-   * <p>Contract(Output): 쿨다운 위반 시 예외를 던진다
+   * <p>Contract(Output): 쿨다운 위반 시 IllegalStateException을 던진다.
+   *
+   * <p>Note: 이 메서드는 {@link AsyncEmailService#sendVerificationEmailAsync}의 @Retryable 백오프와는 다른 목적을
+   * 가진다. enforceCooldown은 사용자 행동 제어(비즈니스 규칙), @Retryable은 SMTP 장애 복구(기술 계층)이다.
    */
   private void enforceCooldown(UUID userId) {
     tokenRepository
@@ -156,21 +171,5 @@ public class EmailVerificationService {
                 throw new IllegalStateException("인증 이메일이 최근에 발송되었습니다. 잠시 후 다시 시도해주세요.");
               }
             });
-  }
-
-  private void sendVerificationEmail(String to, String token) {
-    String link = baseUrl + "?token=" + token;
-    String subject = "이메일 인증";
-    String body =
-        """
-        아래 링크를 클릭하여 이메일을 인증해주세요:
-
-        %s
-
-        이 링크는 %d분 후에 만료됩니다.
-        """
-            .formatted(link, tokenExpirationMinutes);
-
-    emailSender.send(fromAddress, to, subject, body);
   }
 }

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR UNIQUE NOT NULL,
     password VARCHAR NOT NULL,
+    -- TODO(OAuth): OAuth 계정은 password를 저장하지 않을 수 있으므로 nullable/더미값/별도 인증 테이블 정책 확정 후 스키마 반영.
     name VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -11,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_at TIMESTAMP WITH TIME ZONE,
     timezone VARCHAR,
     auth_provider VARCHAR(20),
+    -- TODO(OAuth): provider_user_id(예: Google sub/Kakao id) 컬럼 추가 및 (auth_provider, provider_user_id) UNIQUE 제약 도입.
     CONSTRAINT chk_role CHECK (role IN ('USER', 'ADMIN'))
     );
 

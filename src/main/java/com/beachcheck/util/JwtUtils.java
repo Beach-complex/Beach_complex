@@ -31,6 +31,7 @@ public class JwtUtils {
   }
 
   public String generateAccessToken(User user) {
+    // TODO(OAuth): OAuth 사용자 식별/권한 매핑을 위한 클레임(issuer, provider, providerUserId 등) 정책 확정.
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
 
@@ -85,5 +86,9 @@ public class JwtUtils {
 
   public long getAccessTokenExpiration() {
     return accessTokenExpiration / 1000; // Convert to seconds
+  }
+
+  public long getRefreshTokenExpirationMillis() {
+    return refreshTokenExpiration;
   }
 }

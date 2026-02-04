@@ -44,6 +44,7 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper)
       throws Exception {
+    // TODO(OAuth): OAuth2 로그인/콜백 경로 허용 및 필터 체인 구성 시 보안 정책 재정의.
     http.csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
