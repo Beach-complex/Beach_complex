@@ -39,5 +39,16 @@ public class AsyncConfig {
     return executor;
   }
 
+  @Bean(name = "emailTaskExecutor")
+  public Executor emailTaskExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(3);
+    executor.setMaxPoolSize(6);
+    executor.setQueueCapacity(50);
+    executor.setThreadNamePrefix("email-");
+    executor.initialize();
+    return executor;
+  }
+
   // TODO: 성능 테스트 후 가상 스레드 사용 검토
 }
