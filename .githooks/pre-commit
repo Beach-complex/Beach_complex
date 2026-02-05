@@ -5,10 +5,20 @@ set -e
 export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin"
 
 # Run Spotless auto-formatting (Java)
-if [ -f "./gradlew" ]; then
-  ./gradlew spotlessApply
+# - Java 파일이 스테이징된 경우에만 실행한다(문서/설정 변경 커밋 속도 개선).
+# - GRADLE_USER_HOME이 없으면 레포 내부로 지정해 훅이 홈 디렉토리에 의존하지 않도록 한다.
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)
+if echo "$STAGED_FILES" | grep -qE '\.java$'; then
+  if [ -f "./gradlew" ]; then
+    if [ -z "${GRADLE_USER_HOME:-}" ]; then
+      export GRADLE_USER_HOME="$PWD/.gradle-user-home"
+    fi
+    ./gradlew spotlessApply --no-daemon
+  else
+    echo "gradlew not found; skipping Spotless."
+  fi
 else
-  echo "gradlew not found; skipping Spotless."
+  echo "No staged Java changes; skipping Spotless."
 fi
 
 # Secret scan on staged changes
