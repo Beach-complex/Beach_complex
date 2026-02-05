@@ -31,7 +31,7 @@
 
 ## 상태
 
-[Proposed | Accepted | Deprecated | Superseded]
+[Proposed | Accepted | Deprecated | Superseded | Rejected]
 
 ## 컨텍스트
 이 결정을 하게 된 배경과 관련된 정보를 서술합니다.
