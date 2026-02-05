@@ -2,7 +2,7 @@
 
 ## 상태
 
-Proposed (미구현, PB-82에서 구현 예정)
+Rejected — ADR-008로 대체됨. 단계별 접근(Outbox + DB폴링워커 → Kafka)으로 방향 변경되어 RabbitMQ 단일 채택 근거가 유효하지 않음.
 
 ## 컨텍스트
 
@@ -17,14 +17,16 @@ Proposed (미구현, PB-82에서 구현 예정)
 - 향후 메시지 브로커 확장 가능성(Kafka 도입)을 고려하되, 현재 팀 규모와 운영 복잡도를 감당할 수 있어야 함
 - Spring 기반 백엔드 환경
 
-현재 이메일 인증 발송은 `@Async` + `@Retryable` + `@Recover` 로 처리 중(PB-79).
+현재 이메일 인증 발송은 `@Async` + `@Retryable` + `@Recover` 로 처리 중(PB-79)
 이메일도 Outbox 패턴 대상으로 확장하는지 여부는 PB-82에서 검토한다.
 
 현재 `@Async`는 스레드풀 큐(메모리)에만 의존하여 앱 크래시 시 이벤트가 유실되고,
-트랜잭션 커밋과 이벤트 발송 사이에 원자성이 보장되지 않는다.
-이를 해결하기 위해 Outbox 패턴(트랜잭션 내 이벤트 적재로 원자성 보장) +
-메시지 브로커(신뢰적 전달로 유실 방지) 구조가 필요했고,
-이때 사용할 메시지 브로커 선택이 요구되었다.
+트랜잭션 커밋과 이벤트 큐 등록 사이에 원자성이 보장되지 않는다.
+이를 해결하기 위해 Outbox 패턴을 도입한다. Outbox는 비즈니스 엔티티와 이벤트 기록(outbox_events)을
+같은 트랜잭션 내에서 저장하여, "커밋 성공 ↔ 이벤트 기록 완료"의 원자성을 보장한다.
+단, 외부 시스템(FCM/SMTP)까지의 실제 전달은 원자성 보장 범위 밖이다.
+Outbox 이후의 전달 구조로 "DB 폴링 워커(브로커 없음)"와 "메시지 브로커"를 검토했고,
+최종적으로 메시지 브로커(RabbitMQ)를 채택했다. 배제된 대안의 근거는 아래 대안 섹션을 참조한다.
 
 ## 결정
 
@@ -32,7 +34,8 @@ Proposed (미구현, PB-82에서 구현 예정)
 
 - Outbox 테이블에 이벤트를 DB 트랜잭션 내에서 기록
 - 별도 퍼블리셔가 Outbox 이벤트를 읽어 RabbitMQ에 publish
-- 컨슈머는 메시지를 처리 후 ACK 기반으로 처리 완료 보장
+- 컨슈머는 manual ACK 기반으로 at-least-once 전달을 보장하고
+ACK 미응답 시 재전달될 수 있으므로 멱등 처리가 필요
 - 푸시 발송 실패 시 재시도 / 지연 / DLQ 전략을 적용 가능하도록 설계
 
 ## 근거
@@ -66,9 +69,16 @@ Proposed (미구현, PB-82에서 구현 예정)
 - Exchange 타입: topic (향후 라우팅 확장 대응)
 - Queue: durable (큐 내구성 보장)
 - Message: persistent (브로커 장애 시 메시지 보존)
-- Consumer: manual ack (auto ack와 달리 제대로 처리된 경우에만 ack)
-- 시도: 최대 4회 (1회 처리 + 재시도 3회), exponential backoff
-- DLQ: 재시도 초과 시 이동, 모니터링 후 수동 재처리 또는 폐기
+- Publisher Confirm: `spring.rabbitmq.template.confirms=true`로 활성화하고
+OutboxPublisher는 Confirm ACK를 받은 후에만 OutboxEvent 상태를 PUBLISHED로 업데이트 (Confirm 미수신 시 PENDING 유지 → 다음 폴링에서 재시도)
+- Publisher Return: `spring.rabbitmq.template.mandatory=true`로 활성화하고  
+라우팅된 큐가 없거나 큐가 가득 차는 경우 메시지를 반환받아 로그 기록 후 PENDING 유지
+- Consumer: manual ack로 at-least-once 전달 보장. ACK 미응답 시 재전달될 수 있으므로 중복 전달이 발생할 수 있다 (멱등 처리는 위항 참조)
+- 재시도: DLQ + 지연 큐 패턴을 활용하고
+  Consumer 처리 실패 시 basicNack( requeue=false) → DLQ → 지연 큐(exponential backoff) → 원래 큐로 재전달
+- Consumer 코드에서 재시도 루프를 직접 구현하지 않고, DLX와 지연 큐 토폴로지를 설정하여 재전달 처리
+- 최대 횟수 정책: Consumer에서 `x-delivery-count`를 확인하여 최대 4회(1회 처리 + 재시도 3회) 초과 시 DLQ에 유지하고
+  이후 모니터링 후 수동 재처리 또는 폐기
 - Outbox 폴링 간격: 1초 (DB 부하 및 지연 최소화)
 - Outbox 폴링 동시성: `SELECT ... FOR UPDATE SKIP LOCKED`로 동일 이벤트의 중복 폴링 방지 (scale-out 시 여러 인스턴스가 동시에 폴링하는 경우 대응)
 - Consumer prefetch: `spring.rabbitmq.listener.simple.prefetch=10` (한 번에 가져오는 메시지 수 제한, 공평한 부하 분배 및 메모리 과부하 방지)
@@ -82,6 +92,15 @@ Proposed (미구현, PB-82에서 구현 예정)
 - DLQ 메시지 수동 재처리 도구(관리 API 또는 스크립트)
 
 ## 대안
+
+### Outbox + DB 폴링 워커 (브로커 없음)
+
+- 장점: 추가 인프라 불필요, 아키텍처 단순. Outbox만으로 at-least-once 보장 가능
+- 단점:
+  - 재시도/백오프/DLQ를 워커 내에서 직접 구현해야 함.
+  - 폴링과 처리가 같은 프로세스(App 인스턴스) 내에 결합되어 있어, 처리량을 늘리려면 App 인스턴스 자체를 스케일해야 한다. 
+  반면 RabbitMQ는 Publisher와 Consumer가 분리되어 Consumer만 독립적으로 스케일 가능하다.
+- 결론: 현재 규모에서는 충분하지만, 재시도 로직의 안정성과 향후 확장성 면에서 브로커 도입이 적합
 
 ### Redis Pub/Sub
 
