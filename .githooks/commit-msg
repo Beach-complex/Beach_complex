@@ -14,9 +14,10 @@ if grep -qE '^(Merge|Revert|fixup!|squash!)' "$MSG_FILE"; then
   exit 0
 fi
 
-if ! grep -qE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
+if ! grep -qiE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
   BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-  JIRA=$(echo "$BRANCH" | grep -oE 'PB-[0-9]+' | head -n1 || true)
+  # 브랜치명에 `pb-81`처럼 소문자로 들어온 케이스도 허용한다.
+  JIRA=$(echo "$BRANCH" | grep -oiE 'pb-[0-9]+' | head -n1 | tr '[:lower:]' '[:upper:]')
   if [ -n "$JIRA" ]; then
     TMP_FILE=$(mktemp)
     FIRST_LINE=$(head -n 1 "$MSG_FILE")
@@ -36,7 +37,7 @@ if ! grep -qE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
   fi
 fi
 
-if grep -qE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
+if grep -qiE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
   exit 0
 fi
 

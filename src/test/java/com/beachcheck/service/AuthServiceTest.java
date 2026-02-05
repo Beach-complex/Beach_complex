@@ -14,6 +14,8 @@ import com.beachcheck.dto.auth.request.SignUpRequestDto;
 import com.beachcheck.dto.auth.response.AuthResponseDto;
 import com.beachcheck.dto.auth.response.TokenResponseDto;
 import com.beachcheck.dto.auth.response.UserResponseDto;
+import com.beachcheck.exception.ApiException;
+import com.beachcheck.exception.ErrorCode;
 import com.beachcheck.repository.RefreshTokenRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.util.JwtUtils;
@@ -234,18 +236,23 @@ class AuthServiceTest {
   class RefreshTests {
 
     @Test
-    @DisplayName("토큰 없음 예외")
+    @DisplayName("토큰 없음 예외 (400 유지)")
     void refresh_tokenNotFound_throws() {
       // Given: 존재하지 않는 리프레시 토큰
       given(refreshTokenRepository.findByToken("missing")).willReturn(Optional.empty());
 
       // When: 토큰 갱신 호출
       assertThatThrownBy(() -> authService.refresh("missing"))
-          .isInstanceOf(EntityNotFoundException.class);
+          .isInstanceOfSatisfying(
+              ApiException.class,
+              ex -> {
+                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                assertThat(ex.getMessage()).contains("Invalid refresh token");
+              });
     }
 
     @Test
-    @DisplayName("취소된 토큰 예외")
+    @DisplayName("취소된 토큰 예외 (400 유지)")
     void refresh_revoked_throws() {
       // Given: 취소된 리프레시 토큰
       RefreshToken token = new RefreshToken();
@@ -256,12 +263,16 @@ class AuthServiceTest {
 
       // When: 토큰 갱신 호출
       assertThatThrownBy(() -> authService.refresh("revoked"))
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("폐기된 리프레시 토큰");
+          .isInstanceOfSatisfying(
+              ApiException.class,
+              ex -> {
+                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                assertThat(ex.getMessage()).contains("Invalid refresh token");
+              });
     }
 
     @Test
-    @DisplayName("만료된 토큰 예외")
+    @DisplayName("만료된 토큰 예외 (400 유지)")
     void refresh_expired_throws() {
       // Given: 만료된 리프레시 토큰
       RefreshToken token = new RefreshToken();
@@ -272,8 +283,12 @@ class AuthServiceTest {
 
       // When: 토큰 갱신 호출
       assertThatThrownBy(() -> authService.refresh("expired"))
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("만료된 리프레시 토큰");
+          .isInstanceOfSatisfying(
+              ApiException.class,
+              ex -> {
+                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                assertThat(ex.getMessage()).contains("Invalid refresh token");
+              });
     }
 
     @Test
