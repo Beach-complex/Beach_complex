@@ -12,15 +12,16 @@
 
 ## 3. 기술 결정 목록
 
-| ID | 주제 | 요약 결정                        | 상세 문서 |
-|------|------------------------|------------------------------|----------------------------------------------------|
-| ADR-001 | 백엔드 프레임워크 선택 | Spring Boot 사용               | [ADR-001-백엔드-프레임워크-선택](./ADR-001-backend-framework.md) |
-| ADR-002 | DB 선택 | PostgreSQL 사용                | (문서 추가 예정) |
-| ADR-003 | 인증 방식 | JWT 기반 토큰 인증                 | (문서 추가 예정) |
-| ADR-004 | 자동 코드 포맷팅 도입 | 자동 포맷팅 도구 도입                 | [ADR-004-Adopt-Automated-Code-Formatting](./ADR-004-Adopt-Automated-Code-Formatting.md) |
+| ID | 주제 | 요약 결정                        | 상세 문서                                                                                               |
+|------|------------------------|------------------------------|-----------------------------------------------------------------------------------------------------|
+| ADR-001 | 백엔드 프레임워크 선택 | Spring Boot 사용               | [ADR-001-백엔드-프레임워크-선택](./ADR-001-backend-framework.md)                                              |
+| ADR-002 | DB 선택 | PostgreSQL 사용                | (문서 추가 예정)                                                                                          |
+| ADR-003 | 인증 방식 | JWT 기반 토큰 인증                 | (문서 추가 예정)                                                                                          |
+| ADR-004 | 자동 코드 포맷팅 도입 | 자동 포맷팅 도구 도입                 | [ADR-004-Adopt-Automated-Code-Formatting](./ADR-004-Adopt-Automated-Code-Formatting.md)             |
 | ADR-005 | 예약 통합 테스트 전략 | 예약 도메인 통합 테스트 전략 수립          | [ADR-005-reservation-integration-test-strategy](./ADR-005-reservation-integration-test-strategy.md) |
-| ADR-006 | 작은 PR 리뷰·브랜치 전략 | Stacked PR 우선, 향후 Trunk+Flag | [adr-006-small-pr-review-branch-strategy](./adr-006-small-pr-review-branch-strategy.md) |
-| ADR-007 | 푸시 알림 이벤트 브로커 선택 | Outbox + RabbitMQ 채택         | [ADR-007-rabbitmq-push-notification-broker](./ADR-007-rabbitmq-push-notification-broker.md) |
+| ADR-006 | 작은 PR 리뷰·브랜치 전략 | Stacked PR 우선, 향후 Trunk+Flag | [adr-006-small-pr-review-branch-strategy](./adr-006-small-pr-review-branch-strategy.md)             |
+| ADR-007 | 푸시 알림 이벤트 브로커 선택 | RabbitMQ (Rejected — ADR-008로 대체) | [ADR-007-rabbitmq-push-notification-broker](./ADR-007-rabbitmq-push-notification-broker.md)         |
+| ADR-008 | Outbox + DB폴링워커 도입 | 알림 이벤트 유실 방지 패턴 적용 | [ADR-008-outbox-db-polling-worker](ADR-008-outbox-db-polling-worker.md)                             |
 
 ## 4. 기술 결정 문서 템플릿
 
