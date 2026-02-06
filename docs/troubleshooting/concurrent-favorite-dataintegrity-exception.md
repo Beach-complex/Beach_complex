@@ -2,6 +2,8 @@
 
 **컴포넌트:** db
 
+**작성일:** 2026-01-16
+
 | 날짜 | 작성자 | 변경 내용 |
 |:---:|:---:|:---|
 | 2026-01-13 | - | 초기 작성 |
@@ -463,4 +465,3 @@ public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolatio
 - `successCount = 1` (1개만 성공)
 - `failCount = 9` (9개는 IllegalStateException으로 처리)
 - DB에 1개만 저장됨
-

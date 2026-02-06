@@ -1,5 +1,7 @@
 # Windows Testcontainers 통합테스트 실패 (InvalidPathException / DockerClientProviderStrategy)
 
+**작성일:** 2026-01-26
+
 ## 문제 상황
 
 ### 통합테스트 실패 증상

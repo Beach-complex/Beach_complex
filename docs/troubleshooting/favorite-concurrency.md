@@ -2,6 +2,8 @@
 
 **컴포넌트:** api
 
+**작성일:** 2025-12-30
+
 ## 📋 문제 상황
 
 ### 증상
@@ -662,4 +664,4 @@ public UserFavorite addFavorite(User user, UUID beachId) {
 - **해결일**: 2025-12-30
 - **작성자**: Claude Sonnet 4.5
 - **검증**: 실제 프로덕션 환경 테스트 완료
-- **관련 문서**: troubleshooting-favorite-not-showing.md
+- **관련 문서**: favorite-not-showing.md

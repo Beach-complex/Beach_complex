@@ -5,12 +5,20 @@
 
 ---
 
+## 제목 규칙
+
+- 문서 제목(`# ...`)은 문제 요약만 작성합니다.
+- 제목에 날짜(`YYYY-MM-DD`)를 넣지 않습니다.
+
+---
+
 ## 0) 메타 정보
 
 - **Mode:** `DEV` / `OPS`
 - **Status:** `Open` / `In Progress` / `Resolved` / `Won't Fix`
 - **작성자:** <!-- 이름(@githubid) -->
-- **작성일:** <!-- YYYY-MM-DD -->
+- **해결 날짜(선택):** <!-- YYYY-MM-DD -->
+- **작성일(필수):** <!-- YYYY-MM-DD -->
 - **컴포넌트:** <!-- 예: api, auth, reservation, db, infra, batch -->
 - **환경:** <!-- local / dev / staging / prod -->
 - **관련 이슈/PR:** <!-- 링크 -->
