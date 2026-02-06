@@ -80,7 +80,7 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 ### 최신 케이스(Recent)
 
 <!-- INDEX:RECENT:START -->
-- [2026-02-05] [Testcontainers: Docker Desktop 29.x 환경에서 Docker API 버전 불일치로 통합테스트 실패(400) 해결](./2026-02-05-testcontainers-docker-api-version-400.md)
+- [2026-02-05] [Testcontainers: Docker Desktop 29.x 환경에서 Docker API 버전 불일치로 통합테스트 실패(400) 해결](./troubleshooting-testcontainers-docker-api-version-400.md)
 - [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./troubleshooting-git-hooks-gitleaks-windows.md)
 - [2026-01-16] [Troubleshooting toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./troubleshooting-cache-evict-not-applied-internal-call.md)
 - [2026-01-15] [GitHub Actions CI 통합테스트 실패 완전 해결 가이드](./troubleshooting-ci-emailsender-context-failure-complete.md)
@@ -120,7 +120,7 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 #### Infra / DevX (Docker, CI, tooling)
 <!-- INDEX:INFRA_DEVX:START -->
-- [2026-02-05] [Testcontainers: Docker Desktop 29.x 환경에서 Docker API 버전 불일치로 통합테스트 실패(400) 해결](./2026-02-05-testcontainers-docker-api-version-400.md)
+- [2026-02-05] [Testcontainers: Docker Desktop 29.x 환경에서 Docker API 버전 불일치로 통합테스트 실패(400) 해결](./troubleshooting-testcontainers-docker-api-version-400.md)
 - [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./troubleshooting-git-hooks-gitleaks-windows.md)
 - [2026-01-15] [GitHub Actions CI 통합테스트 실패 완전 해결 가이드](./troubleshooting-ci-emailsender-context-failure-complete.md)
 - [2026-01-06] [트러블슈팅: UTF-8 with BOM로 인한 충돌/오류 대응 기록](./troubleshooting-incoding.md)
