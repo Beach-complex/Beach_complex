@@ -9,7 +9,7 @@
 | Outbox + Kafka | 관측 스프린트 후 검토 | 별도 ADR 예정 |
 
 관련 문서:
-- [ADR-008 — Outbox + DB폴링워커 도입](../adr/ADR-008-outbox-db-polling-kafka-stepwise.md)
+- [ADR-008 — Outbox + DB폴링워커 도입](../adr/ADR-008-outbox-db-polling-worker.md)
 - [ADR-007 — RabbitMQ (Rejected)](../adr/ADR-007-rabbitmq-push-notification-broker.md)
 - [PB-82 로드맵](../PB-82-outbox-polling-kafka-roadmap.md)
 
