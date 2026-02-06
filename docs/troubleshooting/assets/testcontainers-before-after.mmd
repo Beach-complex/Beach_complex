@@ -1,0 +1,30 @@
+sequenceDiagram
+  participant Gradle
+  participant SpringTest as Spring Test Context
+  participant TC as Testcontainers
+  participant DJ as shaded docker-java
+  participant Docker as Docker Daemon(29.x)
+
+  rect rgb(255, 245, 245)
+    Note over Gradle,Docker: Before Fix
+    Gradle->>SpringTest: 테스트 시작
+    SpringTest->>TC: 컨테이너 초기화 요청
+    TC->>DJ: Docker client 생성
+    DJ->>Docker: GET /v1.41/info
+    Docker-->>DJ: 400 Bad Request
+    DJ-->>TC: Docker env invalid
+    TC-->>SpringTest: Bean 초기화 실패
+    SpringTest-->>Gradle: :test FAILED
+  end
+
+  rect rgb(240, 255, 245)
+    Note over Gradle,Docker: After Fix
+    Gradle->>SpringTest: 테스트 시작
+    SpringTest->>TC: 컨테이너 초기화 요청
+    TC->>DJ: Docker client 생성(api.version=1.44)
+    DJ->>Docker: GET /v1.44/info
+    Docker-->>DJ: 200 OK
+    DJ-->>TC: Docker env valid
+    TC-->>SpringTest: 컨테이너 기동 성공
+    SpringTest-->>Gradle: 통합테스트 수행/성공
+  end

@@ -1,0 +1,12 @@
+%%{init: {'theme':'base','themeVariables': {'fontSize':'22px'}}}%%
+flowchart TD
+  A["Gradle test 시작"] --> B["Spring Test Context 초기화"]
+  B --> C["Testcontainers Postgres 기동 시도"]
+  C --> D["DockerClientProviderStrategy"]
+  D --> E["shaded docker-java API 버전 결정"]
+  E --> F["GET /v1.41/info 호출"]
+  F --> G["Docker Engine 29.x (min API 1.44)"]
+  G --> H["HTTP 400 반환"]
+  H --> I["valid Docker environment 탐색 실패"]
+  I --> J["Context 초기화 실패"]
+  J --> K["통합테스트 및 :test 실패"]
