@@ -11,6 +11,10 @@ plugins {
 group = 'com.beachcheck'
 version = '0.0.1-SNAPSHOT'
 
+// Testcontainers 버전은 Spring Boot BOM(및 dependency-management 룰)로 고정되므로,
+// 필요 시 여기서 명시적으로 override 한다.
+ext['testcontainers.version'] = '1.20.5'
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -86,6 +90,9 @@ jacocoTestReport {
 tasks.withType(Test).configureEach {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    // Docker Desktop 29+는 Docker API 최소 버전이 1.44. Testcontainers 내부(shaded docker-java)의 기본값(1.41)이면
+    // /v1.41/* 호출에서 400이 나며 "valid Docker environment"를 못 찾는다.
+    systemProperty 'api.version', '1.44'
 }
 
 
