@@ -81,6 +81,12 @@ Outbox 패턴과 DB폴링워커(OutboxPublisher)를 도입하여 알림 이벤�
 - 단점: at-most-once 전달 모델로 Subscriber 다운/네트워크 단절 시 메시지 즉시 유실. 재시도, ACK, DLQ 개념 부재
 - 결론: 예약 확인/공지 알림이라는 유실 불가 도메인과 부합하지 않음
 
+### Redis Stream
+
+- 장점: Pub/Sub 대비 메시지 영속성 보장, Consumer Group 및 ACK 메커니즘 지원, Pending Entries List(PEL)를 통한 재시도 가능, RabbitMQ/Kafka 대비 경량
+- 단점: 인메모리 기반으로 RDB/AOF persistence 설정 필요 (완전한 durability 보장 어려움, RabbitMQ/Kafka는 기본적으로 디스크 저장), 클러스터 환경에서 데이터 분산 및 복제 복잡도, Kafka 대비 리플레이/다중 소비자 처리 기능 부족, Spring 통합 시 직접 구현 필요 (Spring Data Redis Streams 활용 가능하나 AMQP/Kafka 대비 생태계 미성숙)
+- 결론: RabbitMQ와 Kafka의 중간 수준 대안이나, 현재 단일 목적 규모에서는 DB폴링워커로 충분. Redis를 이미 캐시로 사용 중이라면 향후 검토 대상
+
 ### Kafka (현재 단계에서 미적용 — 향후 검토 대상)
 
 - 장점: 다중 독립 소비자 (Consumer Group), 리플레이 (offset 조작), 고처리량
