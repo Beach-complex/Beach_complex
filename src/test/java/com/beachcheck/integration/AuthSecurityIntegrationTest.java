@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.beachcheck.base.ApiTest;
 import com.beachcheck.domain.User;
+import com.beachcheck.fixture.ApiRoutes;
 import com.beachcheck.fixture.ReservationTestFixtures;
 import com.beachcheck.repository.UserRepository;
 import java.util.Map;
@@ -22,10 +23,6 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @DisplayName("인증/인가 최소 통합 테스트")
 class AuthSecurityIntegrationTest extends ApiTest {
-
-  private static final String LOGIN_URI = "/api/auth/login";
-  private static final String REFRESH_URI = "/api/auth/refresh";
-  private static final String ME_URI = "/api/auth/me";
 
   private static final String AUTHORIZATION_HEADER = "Authorization";
   private static final String BEARER_PREFIX = "Bearer ";
@@ -77,7 +74,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
 
       // When & Then: 인증 진입점에서 401 계약 응답
       mockMvc
-          .perform(get(ME_URI))
+          .perform(get(ApiRoutes.AUTH_ME))
           .andExpect(status().isUnauthorized())
           .andExpect(
               ReservationTestFixtures.problemDetail(
@@ -99,7 +96,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
 
       // Then: 보호 API 접근 성공
       mockMvc
-          .perform(get(ME_URI).header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken))
+          .perform(get(ApiRoutes.AUTH_ME).header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.id").value(user.getId().toString()))
           .andExpect(jsonPath("$.email").value(email))
@@ -119,7 +116,10 @@ class AuthSecurityIntegrationTest extends ApiTest {
 
       // When & Then: 요청 오류(400) 계약 응답
       mockMvc
-          .perform(post(REFRESH_URI).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+          .perform(
+              post(ApiRoutes.AUTH_REFRESH)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(requestBody))
           .andExpect(status().isBadRequest())
           .andExpect(
               ReservationTestFixtures.problemDetail(
@@ -132,7 +132,10 @@ class AuthSecurityIntegrationTest extends ApiTest {
 
     MvcResult loginResult =
         mockMvc
-            .perform(post(LOGIN_URI).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+            .perform(
+                post(ApiRoutes.AUTH_LOGIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$." + JSON_KEY_ACCESS_TOKEN).isNotEmpty())
             .andExpect(jsonPath("$." + JSON_KEY_REFRESH_TOKEN).isNotEmpty())
