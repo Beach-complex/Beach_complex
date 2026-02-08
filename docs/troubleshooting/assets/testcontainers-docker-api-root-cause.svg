@@ -1,16 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1700" viewBox="0 0 1000 1700">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
-      <path d="M0,0 L12,4 L0,8 Z" fill="#1f2937"/>
+      <path class="arrow-head" d="M0,0 L12,4 L0,8 Z"/>
     </marker>
     <style>
-      .title { font: 700 34px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: #111827; }
-      .box { fill: #f8fafc; stroke: #1f2937; stroke-width: 2.2; rx: 12; }
-      .warn { fill: #fff1f2; stroke: #b91c1c; stroke-width: 2.2; rx: 12; }
-      .ok { fill: #ecfdf5; stroke: #047857; stroke-width: 2.2; rx: 12; }
-      .text { font: 600 24px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: #111827; }
-      .small { font: 500 20px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: #374151; }
-      .line { stroke: #1f2937; stroke-width: 2.8; marker-end: url(#arrow); }
+      :root {
+        --title-color: #111827;
+        --text-color: #111827;
+        --small-color: #374151;
+        --box-fill: #f8fafc;
+        --box-stroke: #1f2937;
+        --warn-fill: #fff1f2;
+        --warn-stroke: #b91c1c;
+        --ok-fill: #ecfdf5;
+        --ok-stroke: #047857;
+        --line-color: #0ea5e9;
+        --line-outline: #082f49;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --title-color: #f9fafb;
+          --text-color: #f9fafb;
+          --small-color: #e5e7eb;
+          --box-fill: #1f2937;
+          --box-stroke: #cbd5e1;
+          --warn-fill: #3f1d24;
+          --warn-stroke: #fca5a5;
+          --ok-fill: #052e1d;
+          --ok-stroke: #6ee7b7;
+          --line-color: #38bdf8;
+          --line-outline: #e2e8f0;
+        }
+      }
+
+      .title { font: 700 34px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: var(--title-color); }
+      .box { fill: var(--box-fill); stroke: var(--box-stroke); stroke-width: 2.2; rx: 12; }
+      .warn { fill: var(--warn-fill); stroke: var(--warn-stroke); stroke-width: 2.2; rx: 12; }
+      .ok { fill: var(--ok-fill); stroke: var(--ok-stroke); stroke-width: 2.2; rx: 12; }
+      .text { font: 600 24px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: var(--text-color); }
+      .small { font: 500 20px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: var(--small-color); }
+      .line { stroke: var(--line-color); stroke-width: 3.6; stroke-linecap: round; marker-end: url(#arrow); }
+      .arrow-head { fill: var(--line-color); stroke: var(--line-outline); stroke-width: 1.2; }
     </style>
   </defs>
 

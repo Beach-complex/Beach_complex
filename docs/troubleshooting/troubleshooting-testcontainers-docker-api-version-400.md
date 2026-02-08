@@ -3,7 +3,7 @@
 ## 0) 메타 정보
 - **Mode:** `DEV`
 - **Status:** `Resolved`
-- **작성자:** `codex`
+- **작성자:** `박재홍(@PHJ2000)`
 - **작성일:** `2026-02-06`
 - **컴포넌트:** `infra, docker, ci, test`
 - **환경:** `local(WSL + Docker Desktop), ci`
@@ -13,8 +13,8 @@
 ---
 
 ## 1) 요약 (3줄)
-- **무슨 문제였나:** Testcontainers를 사용하는 통합 테스트가 Docker 환경 탐색 단계에서 실패해 `:test`가 실패했다.
-- **원인:** Docker Engine 29.x(최소 API 1.44) 환경에서 Testcontainers 내부 docker client가 `/v1.41/info`를 호출해 400이 발생했다.
+- **무슨 문제였나:** Docker 29.x 환경에서 Testcontainers 통합 테스트가 Docker 환경 탐색 단계에서 실패했다.
+- **원인:** Docker 29.x 업그레이드(최소 API 1.44) 이후 Testcontainers 버전과 테스트 JVM \api.version` 호환성을 사전 검증하는 가드레일이 없어 구버전 API 호출이 발생했고, 그 결과 Status 400으로 실패했다.`
 - **해결:** Testcontainers 버전을 `1.20.5`로 올리고, 테스트 JVM에 `api.version=1.44`를 고정 주입했다.
 
 ## 1-1) 학습 포인트 (최대 3개)
