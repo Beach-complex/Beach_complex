@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1700" viewBox="0 0 1000 1700">
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1700" viewBox="0 0 1000 1700">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
       <path class="arrow-head" d="M0,0 L12,4 L0,8 Z"/>
@@ -6,6 +6,8 @@
     <style>
       :root {
         --title-color: #111827;
+        --title-bg-fill: #f1f5f9;
+        --title-bg-stroke: #cbd5e1;
         --text-color: #111827;
         --small-color: #374151;
         --box-fill: #f8fafc;
@@ -21,6 +23,8 @@
       @media (prefers-color-scheme: dark) {
         :root {
           --title-color: #f9fafb;
+          --title-bg-fill: #0f172a;
+          --title-bg-stroke: #e2e8f0;
           --text-color: #f9fafb;
           --small-color: #e5e7eb;
           --box-fill: #1f2937;
@@ -34,6 +38,7 @@
         }
       }
 
+      .title-bg { fill: var(--title-bg-fill); stroke: var(--title-bg-stroke); stroke-width: 1.6; rx: 12; }
       .title { font: 700 34px 'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif; fill: var(--title-color); }
       .box { fill: var(--box-fill); stroke: var(--box-stroke); stroke-width: 2.2; rx: 12; }
       .warn { fill: var(--warn-fill); stroke: var(--warn-stroke); stroke-width: 2.2; rx: 12; }
@@ -45,6 +50,7 @@
     </style>
   </defs>
 
+  <rect x="120" y="14" width="760" height="56" class="title-bg"/>
   <text x="500" y="52" text-anchor="middle" class="title">시각화 1: 실패 메커니즘(원인 경로)</text>
 
   <rect x="120" y="95" width="760" height="88" class="box"/>
