@@ -1,5 +1,6 @@
 package com.beachcheck.integration;
 
+import static com.beachcheck.fixture.UserTestFixtures.createEmailLoginUser;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,15 +53,8 @@ class AuthSecurityIntegrationTest extends ApiTest {
   void setUp() {
     email = "auth_it_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
 
-    User testUser = new User();
-    testUser.setEmail(email);
-    testUser.setPassword(passwordEncoder.encode(RAW_PASSWORD));
-    testUser.setName(USER_NAME);
-    testUser.setRole(User.Role.USER);
-    testUser.setEnabled(true);
-    testUser.setAuthProvider(User.AuthProvider.EMAIL);
-
-    user = userRepository.save(testUser);
+    user =
+        userRepository.save(createEmailLoginUser(email, USER_NAME, RAW_PASSWORD, passwordEncoder));
   }
 
   @Nested

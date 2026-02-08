@@ -1,7 +1,7 @@
 package com.beachcheck.integration;
 
 import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;

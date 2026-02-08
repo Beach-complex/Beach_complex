@@ -4,7 +4,7 @@ import static com.beachcheck.fixture.CacheTestHelper.getCacheValue;
 import static com.beachcheck.fixture.CacheTestHelper.hasKey;
 import static com.beachcheck.fixture.CacheTestHelper.printCacheState;
 import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

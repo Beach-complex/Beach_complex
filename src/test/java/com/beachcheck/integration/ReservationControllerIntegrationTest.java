@@ -1,7 +1,7 @@
 package com.beachcheck.integration;
 
 import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;

@@ -1,8 +1,5 @@
 package com.beachcheck.fixture;
 
-import static com.beachcheck.domain.User.Role.USER;
-import static java.util.UUID.randomUUID;
-
 import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
 import com.beachcheck.domain.UserFavorite;
@@ -22,23 +19,15 @@ public class FavoriteTestFixtures {
   // ========== User Fixtures ==========
 
   public static User createUser() {
-    return createUser("test@example.com");
+    return UserTestFixtures.createUser();
   }
 
   public static User createUser(String email) {
-    return createUser(email, "Test User");
+    return UserTestFixtures.createUser(email);
   }
 
   public static User createUser(String email, String name) {
-    // TODO(OAuth): OAuth 사용자 테스트 케이스 추가 시 authProvider/providerId 및 password 정책 분리.
-    User user = new User();
-    user.setId(randomUUID());
-    user.setEmail(email);
-    user.setName(name);
-    user.setRole(USER);
-    user.setPassword("encoded_password");
-    user.setEnabled(true);
-    return user;
+    return UserTestFixtures.createUser(email, name);
   }
 
   // ========== Beach Fixtures ==========
