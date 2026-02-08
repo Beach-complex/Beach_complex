@@ -61,6 +61,7 @@ public class SecurityConfig {
                       problemDetail.setProperty("details", null);
 
                       response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                      response.setHeader("WWW-Authenticate", "Bearer");
                       response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
                       try {
                         objectMapper.writeValue(response.getWriter(), problemDetail);

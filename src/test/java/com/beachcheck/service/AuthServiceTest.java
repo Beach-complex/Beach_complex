@@ -246,7 +246,7 @@ class AuthServiceTest {
           .isInstanceOfSatisfying(
               ApiException.class,
               ex -> {
-                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_GRANT);
                 assertThat(ex.getMessage()).contains("Invalid refresh token");
               });
     }
@@ -266,7 +266,7 @@ class AuthServiceTest {
           .isInstanceOfSatisfying(
               ApiException.class,
               ex -> {
-                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_GRANT);
                 assertThat(ex.getMessage()).contains("Invalid refresh token");
               });
     }
@@ -286,7 +286,7 @@ class AuthServiceTest {
           .isInstanceOfSatisfying(
               ApiException.class,
               ex -> {
-                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_GRANT);
                 assertThat(ex.getMessage()).contains("Invalid refresh token");
               });
     }

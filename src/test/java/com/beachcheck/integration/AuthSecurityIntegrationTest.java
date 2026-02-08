@@ -123,7 +123,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
           .andExpect(status().isBadRequest())
           .andExpect(
               ReservationTestFixtures.problemDetail(
-                  objectMapper, 400, CODE_INVALID_REQUEST, CODE_INVALID_REQUEST));
+                  objectMapper, 400, "INVALID_GRANT", "INVALID_GRANT"));
     }
   }
 

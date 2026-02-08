@@ -138,7 +138,7 @@ public class AuthService {
   }
 
   private ApiException invalidRefreshToken() {
-    return new ApiException(ErrorCode.INVALID_REQUEST, "Invalid refresh token");
+    return new ApiException(ErrorCode.INVALID_GRANT, "Invalid refresh token");
   }
 
   public UserResponseDto getCurrentUser(UUID userId) {
