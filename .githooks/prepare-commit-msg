@@ -12,7 +12,8 @@ case "$SOURCE" in
 esac
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-JIRA=$(echo "$BRANCH" | grep -oE 'PB-[0-9]+' | head -n1 || true)
+# 브랜치명에 `pb-81`처럼 소문자로 들어온 케이스도 허용한다.
+JIRA=$(echo "$BRANCH" | grep -oiE 'pb-[0-9]+' | head -n1 | tr '[:lower:]' '[:upper:]')
 
 if [ -n "$JIRA" ] && ! grep -qE "(^|[^A-Z0-9])$JIRA([^A-Z0-9]|$)" "$MSG_FILE"; then
   TMP_FILE=$(mktemp)

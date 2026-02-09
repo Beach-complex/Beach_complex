@@ -37,6 +37,7 @@ public class JwtUtils {
 
     return Jwts.builder()
         .subject(user.getId().toString())
+        .claim("type", "access")
         .claim("email", user.getEmail()) // 페이로드 사용자 정의 속성 추가
         .claim("role", user.getRole().name())
         .issuedAt(now)
@@ -82,6 +83,21 @@ public class JwtUtils {
       log.info("JWT claims string is empty: {}", e.getMessage());
     }
     return false;
+  }
+
+  public boolean isAccessToken(String token) {
+    try {
+      Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+      String tokenType = claims.get("type", String.class);
+      // Backward compatibility: tokens without "type" are treated as access tokens.
+      return tokenType == null || "access".equals(tokenType);
+    } catch (SecurityException
+        | MalformedJwtException
+        | ExpiredJwtException
+        | UnsupportedJwtException
+        | IllegalArgumentException e) {
+      return false;
+    }
   }
 
   public long getAccessTokenExpiration() {

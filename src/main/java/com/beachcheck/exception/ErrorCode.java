@@ -22,6 +22,7 @@ public enum ErrorCode {
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication required"),
   VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed"),
   INVALID_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid request"),
+  INVALID_GRANT(HttpStatus.BAD_REQUEST, "INVALID_GRANT", "Invalid grant"),
   RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Resource not found"),
   INVALID_STATE(HttpStatus.CONFLICT, "INVALID_STATE", "Invalid state"),
   INTERNAL_SERVER_ERROR(

@@ -1,7 +1,11 @@
 package com.beachcheck.integration;
 
-import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.BeachTestFixtures.createBeachWithLocation;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueBeachCode;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueCode;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
+import static com.beachcheck.fixture.UserFavoriteTestFixtures.createFavorite;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
@@ -15,7 +19,6 @@ import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.BeachCondition;
 import com.beachcheck.domain.BeachFacility;
 import com.beachcheck.domain.User;
-import com.beachcheck.domain.UserFavorite;
 import com.beachcheck.fixture.ApiRoutes;
 import com.beachcheck.repository.BeachConditionRepository;
 import com.beachcheck.repository.BeachFacilityRepository;
@@ -126,10 +129,10 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
   @DisplayName("P0-04: 로그인 사용자 찜 여부(isFavorite) 반영")
   void detailScenario_isFavorite_reflectsUserFavorites() throws Exception {
     // Given: 로그인 사용자와 찜한 해수욕장, 찜하지 않은 해수욕장이 있다.
-    String uniqueEmail = "fav_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
-    User user = userRepository.save(createUser(uniqueEmail, "Favorite User"));
+    String uniqueUserEmail = uniqueEmail("fav");
+    User user = userRepository.save(createUser(uniqueUserEmail, "Favorite User"));
 
-    String codePrefix = "FAV_GROUP_" + UUID.randomUUID().toString().substring(0, 8);
+    String codePrefix = uniqueCode("FAV_GROUP");
     Beach favoriteBeach =
         createBeachWithLocation(codePrefix + "_A", "Favorite Beach", 129.1603, 35.1587);
     favoriteBeach.setStatus("normal");
@@ -139,7 +142,7 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
     otherBeach.setStatus("normal");
     otherBeach = beachRepository.save(otherBeach);
 
-    userFavoriteRepository.save(new UserFavorite(user, favoriteBeach));
+    userFavoriteRepository.save(createFavorite(user, favoriteBeach));
 
     // When: 인증된 상태로 beaches 조회 API를 호출한다.
     // Then: 해당 해수욕장이 isFavorite=true, 찜하지 않은 해수욕장은 false로 반환된다.
@@ -177,7 +180,7 @@ class BeachDetailScenarioIntegrationTest extends ApiTest {
   }
 
   private Beach createBeach(String name, String status) {
-    String code = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
+    String code = uniqueBeachCode();
     Beach beach = createBeachWithLocation(code, name, 129.1603, 35.1587);
     beach.setStatus(status);
     return beachRepository.save(beach);

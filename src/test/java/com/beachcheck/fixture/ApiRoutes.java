@@ -12,4 +12,8 @@ public final class ApiRoutes {
   public static final String BEACHES = "/api/beaches";
   public static final String BEACH_CONDITIONS_RECENT = "/api/beaches/{beachId}/conditions/recent";
   public static final String BEACH_FACILITIES = "/api/beaches/{beachId}/facilities";
+
+  public static final String AUTH_LOGIN = "/api/auth/login";
+  public static final String AUTH_REFRESH = "/api/auth/refresh";
+  public static final String AUTH_ME = "/api/auth/me";
 }

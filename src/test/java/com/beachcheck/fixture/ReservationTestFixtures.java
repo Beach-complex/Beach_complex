@@ -1,18 +1,15 @@
 package com.beachcheck.fixture;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.beachcheck.dto.reservation.ReservationCreateRequest;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultMatcher;
 
 public final class ReservationTestFixtures {
@@ -68,34 +65,6 @@ public final class ReservationTestFixtures {
       ObjectMapper objectMapper, String reservedAtUtc, String eventId) throws Exception {
     ReservationCreateRequest payload = new ReservationCreateRequest(reservedAtUtc, eventId);
     return objectMapper.writeValueAsString(payload);
-  }
-
-  public static ResultMatcher problemDetailStatus(ObjectMapper objectMapper, int expectedStatus) {
-    return result -> {
-      assertProblemDetailContentType(result);
-      JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
-      assertThat(json.path("status").asInt()).isEqualTo(expectedStatus);
-    };
-  }
-
-  public static ResultMatcher problemDetail(
-      ObjectMapper objectMapper, int expectedStatus, String expectedTitle, String expectedCode) {
-    return result -> {
-      assertProblemDetailContentType(result);
-      JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
-      assertThat(json.path("status").asInt()).isEqualTo(expectedStatus);
-      assertThat(json.path("title").asText()).isEqualTo(expectedTitle);
-      assertThat(json.path("code").asText()).isEqualTo(expectedCode);
-    };
-  }
-
-  private static void assertProblemDetailContentType(MvcResult result) {
-    String contentType = result.getResponse().getContentType();
-    if (contentType == null
-        || !MediaType.parseMediaType(contentType)
-            .isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)) {
-      throw new AssertionError("Unexpected content type: " + contentType);
-    }
   }
 
   public static String atUtc(Instant instant) {

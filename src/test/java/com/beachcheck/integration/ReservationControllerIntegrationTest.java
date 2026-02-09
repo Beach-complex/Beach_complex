@@ -1,7 +1,9 @@
 package com.beachcheck.integration;
 
-import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.BeachTestFixtures.createBeachWithLocation;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueBeachCode;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -13,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.beachcheck.base.ApiTest;
 import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
+import com.beachcheck.fixture.ApiErrorTestFixtures;
 import com.beachcheck.fixture.ApiRoutes;
 import com.beachcheck.fixture.ReservationTestFixtures;
 import com.beachcheck.repository.BeachRepository;
@@ -73,16 +76,13 @@ class ReservationControllerIntegrationTest extends ApiTest {
     when(clock.instant()).thenReturn(FIXED_NOW);
     when(clock.getZone()).thenReturn(ZoneOffset.UTC);
 
-    String uniqueCode = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
-    String uniqueEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    String uniqueCode = uniqueBeachCode();
+    String uniqueUserEmail = uniqueEmail("user");
 
     beach =
         beachRepository.save(createBeachWithLocation(uniqueCode, "Test Beach", 129.1603, 35.1587));
-    user = userRepository.save(createUser(uniqueEmail, "Test User"));
-    otherUser =
-        userRepository.save(
-            createUser(
-                "other_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com", "Other"));
+    user = userRepository.save(createUser(uniqueUserEmail, "Test User"));
+    otherUser = userRepository.save(createUser(uniqueEmail("other"), "Other"));
   }
 
   @Test
@@ -112,8 +112,11 @@ class ReservationControllerIntegrationTest extends ApiTest {
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 400, "RESERVATION_PAST_TIME", "RESERVATION_PAST_TIME"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper,
+                400,
+                "Reservation time must be >= now(UTC)",
+                "RESERVATION_PAST_TIME"));
   }
 
   @Test
@@ -129,8 +132,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isConflict())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 409, "RESERVATION_DUPLICATE", "RESERVATION_DUPLICATE"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 409, "Reservation already exists", "RESERVATION_DUPLICATE"));
   }
 
   @Test
@@ -143,8 +146,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
     performCreateReservation(authHeader(user), UUID.randomUUID(), requestBody)
         .andExpect(status().isNotFound())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 404, "BEACH_NOT_FOUND", "BEACH_NOT_FOUND"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 404, "Beach not found", "BEACH_NOT_FOUND"));
   }
 
   @Test
@@ -157,8 +160,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
     performCreateReservation(null, beach.getId(), requestBody)
         .andExpect(status().isUnauthorized())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 401, "UNAUTHORIZED", "UNAUTHORIZED"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
   }
 
   @Test
@@ -168,7 +171,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
-        .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
+        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400));
   }
 
   @Test
@@ -178,7 +181,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
-        .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
+        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400));
   }
 
   @Test
@@ -190,8 +193,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 400, "RESERVATION_INVALID_TIME", "RESERVATION_INVALID_TIME"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 400, "Invalid reservedAtUtc format", "RESERVATION_INVALID_TIME"));
   }
 
   @Test
@@ -215,7 +218,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     performCreateReservation(authHeader(user), "not-a-uuid", requestBody)
         .andExpect(status().isBadRequest())
-        .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
+        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400));
   }
 
   @Test
@@ -226,7 +229,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
             delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), "not-a-uuid")
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isBadRequest())
-        .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
+        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400));
   }
 
   @Test
@@ -263,8 +266,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNotFound())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 404, "RESOURCE_NOT_FOUND", "RESOURCE_NOT_FOUND"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 404, "Resource not found", "RESOURCE_NOT_FOUND"));
   }
 
   @Test
@@ -295,7 +298,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
 
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isBadRequest())
-        .andExpect(ReservationTestFixtures.problemDetailStatus(objectMapper, 400));
+        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400));
   }
 
   @Test
@@ -338,8 +341,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
         .perform(get(ApiRoutes.MY_RESERVATIONS))
         .andExpect(status().isUnauthorized())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 401, "UNAUTHORIZED", "UNAUTHORIZED"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
   }
 
   @Test
@@ -380,8 +383,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
                 .header("Authorization", authHeader(user)))
         .andExpect(status().isNotFound())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 404, "RESOURCE_NOT_FOUND", "RESOURCE_NOT_FOUND"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 404, "Resource not found", "RESOURCE_NOT_FOUND"));
   }
 
   @Test
@@ -391,8 +394,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
         .perform(delete(ApiRoutes.BEACH_RESERVATION, beach.getId(), UUID.randomUUID()))
         .andExpect(status().isUnauthorized())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 401, "UNAUTHORIZED", "UNAUTHORIZED"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
   }
 
   @Test
@@ -409,8 +412,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
                 .header("Authorization", authHeader(otherUser)))
         .andExpect(status().isNotFound())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 404, "RESOURCE_NOT_FOUND", "RESOURCE_NOT_FOUND"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 404, "Resource not found", "RESOURCE_NOT_FOUND"));
   }
 
   @Test
@@ -485,8 +488,8 @@ class ReservationControllerIntegrationTest extends ApiTest {
     performCreateReservation(authHeader(user), beach.getId(), requestBody)
         .andExpect(status().isUnauthorized())
         .andExpect(
-            ReservationTestFixtures.problemDetail(
-                objectMapper, 401, "UNAUTHORIZED", "UNAUTHORIZED"));
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
   }
 
   @Test
@@ -522,17 +525,14 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    String localBeachCode = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
-    String localUserEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    String localBeachCode = uniqueBeachCode();
+    String localUserEmail = uniqueEmail("user");
     Beach localBeach =
         beachRepository.save(
             createBeachWithLocation(localBeachCode, "Test Beach", 129.1603, 35.1587));
 
     User localUser = userRepository.save(createUser(localUserEmail, "Test User"));
-    User localOtherUser =
-        userRepository.save(
-            createUser(
-                "other_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com", "Other"));
+    User localOtherUser = userRepository.save(createUser(uniqueEmail("other"), "Other"));
 
     int threadCount = 10;
     ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -567,7 +567,7 @@ class ReservationControllerIntegrationTest extends ApiTest {
                       }
 
                       var json = objectMapper.readTree(responseBody);
-                      if (!"RESERVATION_DUPLICATE".equals(json.path("title").asText())
+                      if (!"Reservation already exists".equals(json.path("title").asText())
                           || !"RESERVATION_DUPLICATE".equals(json.path("code").asText())) {
                         throw new AssertionError("Unexpected problem detail: " + responseBody);
                       }

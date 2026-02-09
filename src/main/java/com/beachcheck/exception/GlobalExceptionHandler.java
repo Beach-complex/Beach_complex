@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
   public ProblemDetail handleApiException(ApiException ex) {
     ErrorCode code = ex.getErrorCode();
     ProblemDetail pd = ProblemDetail.forStatusAndDetail(code.getStatus(), ex.getMessage());
-    pd.setTitle(code.getCode());
+    pd.setTitle(code.getDefaultMessage());
     // ApiException 응답에서 code/details 키는 클라이언트 계약이므로 변경에 주의한다.
     pd.setProperty("code", code.getCode());
     pd.setProperty("details", ex.getDetails());
@@ -127,7 +127,7 @@ public class GlobalExceptionHandler {
       ProblemDetail pd =
           ProblemDetail.forStatusAndDetail(
               HttpStatus.CONFLICT, ErrorCode.RESERVATION_DUPLICATE.getDefaultMessage());
-      pd.setTitle(ErrorCode.RESERVATION_DUPLICATE.getCode());
+      pd.setTitle(ErrorCode.RESERVATION_DUPLICATE.getDefaultMessage());
       pd.setProperty("code", ErrorCode.RESERVATION_DUPLICATE.getCode());
       pd.setProperty("details", null);
       pd.setProperty("constraintName", DBConstraints.UK_RESERVATION_USER_BEACH_TIME);
