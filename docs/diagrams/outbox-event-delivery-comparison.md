@@ -11,7 +11,6 @@
 관련 문서:
 - [ADR-008 — Outbox + RDB 기반 Task Queue 도입](../adr/ADR-008-outbox-rdb-task-queue.md)
 - [ADR-007 — RabbitMQ (Rejected)](../adr/ADR-007-rabbitmq-push-notification-broker.md)
-- [PB-82 로드맵](../PB-82-outbox-polling-kafka-roadmap.md)
 
 ---
 
