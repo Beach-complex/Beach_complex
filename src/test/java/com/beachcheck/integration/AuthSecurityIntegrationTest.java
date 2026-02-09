@@ -4,6 +4,7 @@ import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static com.beachcheck.fixture.UserTestFixtures.createEmailLoginUser;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,6 +71,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
       mockMvc
           .perform(get(ApiRoutes.AUTH_ME))
           .andExpect(status().isUnauthorized())
+          .andExpect(header().string("WWW-Authenticate", BEARER_PREFIX.trim()))
           .andExpect(
               ReservationTestFixtures.problemDetail(
                   objectMapper, 401, CODE_UNAUTHORIZED, CODE_UNAUTHORIZED));
