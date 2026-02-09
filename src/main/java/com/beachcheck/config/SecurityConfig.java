@@ -39,7 +39,7 @@ public class SecurityConfig {
    *
    * <p>Policy: 401 + application/problem+json + code/title 일관성을 유지한다.
    *
-   * <p>Contract(Output): code=UNAUTHORIZED, title=인증이 필요합니다, status=401.
+   * <p>Contract(Output): code=UNAUTHORIZED, title=Authentication required, status=401.
    */
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper)
@@ -56,7 +56,7 @@ public class SecurityConfig {
                     (request, response, authException) -> {
                       ProblemDetail problemDetail =
                           ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "인증이 필요합니다");
-                      problemDetail.setTitle(ErrorCode.UNAUTHORIZED.getCode());
+                      problemDetail.setTitle(ErrorCode.UNAUTHORIZED.getDefaultMessage());
                       problemDetail.setProperty("code", ErrorCode.UNAUTHORIZED.getCode());
                       problemDetail.setProperty("details", null);
 

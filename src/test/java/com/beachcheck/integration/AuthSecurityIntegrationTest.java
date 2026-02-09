@@ -42,7 +42,8 @@ class AuthSecurityIntegrationTest extends ApiTest {
   private static final String RAW_PASSWORD = "Password1!";
 
   private static final String CODE_UNAUTHORIZED = "UNAUTHORIZED";
-  private static final String CODE_INVALID_REQUEST = "INVALID_REQUEST";
+  private static final String TITLE_UNAUTHORIZED = "Authentication required";
+  private static final String TITLE_INVALID_GRANT = "Invalid grant";
 
   @Autowired private UserRepository userRepository;
   @Autowired private PasswordEncoder passwordEncoder;
@@ -74,7 +75,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
           .andExpect(header().string("WWW-Authenticate", BEARER_PREFIX.trim()))
           .andExpect(
               ApiErrorTestFixtures.problemDetail(
-                  objectMapper, 401, CODE_UNAUTHORIZED, CODE_UNAUTHORIZED));
+                  objectMapper, 401, TITLE_UNAUTHORIZED, CODE_UNAUTHORIZED));
     }
   }
 
@@ -119,7 +120,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
           .andExpect(status().isBadRequest())
           .andExpect(
               ApiErrorTestFixtures.problemDetail(
-                  objectMapper, 400, "INVALID_GRANT", "INVALID_GRANT"));
+                  objectMapper, 400, TITLE_INVALID_GRANT, "INVALID_GRANT"));
     }
   }
 
