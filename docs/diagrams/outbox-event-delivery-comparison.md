@@ -4,18 +4,18 @@
 
 | 구조 | 상태 | 참조 |
 |:---|:---:|:---|
-| Outbox + DB폴링워커 | **현재 구현 대상** | ADR-008 |
+| Outbox + RDB 기반 Task Queue | **현재 구현 대상** | ADR-008 |
 | Outbox + RabbitMQ | Rejected | ADR-007 |
 | Outbox + Kafka | 관측 스프린트 후 검토 | 별도 ADR 예정 |
 
 관련 문서:
-- [ADR-008 — Outbox + DB폴링워커 도입](../adr/ADR-008-outbox-db-polling-worker.md)
+- [ADR-008 — Outbox + RDB 기반 Task Queue 도입](../adr/ADR-008-outbox-rdb-task-queue.md)
 - [ADR-007 — RabbitMQ (Rejected)](../adr/ADR-007-rabbitmq-push-notification-broker.md)
 - [PB-82 로드맵](../PB-82-outbox-polling-kafka-roadmap.md)
 
 ---
 
-## 1. Outbox + DB폴링워커
+## 1. Outbox + RDB 기반 Task Queue
 
 > 브로커 없음. OutboxPublisher가 직접 FCM으로 발송.
 > 재시도는 `next_retry_at` + exponential backoff 기반 폴링으로 자동 재시도.
@@ -127,7 +127,7 @@ flowchart TD
 
 ## 구조별 비교
 
-| 비교 포인트 | DB폴링워커 | RabbitMQ | Kafka |
+| 비교 포인트 | RDB 기반 Task Queue | RabbitMQ | Kafka |
 |:---|:---:|:---:|:---:|
 | 추가 인프라 | 없음 | RabbitMQ 컨테이너 | Kafka 클러스터 |
 | 발송 주체 | OutboxPublisher 직접 | Consumer | Consumer |

@@ -21,7 +21,7 @@
 | ADR-005 | 예약 통합 테스트 전략 | 예약 도메인 통합 테스트 전략 수립          | [ADR-005-reservation-integration-test-strategy](./ADR-005-reservation-integration-test-strategy.md) |
 | ADR-006 | 작은 PR 리뷰·브랜치 전략 | Stacked PR 우선, 향후 Trunk+Flag | [adr-006-small-pr-review-branch-strategy](./adr-006-small-pr-review-branch-strategy.md)             |
 | ADR-007 | 푸시 알림 이벤트 브로커 선택 | RabbitMQ (Rejected — ADR-008로 대체) | [ADR-007-rabbitmq-push-notification-broker](./ADR-007-rabbitmq-push-notification-broker.md)         |
-| ADR-008 | Outbox + DB폴링워커 도입 | 알림 이벤트 유실 방지 패턴 적용 | [ADR-008-outbox-db-polling-worker](ADR-008-outbox-db-polling-worker.md)                             |
+| ADR-008 | Outbox + RDB 기반 Task Queue 도입 | 알림 이벤트 유실 방지 패턴 적용 | [ADR-008-outbox-rdb-task-queue](ADR-008-outbox-rdb-task-queue.md)                             |
 
 ## 4. 기술 결정 문서 템플릿
 
