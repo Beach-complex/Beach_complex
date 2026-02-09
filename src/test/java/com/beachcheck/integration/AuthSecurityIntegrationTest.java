@@ -10,8 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.beachcheck.base.ApiTest;
 import com.beachcheck.domain.User;
+import com.beachcheck.fixture.ApiErrorTestFixtures;
 import com.beachcheck.fixture.ApiRoutes;
-import com.beachcheck.fixture.ReservationTestFixtures;
 import com.beachcheck.repository.UserRepository;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +73,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
           .andExpect(status().isUnauthorized())
           .andExpect(header().string("WWW-Authenticate", BEARER_PREFIX.trim()))
           .andExpect(
-              ReservationTestFixtures.problemDetail(
+              ApiErrorTestFixtures.problemDetail(
                   objectMapper, 401, CODE_UNAUTHORIZED, CODE_UNAUTHORIZED));
     }
   }
@@ -118,7 +118,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
                   .content(requestBody))
           .andExpect(status().isBadRequest())
           .andExpect(
-              ReservationTestFixtures.problemDetail(
+              ApiErrorTestFixtures.problemDetail(
                   objectMapper, 400, "INVALID_GRANT", "INVALID_GRANT"));
     }
   }
