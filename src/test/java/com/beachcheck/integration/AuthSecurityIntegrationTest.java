@@ -32,6 +32,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
   private static final String JSON_KEY_EMAIL = "email";
   private static final String JSON_KEY_PASSWORD = "password";
   private static final String JSON_KEY_ACCESS_TOKEN = "accessToken";
+  private static final String JSON_KEY_EXPIRES_IN = "expiresIn";
   private static final String JSON_KEY_REFRESH_TOKEN = "refreshToken";
   private static final String JSON_KEY_TOKEN_TYPE = "tokenType";
 
@@ -143,17 +144,17 @@ class AuthSecurityIntegrationTest extends ApiTest {
                       .content(refreshRequestBody))
               .andExpect(status().isOk())
               .andExpect(jsonPath("$." + JSON_KEY_ACCESS_TOKEN).isNotEmpty())
-              .andExpect(jsonPath("$." + JSON_KEY_REFRESH_TOKEN).isNotEmpty())
+              .andExpect(jsonPath("$." + JSON_KEY_EXPIRES_IN).isNumber())
               .andExpect(jsonPath("$." + JSON_KEY_TOKEN_TYPE).value(TOKEN_TYPE_BEARER))
               .andReturn();
 
-      Tokens refreshedTokens = parseTokens(refreshResult);
+      String refreshedAccessToken = parseAccessToken(refreshResult);
 
       // Then: 새 access token으로 보호 API 접근 성공
       mockMvc
           .perform(
               get(ApiRoutes.AUTH_ME)
-                  .header(AUTHORIZATION_HEADER, BEARER_PREFIX + refreshedTokens.accessToken()))
+                  .header(AUTHORIZATION_HEADER, BEARER_PREFIX + refreshedAccessToken))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.id").value(user.getId().toString()))
           .andExpect(jsonPath("$.email").value(email))
@@ -185,6 +186,13 @@ class AuthSecurityIntegrationTest extends ApiTest {
     return new Tokens(
         tokenPayload.path(JSON_KEY_ACCESS_TOKEN).asText(),
         tokenPayload.path(JSON_KEY_REFRESH_TOKEN).asText());
+  }
+
+  private String parseAccessToken(MvcResult tokenResult) throws Exception {
+    return objectMapper
+        .readTree(tokenResult.getResponse().getContentAsString())
+        .path(JSON_KEY_ACCESS_TOKEN)
+        .asText();
   }
 
   private String createLoginRequestBody(String loginEmail, String password) throws Exception {
