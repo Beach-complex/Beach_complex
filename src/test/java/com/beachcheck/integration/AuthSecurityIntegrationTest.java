@@ -51,6 +51,8 @@ class AuthSecurityIntegrationTest extends ApiTest {
   private User user;
   private String email;
 
+  private record Tokens(String accessToken, String refreshToken) {}
+
   @BeforeEach
   void setUp() {
     email = uniqueEmail("auth_it");
@@ -89,11 +91,13 @@ class AuthSecurityIntegrationTest extends ApiTest {
       // Given: 활성 사용자 계정
 
       // When: 로그인으로 액세스 토큰 발급
-      String accessToken = loginAndGetAccessToken();
+      Tokens tokens = loginAndGetTokens();
 
       // Then: 보호 API 접근 성공
       mockMvc
-          .perform(get(ApiRoutes.AUTH_ME).header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken))
+          .perform(
+              get(ApiRoutes.AUTH_ME)
+                  .header(AUTHORIZATION_HEADER, BEARER_PREFIX + tokens.accessToken()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.id").value(user.getId().toString()))
           .andExpect(jsonPath("$.email").value(email))
@@ -122,9 +126,42 @@ class AuthSecurityIntegrationTest extends ApiTest {
               ApiErrorTestFixtures.problemDetail(
                   objectMapper, 400, TITLE_INVALID_GRANT, "INVALID_GRANT"));
     }
+
+    @Test
+    @DisplayName("TC4: 리프레시 성공 후 새 토큰으로 내 정보 조회 시 200")
+    void refresh_thenMe_returnsOk() throws Exception {
+      // Given: 로그인으로 발급한 유효 토큰
+      Tokens loginTokens = loginAndGetTokens();
+      String refreshRequestBody = createRefreshRequestBody(loginTokens.refreshToken());
+
+      // When: refresh로 새 토큰 발급
+      MvcResult refreshResult =
+          mockMvc
+              .perform(
+                  post(ApiRoutes.AUTH_REFRESH)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(refreshRequestBody))
+              .andExpect(status().isOk())
+              .andExpect(jsonPath("$." + JSON_KEY_ACCESS_TOKEN).isNotEmpty())
+              .andExpect(jsonPath("$." + JSON_KEY_REFRESH_TOKEN).isNotEmpty())
+              .andExpect(jsonPath("$." + JSON_KEY_TOKEN_TYPE).value(TOKEN_TYPE_BEARER))
+              .andReturn();
+
+      Tokens refreshedTokens = parseTokens(refreshResult);
+
+      // Then: 새 access token으로 보호 API 접근 성공
+      mockMvc
+          .perform(
+              get(ApiRoutes.AUTH_ME)
+                  .header(AUTHORIZATION_HEADER, BEARER_PREFIX + refreshedTokens.accessToken()))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(user.getId().toString()))
+          .andExpect(jsonPath("$.email").value(email))
+          .andExpect(jsonPath("$.name").value(USER_NAME));
+    }
   }
 
-  private String loginAndGetAccessToken() throws Exception {
+  private Tokens loginAndGetTokens() throws Exception {
     String requestBody = createLoginRequestBody(email, RAW_PASSWORD);
 
     MvcResult loginResult =
@@ -139,10 +176,15 @@ class AuthSecurityIntegrationTest extends ApiTest {
             .andExpect(jsonPath("$." + JSON_KEY_TOKEN_TYPE).value(TOKEN_TYPE_BEARER))
             .andReturn();
 
-    return objectMapper
-        .readTree(loginResult.getResponse().getContentAsString())
-        .path(JSON_KEY_ACCESS_TOKEN)
-        .asText();
+    return parseTokens(loginResult);
+  }
+
+  private Tokens parseTokens(MvcResult tokenResult) throws Exception {
+    var tokenPayload = objectMapper.readTree(tokenResult.getResponse().getContentAsString());
+
+    return new Tokens(
+        tokenPayload.path(JSON_KEY_ACCESS_TOKEN).asText(),
+        tokenPayload.path(JSON_KEY_REFRESH_TOKEN).asText());
   }
 
   private String createLoginRequestBody(String loginEmail, String password) throws Exception {
