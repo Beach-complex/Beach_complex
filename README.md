@@ -143,7 +143,7 @@ Beach_complex/
 ### Prerequisites
 - JDK 21
 - Node.js 20+
-- Docker Desktop (DB 실행용)
+- Docker Desktop (DB 실행용, 통합테스트 권장: Engine 29.x+, API 1.44+)
 
 ### Installation
 
