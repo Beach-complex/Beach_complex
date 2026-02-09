@@ -1,5 +1,6 @@
 package com.beachcheck.integration;
 
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static com.beachcheck.fixture.UserTestFixtures.createEmailLoginUser;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,7 +13,6 @@ import com.beachcheck.fixture.ApiRoutes;
 import com.beachcheck.fixture.ReservationTestFixtures;
 import com.beachcheck.repository.UserRepository;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,7 +51,7 @@ class AuthSecurityIntegrationTest extends ApiTest {
 
   @BeforeEach
   void setUp() {
-    email = "auth_it_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    email = uniqueEmail("auth_it");
 
     user =
         userRepository.save(createEmailLoginUser(email, USER_NAME, RAW_PASSWORD, passwordEncoder));

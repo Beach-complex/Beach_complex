@@ -1,5 +1,6 @@
 package com.beachcheck.util;
 
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beachcheck.config.JwtProperties;
@@ -8,7 +9,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,10 +31,7 @@ class JwtUtilsTest {
 
     jwtUtils = new JwtUtils(properties);
 
-    user = new User();
-    user.setId(UUID.randomUUID());
-    user.setEmail("jwt-test@example.com");
-    user.setRole(User.Role.USER);
+    user = createUser("jwt-test@example.com", "JWT Test User");
   }
 
   @Test

@@ -1,6 +1,8 @@
 package com.beachcheck.integration;
 
-import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
+import static com.beachcheck.fixture.BeachTestFixtures.createBeachWithLocation;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueBeachCode;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -73,16 +75,13 @@ class ReservationControllerIntegrationTest extends ApiTest {
     when(clock.instant()).thenReturn(FIXED_NOW);
     when(clock.getZone()).thenReturn(ZoneOffset.UTC);
 
-    String uniqueCode = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
-    String uniqueEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    String uniqueCode = uniqueBeachCode();
+    String uniqueUserEmail = uniqueEmail("user");
 
     beach =
         beachRepository.save(createBeachWithLocation(uniqueCode, "Test Beach", 129.1603, 35.1587));
-    user = userRepository.save(createUser(uniqueEmail, "Test User"));
-    otherUser =
-        userRepository.save(
-            createUser(
-                "other_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com", "Other"));
+    user = userRepository.save(createUser(uniqueUserEmail, "Test User"));
+    otherUser = userRepository.save(createUser(uniqueEmail("other"), "Other"));
   }
 
   @Test
@@ -522,17 +521,14 @@ class ReservationControllerIntegrationTest extends ApiTest {
     String requestBody =
         ReservationTestFixtures.buildCreateRequestBody(objectMapper, reservedAtUtc, null);
 
-    String localBeachCode = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
-    String localUserEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    String localBeachCode = uniqueBeachCode();
+    String localUserEmail = uniqueEmail("user");
     Beach localBeach =
         beachRepository.save(
             createBeachWithLocation(localBeachCode, "Test Beach", 129.1603, 35.1587));
 
     User localUser = userRepository.save(createUser(localUserEmail, "Test User"));
-    User localOtherUser =
-        userRepository.save(
-            createUser(
-                "other_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com", "Other"));
+    User localOtherUser = userRepository.save(createUser(uniqueEmail("other"), "Other"));
 
     int threadCount = 10;
     ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
