@@ -2,7 +2,7 @@
 
 ## 상태
 
-Rejected — ADR-008로 대체됨. 단계별 접근(Outbox + DB폴링워커 → Kafka)으로 방향 변경되어 RabbitMQ 단일 채택 근거가 유효하지 않음.
+Rejected — ADR-008로 대체됨. 단계별 접근(Outbox + RDB 기반 Task Queue → Kafka)으로 방향 변경되어 RabbitMQ 단일 채택 근거가 유효하지 않음.
 
 ## 컨텍스트
 
@@ -25,7 +25,7 @@ Rejected — ADR-008로 대체됨. 단계별 접근(Outbox + DB폴링워커 → 
 이를 해결하기 위해 Outbox 패턴을 도입한다. Outbox는 비즈니스 엔티티와 이벤트 기록(outbox_events)을
 같은 트랜잭션 내에서 저장하여, "커밋 성공 ↔ 이벤트 기록 완료"의 원자성을 보장한다.
 단, 외부 시스템(FCM/SMTP)까지의 실제 전달은 원자성 보장 범위 밖이다.
-Outbox 이후의 전달 구조로 "DB 폴링 워커(브로커 없음)"와 "메시지 브로커"를 검토했고,
+Outbox 이후의 전달 구조로 "RDB 기반 Task Queue(브로커 없음)"와 "메시지 브로커"를 검토했고,
 최종적으로 메시지 브로커(RabbitMQ)를 채택했다. 배제된 대안의 근거는 아래 대안 섹션을 참조한다.
 
 ## 결정
@@ -93,7 +93,7 @@ OutboxPublisher는 Confirm ACK를 받은 후에만 OutboxEvent 상태를 PUBLISH
 
 ## 대안
 
-### Outbox + DB 폴링 워커 (브로커 없음)
+### Outbox + RDB 기반 Task Queue (브로커 없음)
 
 - 장점: 추가 인프라 불필요, 아키텍처 단순. Outbox만으로 at-least-once 보장 가능
 - 단점:
