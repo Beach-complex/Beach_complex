@@ -207,7 +207,7 @@ $content = Replace-Section $content "<!-- INDEX:RECENT:START -->" "<!-- INDEX:RE
 
 $hasComponentData = $entries | Where-Object { $_.Buckets.Count -gt 0 }
 if ($hasComponentData) {
-    $componentMap = @{
+    $componentMap = [ordered]@{
         "API_WEB" = "<!-- INDEX:API_WEB:START -->"
         "AUTH" = "<!-- INDEX:AUTH:START -->"
         "DB_MIGRATION" = "<!-- INDEX:DB_MIGRATION:START -->"
