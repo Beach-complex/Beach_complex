@@ -179,7 +179,7 @@ $entries = foreach ($file in $files) {
     }
 }
 
-$missingCreatedDate = $entries | Where-Object { -not $_.CreatedDate } | Sort-Object -Property File
+$missingCreatedDate = @($entries | Where-Object { -not $_.CreatedDate } | Sort-Object -Property File)
 if ($missingCreatedDate.Count -gt 0) {
     $missingList = ($missingCreatedDate | ForEach-Object { $_.File }) -join ", "
     Write-Warning "작성일 메타가 누락된 문서: $missingList"
