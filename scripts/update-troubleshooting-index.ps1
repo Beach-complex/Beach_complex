@@ -1,4 +1,17 @@
+<#
+.SYNOPSIS
+트러블슈팅 문서 인덱스(`docs/troubleshooting/docs-README.md`)를 자동 갱신합니다.
+
+.DESCRIPTION
+- 최신순 목록(RECENT)과 컴포넌트별 목록(API_WEB, AUTH, DB_MIGRATION, INFRA_DEVX)을 재생성합니다.
+- 문서의 `해결 날짜`를 우선 사용하고, 없으면 `작성일`을 사용합니다.
+- `TS_INDEX_STRICT_CREATED_DATE=1`이면 `작성일` 메타가 없는 문서가 있을 때 실패합니다.
+
+.NOTES
+인덱스 갱신은 `<!-- INDEX:*:START -->` / `<!-- INDEX:*:END -->` 토큰 사이를 치환하는 방식으로 동작합니다.
+#>
 $ErrorActionPreference = "Stop"
+# 엄격 모드: 작성일 메타가 누락된 문서가 있으면 예외를 발생시킵니다.
 $strictCreatedDate = $env:TS_INDEX_STRICT_CREATED_DATE -eq "1"
 
 function Normalize-Date {
@@ -114,6 +127,7 @@ function Replace-Section {
         throw "섹션 종료 토큰을 찾을 수 없습니다: $EndToken"
     }
 
+    # START/END 토큰은 유지하고, 토큰 사이의 본문만 교체합니다.
     $before = $Content.Substring(0, $startIndex + $StartToken.Length)
     $after = $Content.Substring($endIndex)
     return "$before`r`n$NewLines`r`n$after"
@@ -142,6 +156,7 @@ $entries = foreach ($file in $files) {
     $date = Extract-Date $content
     $createdDate = Extract-CreatedDate $content
 
+    # 날짜가 없으면 가장 오래된 값으로 처리하여 정렬 시 뒤로 보내기 위함입니다.
     $sortDate = if ($date) {
         [DateTime]::ParseExact($date, "yyyy-MM-dd", $null)
     } else {
@@ -169,6 +184,7 @@ if ($missingCreatedDate.Count -gt 0) {
     $missingList = ($missingCreatedDate | ForEach-Object { $_.File }) -join ", "
     Write-Warning "작성일 메타가 누락된 문서: $missingList"
     Write-Warning "권장: 각 문서 상단에 '**작성일:** YYYY-MM-DD'를 추가하세요."
+    # CI 등에서 품질 게이트로 사용할 수 있도록 엄격 모드에서는 실패 처리합니다.
     if ($strictCreatedDate) {
         throw "작성일 메타 누락 문서가 있습니다. (TS_INDEX_STRICT_CREATED_DATE=1)"
     }
@@ -198,6 +214,7 @@ if ($hasComponentData) {
         "INFRA_DEVX" = "<!-- INDEX:INFRA_DEVX:START -->"
     }
 
+    # 컴포넌트 태그가 매핑된 문서만 버킷별로 분류하여 섹션을 갱신합니다.
     foreach ($bucket in $componentMap.Keys) {
         $lines = $entries |
             Where-Object { $_.Buckets -contains $bucket } |
