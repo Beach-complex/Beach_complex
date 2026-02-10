@@ -19,7 +19,7 @@
    - 필수: `**작성일:** 2026-01-21`
    - 선택: `**해결 날짜:** 2026-01-21`
 4. 인덱스를 자동 갱신합니다.
-   - `powershell -ExecutionPolicy Bypass -File ./scripts/update-troubleshooting-index.ps1`
+   - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\update-troubleshooting-index.ps1`
 
 ---
 
@@ -71,7 +71,7 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
    - 날짜가 있으면 `[YYYY-MM-DD] [제목]`
    - 날짜가 없으면 `[제목]`
 5. 아래 스크립트를 실행하면 **최신 케이스/컴포넌트별 인덱스**가 자동 갱신됩니다.
-   - `powershell -ExecutionPolicy Bypass -File ./scripts/update-troubleshooting-index.ps1`
+   - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\update-troubleshooting-index.ps1`
    - 작성일 누락 문서는 경고로 표시됩니다.
    - 엄격 모드(누락 시 실패): `TS_INDEX_STRICT_CREATED_DATE=1`
 
