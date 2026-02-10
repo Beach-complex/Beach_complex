@@ -309,7 +309,7 @@ user.updateProfile(request.getNickname(), request.getProfileImageUrl());
 #### 개발 환경 요구사항
 - **JDK 21**
 - **Node.js 20+**
-- **Docker Desktop** (데이터베이스 실행용)
+- **Docker Desktop** (데이터베이스 실행용, 통합테스트 권장: Engine 29.x+, API 1.44+)
 - **Git**
 - **IDE**: IntelliJ IDEA (권장) 또는 VS Code
 
