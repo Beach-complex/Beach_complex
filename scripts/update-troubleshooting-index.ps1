@@ -106,12 +106,12 @@ function Replace-Section {
     )
     $startIndex = $Content.IndexOf($StartToken)
     if ($startIndex -lt 0) {
-        throw "Start token not found: $StartToken"
+        throw "섹션 시작 토큰을 찾을 수 없습니다: $StartToken"
     }
 
     $endIndex = $Content.IndexOf($EndToken, $startIndex)
     if ($endIndex -lt 0) {
-        throw "End token not found: $EndToken"
+        throw "섹션 종료 토큰을 찾을 수 없습니다: $EndToken"
     }
 
     $before = $Content.Substring(0, $startIndex + $StartToken.Length)
