@@ -17,4 +17,3 @@ class NoopEmailSenderTest {
         .doesNotThrowAnyException();
   }
 }
-

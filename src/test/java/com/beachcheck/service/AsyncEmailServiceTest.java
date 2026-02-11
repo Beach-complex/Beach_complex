@@ -43,7 +43,11 @@ class AsyncEmailServiceTest {
 
     then(emailSender)
         .should()
-        .send(fromCaptor.capture(), toCaptor.capture(), subjectCaptor.capture(), bodyCaptor.capture());
+        .send(
+            fromCaptor.capture(),
+            toCaptor.capture(),
+            subjectCaptor.capture(),
+            bodyCaptor.capture());
     assertThat(fromCaptor.getValue()).isEqualTo(FROM_EMAIL);
     assertThat(toCaptor.getValue()).isEqualTo(USER_EMAIL);
     assertThat(subjectCaptor.getValue()).isEqualTo(SUBJECT);

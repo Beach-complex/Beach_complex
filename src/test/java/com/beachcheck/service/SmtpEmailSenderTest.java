@@ -66,4 +66,3 @@ class SmtpEmailSenderTest {
     assertThat(messageCaptor.getValue().getFrom()).isEqualTo("sender@test.com");
   }
 }
-

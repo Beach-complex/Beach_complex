@@ -127,7 +127,9 @@ class EmailVerificationServiceTest {
     void verifyToken_used_throws() {
       EmailVerificationToken token =
           new EmailVerificationToken(
-              user(USER_EMAIL, false), sha256(RAW_TOKEN), Instant.now().plusSeconds(VALID_TOKEN_LIFETIME_SECONDS));
+              user(USER_EMAIL, false),
+              sha256(RAW_TOKEN),
+              Instant.now().plusSeconds(VALID_TOKEN_LIFETIME_SECONDS));
       token.markUsed();
       given(tokenRepository.findByToken(any(String.class))).willReturn(Optional.of(token));
 
@@ -143,7 +145,9 @@ class EmailVerificationServiceTest {
     void verifyToken_expired_throws() {
       EmailVerificationToken token =
           new EmailVerificationToken(
-              user(USER_EMAIL, false), sha256(RAW_TOKEN), Instant.now().minusSeconds(EXPIRED_TOKEN_SECONDS_AGO));
+              user(USER_EMAIL, false),
+              sha256(RAW_TOKEN),
+              Instant.now().minusSeconds(EXPIRED_TOKEN_SECONDS_AGO));
       given(tokenRepository.findByToken(any(String.class))).willReturn(Optional.of(token));
 
       assertThatThrownBy(() -> service.verifyToken(RAW_TOKEN))
@@ -204,10 +208,14 @@ class EmailVerificationServiceTest {
       User user = user(USER_EMAIL, false);
       EmailVerificationToken last =
           new EmailVerificationToken(
-              user, sha256(OLD_TOKEN), Instant.now().plus(RECENT_TOKEN_EXPIRES_IN_MINUTES, ChronoUnit.MINUTES));
+              user,
+              sha256(OLD_TOKEN),
+              Instant.now().plus(RECENT_TOKEN_EXPIRES_IN_MINUTES, ChronoUnit.MINUTES));
       // createdAt setter가 없어, 쿨다운(최근 생성) 상황을 테스트에서만 강제로 구성한다.
       ReflectionTestUtils.setField(
-          last, "createdAt", Instant.now().minus(RECENT_TOKEN_CREATED_MINUTES_AGO, ChronoUnit.MINUTES));
+          last,
+          "createdAt",
+          Instant.now().minus(RECENT_TOKEN_CREATED_MINUTES_AGO, ChronoUnit.MINUTES));
 
       given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.of(user));
       given(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId()))
@@ -217,7 +225,9 @@ class EmailVerificationServiceTest {
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("최근에 발송");
 
-      then(tokenRepository).should(never()).markAllUnusedAsUsed(any(UUID.class), any(Instant.class));
+      then(tokenRepository)
+          .should(never())
+          .markAllUnusedAsUsed(any(UUID.class), any(Instant.class));
       assertNoUserOrTokenSaveOperations();
       then(eventPublisher).should(never()).publishEvent(any());
     }
@@ -227,7 +237,8 @@ class EmailVerificationServiceTest {
     void resendVerification_success_marksOldAndPublishesEvent() {
       User user = user(USER_EMAIL, false);
       given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.of(user));
-      given(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())).willReturn(Optional.empty());
+      given(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId()))
+          .willReturn(Optional.empty());
 
       service.resendVerification(USER_EMAIL);
 
