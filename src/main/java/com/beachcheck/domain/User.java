@@ -87,10 +87,11 @@ public class User implements UserDetails {
    * <p>Why: 사용자 생성 로직을 도메인에 캡슐화하여 일관된 초기 상태 보장
    *
    * <p>Policy:
+   *
    * <ul>
-   *   <li>role은 기본값 USER</li>
-   *   <li>enabled는 기본값 true</li>
-   *   <li>createdAt, updatedAt은 @PrePersist에서 자동 설정</li>
+   *   <li>role은 기본값 USER
+   *   <li>enabled는 기본값 true
+   *   <li>createdAt, updatedAt은 @PrePersist에서 자동 설정
    * </ul>
    *
    * <p>Contract(Input): email (unique), password, name은 NULL 불가

@@ -1,19 +1,18 @@
 package com.beachcheck.domain;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.FAILED_PERMANENT;
+import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.FAILED_RETRIABLE;
+import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.PENDING;
+import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.SENT;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-
-import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.FAILED_PERMANENT;
-import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.FAILED_RETRIABLE;
-import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.SENT;
-import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.PENDING;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /** OutboxEvent 엔티티 상태 전이 메서드 테스트 */
 @DisplayName("OutboxEvent 상태 전이 테스트")
