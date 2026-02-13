@@ -3,6 +3,7 @@ package com.beachcheck.domain;
 import jakarta.persistence.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "outbox_events")
@@ -32,7 +33,7 @@ public class OutboxEvent {
   private Long id;
 
   @Column(nullable = false)
-  private Long notificationId;
+  private UUID notificationId;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
@@ -63,6 +64,34 @@ public class OutboxEvent {
     }
   }
 
+  /**
+   * PENDING 상태의 OutboxEvent 생성
+   *
+   * <p>Why: OutboxEvent 생성 로직을 도메인에 캡슐화하여 일관된 초기 상태 보장
+   *
+   * <p>Policy:
+   * <ul>
+   *   <li>생성 시점에는 항상 PENDING 상태</li>
+   *   <li>retryCount는 0으로 초기화</li>
+   *   <li>nextRetryAt은 @PrePersist에서 현재 시각으로 설정 (즉시 처리)</li>
+   * </ul>
+   *
+   * <p>Contract(Input): notificationId, eventType은 NULL 불가. payload는 NULL 가능.
+   *
+   * <p>Contract(Output): status=PENDING, retryCount=0인 OutboxEvent 인스턴스
+   */
+  public static OutboxEvent createPending(
+      UUID notificationId, OutboxEventType eventType, String payload) {
+    OutboxEvent event = new OutboxEvent();
+    event.setNotificationId(notificationId);
+    event.setStatus(OutboxEventStatus.PENDING);
+    event.setEventType(eventType);
+    event.setPayload(payload);
+    event.setRetryCount(0);
+    // nextRetryAt, createdAt은 @PrePersist에서 설정
+    return event;
+  }
+
   // 상태 전이 메서드
   public void markAsSent() {
     this.status = OutboxEventStatus.SENT;
@@ -86,11 +115,11 @@ public class OutboxEvent {
     return id;
   }
 
-  public Long getNotificationId() {
+  public UUID getNotificationId() {
     return notificationId;
   }
 
-  public void setNotificationId(Long notificationId) {
+  public void setNotificationId(UUID notificationId) {
     this.notificationId = notificationId;
   }
 
