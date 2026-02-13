@@ -1,6 +1,14 @@
 package com.beachcheck.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -70,10 +78,11 @@ public class OutboxEvent {
    * <p>Why: OutboxEvent 생성 로직을 도메인에 캡슐화하여 일관된 초기 상태 보장
    *
    * <p>Policy:
+   *
    * <ul>
-   *   <li>생성 시점에는 항상 PENDING 상태</li>
-   *   <li>retryCount는 0으로 초기화</li>
-   *   <li>nextRetryAt은 @PrePersist에서 현재 시각으로 설정 (즉시 처리)</li>
+   *   <li>생성 시점에는 항상 PENDING 상태
+   *   <li>retryCount는 0으로 초기화
+   *   <li>nextRetryAt은 @PrePersist에서 현재 시각으로 설정 (즉시 처리)
    * </ul>
    *
    * <p>Contract(Input): notificationId, eventType은 NULL 불가. payload는 NULL 가능.
