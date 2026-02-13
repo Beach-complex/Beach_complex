@@ -7,26 +7,28 @@
 ## 빠른 시작
 
 1. 템플릿을 복사해서 새 문서를 만듭니다.
-   - 템플릿: [`troubleshooting-template.md`](./troubleshooting-template.md)
+   - 템플릿: [`template.md`](./template.md)
 
 2. 새 트러블슈팅 문서를 `docs/troubleshooting/` 아래에 추가합니다.
-   - 파일명 규칙: `YYYY-MM-DD-짧은-제목.md`
-   - 예: `2026-01-21-db-migration-failure.md`
+   - 파일명 규칙: 의미가 드러나는 slug(`kebab-case`) 권장
+   - `troubleshooting-` 접두어/날짜 접두어는 쓰지 않습니다.
+   - 예: `db-migration-failure.md`
 
-3. 이 인덱스(`docs/troubleshooting/docs-README.md`)의 **Troubleshooting Index**에 새 문서 링크를 추가합니다.
-4. 날짜 기준 자동 정렬이 필요하면 스크립트를 실행합니다.
-   - `powershell -ExecutionPolicy Bypass -File ./scripts/update-troubleshooting-index.ps1`
-5. 컴포넌트별 자동 분류를 쓰려면 문서에 메타 정보를 넣습니다.
+3. 문서 메타 정보를 채웁니다.
    - 예: `**컴포넌트:** api, auth, db, infra`
+   - 필수: `**작성일:** 2026-01-21`
+   - 선택: `**해결 날짜:** 2026-01-21`
+4. 인덱스를 자동 갱신합니다.
+   - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\update-troubleshooting-index.ps1`
 
 ---
 
 ## 디렉토리 구조(권장)
 
 - `docs/troubleshooting/docs-README.md` : 이 문서(인덱스/가이드)
-- `docs/troubleshooting/troubleshooting-template.md` : 트러블슈팅 템플릿(원본)
+- `docs/troubleshooting/template.md` : 트러블슈팅 템플릿(원본)
 - `docs/troubleshooting/` : 실제 트러블슈팅 기록(케이스 모음)
-  - `YYYY-MM-DD-*.md`
+  - `*.md` (의미 기반 slug 권장)
 
 ---
 
@@ -60,9 +62,18 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 1. 각 문서 상단에 `**컴포넌트:**` 메타를 넣습니다.
    - 예: `**컴포넌트:** api` 또는 `**컴포넌트:** db, infra`
-2. 해결 날짜는 `해결 날짜: YYYY-MM-DD` 형식으로 적어두면 정렬이 정확합니다.
-3. 아래 스크립트를 실행하면 **최신 케이스/컴포넌트별 인덱스**가 자동 갱신됩니다.
-   - `powershell -ExecutionPolicy Bypass -File ./scripts/update-troubleshooting-index.ps1`
+2. 날짜 메타 규칙:
+   - `작성일`은 필수입니다.
+   - `해결 날짜`는 선택입니다(해결된 케이스에서 권장).
+3. 날짜 정렬은 `해결 날짜`를 우선 사용하고, 없으면 `작성일`을 사용합니다.
+   - 날짜 포맷: `YYYY-MM-DD` 권장 (`YYYY/M/D`, `YYYY.MM.DD`도 인식)
+4. 인덱스 표기 규칙:
+   - 날짜가 있으면 `[YYYY-MM-DD] [제목]`
+   - 날짜가 없으면 `[제목]`
+5. 아래 스크립트를 실행하면 **최신 케이스/컴포넌트별 인덱스**가 자동 갱신됩니다.
+   - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\update-troubleshooting-index.ps1`
+   - 작성일 누락 문서는 경고로 표시됩니다.
+   - 엄격 모드(누락 시 실패): `TS_INDEX_STRICT_CREATED_DATE=1`
 
 지원 컴포넌트 키워드(자동 분류):
 - `api`, `web` -> API / Web
@@ -74,24 +85,27 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 ## Troubleshooting Index
 
-> 새 문서를 추가하면 아래 목록에 링크를 추가합니다.  
+> 새 문서를 추가한 뒤 스크립트를 실행하면 아래 목록이 자동 갱신됩니다.  
 > 정렬 규칙: 기본은 **최신 날짜가 위**.
 
 ### 최신 케이스(Recent)
 
 <!-- INDEX:RECENT:START -->
-- [2026-02-05] [Testcontainers: Docker Desktop 29.x 환경에서 Docker API 버전 불일치로 통합테스트 실패(400) 해결](./troubleshooting-testcontainers-docker-api-version-400.md)
-- [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./troubleshooting-git-hooks-gitleaks-windows.md)
-- [2026-01-16] [Troubleshooting toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./troubleshooting-cache-evict-not-applied-internal-call.md)
-- [2026-01-15] [GitHub Actions CI 통합테스트 실패 완전 해결 가이드](./troubleshooting-ci-emailsender-context-failure-complete.md)
-- [2026-01-14] [ExecutorService.submit() 예외 처리 문제 해결](./troubleshooting-executorservice-exception-handling.md)
-- [2026-01-13] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./troubleshooting-concurrent-favorite-dataintegrity-exception.md)
-- [2026-01-13] [통합 테스트 UNIQUE 제약 충돌 해결](./troubleshooting-integration-test-unique-constraint-conflict.md)
-- [2026-01-12] [통합 테스트 동시성 검증 실패 트러블슈팅 (PB-64)](./troubleshooting-integration-test-transaction-isolation.md)
-- [2026-01-06] [트러블슈팅: UTF-8 with BOM로 인한 충돌/오류 대응 기록](./troubleshooting-incoding.md)
-- [2025-12-30] [트러블슈팅: 찜하기 동시성 문제 (Race Condition)](./troubleshooting-favorite-concurrency.md)
-- [2025-12-30] [트러블슈팅: 찜 목록이 프론트엔드에 표시되지 않는 문제](./troubleshooting-favorite-not-showing.md)
-- [2024-12-29] [Git Merge Conflict 트러블슈팅 가이드 - PB-42 Favorite 기능](./troubleshooting-merge-conflict-PB-42.md)
+- [2026-01-26] [Windows Testcontainers 통합테스트 실패 (InvalidPathException / DockerClientProviderStrategy)](./testcontainers-windows-path-docker.md)
+- [2026-01-26] [라인엔딩 변경으로 파일이 수정된 것처럼 보이는 문제](./line-endings-autocrlf.md)
+- [2026-01-26] [예약 동시성 중복 예약이 400으로 내려오는 문제](./reservation-concurrency-duplicate-409.md)
+- [2026-01-26] [통합 테스트 401 계약 불일치 + ProblemDetail 검증 기준 정리](./integration-test-401-problemdetail-contract.md)
+- [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./git-hooks-gitleaks-windows.md)
+- [2026-01-16] [\[Troubleshooting\] toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./cache-evict-not-applied-internal-call.md)
+- [2026-01-16] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./concurrent-favorite-dataintegrity-exception.md)
+- [2026-01-16] [통합 테스트 UNIQUE 제약 충돌 해결](./integration-test-unique-constraint-conflict.md)
+- [2026-01-15] [GitHub Actions CI 통합테스트 실패 완전 해결 가이드](./ci-emailsender-context-failure-complete.md)
+- [2026-01-14] [ExecutorService.submit() 예외 처리 문제 해결](./executorservice-exception-handling.md)
+- [2026-01-12] [통합 테스트 동시성 검증 실패 트러블슈팅 (PB-64)](./integration-test-transaction-isolation.md)
+- [2026-01-08] [트러블슈팅: UTF-8 with BOM로 인한 충돌/오류 대응 기록](./incoding.md)
+- [2025-12-30] [트러블슈팅: 찜 목록이 프론트엔드에 표시되지 않는 문제](./favorite-not-showing.md)
+- [2025-12-30] [트러블슈팅: 찜하기 동시성 문제 (Race Condition)](./favorite-concurrency.md)
+- [2024-12-29] [Git Merge Conflict 트러블슈팅 가이드 - PB-42 Favorite 기능](./merge-conflict-PB-42.md)
 <!-- INDEX:RECENT:END -->
 
 ### 컴포넌트별(선택)
@@ -100,10 +114,10 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 #### API / Web
 <!-- INDEX:API_WEB:START -->
-- [2026-01-16] [Troubleshooting toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./troubleshooting-cache-evict-not-applied-internal-call.md)
-- [2026-01-14] [ExecutorService.submit() 예외 처리 문제 해결](./troubleshooting-executorservice-exception-handling.md)
-- [2025-12-30] [트러블슈팅: 찜하기 동시성 문제 (Race Condition)](./troubleshooting-favorite-concurrency.md)
-- [2025-12-30] [트러블슈팅: 찜 목록이 프론트엔드에 표시되지 않는 문제](./troubleshooting-favorite-not-showing.md)
+- [2026-01-16] [\[Troubleshooting\] toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./cache-evict-not-applied-internal-call.md)
+- [2026-01-14] [ExecutorService.submit() 예외 처리 문제 해결](./executorservice-exception-handling.md)
+- [2025-12-30] [트러블슈팅: 찜 목록이 프론트엔드에 표시되지 않는 문제](./favorite-not-showing.md)
+- [2025-12-30] [트러블슈팅: 찜하기 동시성 문제 (Race Condition)](./favorite-concurrency.md)
 <!-- INDEX:API_WEB:END -->
 
 #### Auth
@@ -113,9 +127,9 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 #### DB / Migration
 <!-- INDEX:DB_MIGRATION:START -->
-- [2026-01-13] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./troubleshooting-concurrent-favorite-dataintegrity-exception.md)
-- [2026-01-13] [통합 테스트 UNIQUE 제약 충돌 해결](./troubleshooting-integration-test-unique-constraint-conflict.md)
-- [2026-01-12] [통합 테스트 동시성 검증 실패 트러블슈팅 (PB-64)](./troubleshooting-integration-test-transaction-isolation.md)
+- [2026-01-16] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./concurrent-favorite-dataintegrity-exception.md)
+- [2026-01-16] [통합 테스트 UNIQUE 제약 충돌 해결](./integration-test-unique-constraint-conflict.md)
+- [2026-01-12] [통합 테스트 동시성 검증 실패 트러블슈팅 (PB-64)](./integration-test-transaction-isolation.md)
 <!-- INDEX:DB_MIGRATION:END -->
 
 #### Infra / DevX (Docker, CI, tooling)
@@ -144,3 +158,6 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 - 템플릿 수정은 신중하게: 템플릿은 “작성 부담”이 늘면 바로 안 쓰게 됩니다.
 - 케이스 문서는 삭제하지 않기: 오래된 케이스도 검색 가치가 있습니다.
 - 케이스가 많아지면(예: 30개 이상) 컴포넌트별 인덱스를 “필수”로 운영합니다.
+
+
+
