@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HexFormat;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,11 +139,7 @@ public class EmailVerificationService {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-      StringBuilder sb = new StringBuilder(hashed.length * 2);
-      for (byte b : hashed) {
-        sb.append(String.format("%02x", b & 0xff));
-      }
-      return sb.toString();
+      return HexFormat.of().formatHex(hashed);
     } catch (NoSuchAlgorithmException ex) {
       throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", ex);
     }

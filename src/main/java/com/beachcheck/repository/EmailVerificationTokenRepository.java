@@ -2,6 +2,7 @@ package com.beachcheck.repository;
 
 import com.beachcheck.domain.EmailVerificationToken;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,13 @@ public interface EmailVerificationTokenRepository
   Optional<EmailVerificationToken> findByToken(String token);
 
   Optional<EmailVerificationToken> findTopByUserIdOrderByCreatedAtDesc(UUID userId);
+
+  Optional<EmailVerificationToken> findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(
+      UUID userId);
+
+  @Modifying(clearAutomatically = true)
+  @Query("delete from EmailVerificationToken t where t.user.id in :userIds")
+  int deleteByUserIds(@Param("userIds") Collection<UUID> userIds);
 
   @Modifying(clearAutomatically = true)
   @Query(
