@@ -68,6 +68,10 @@ app:
   firebase:
     enabled: false  # Firebase 비활성화
 
+  outbox:
+    polling:
+      enabled: false  # Outbox 폴링 스케줄러 비활성화 (수동 호출로 테스트)
+
 logging:
   level:
     org.hibernate.SQL: DEBUG

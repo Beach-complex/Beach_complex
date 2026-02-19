@@ -1,5 +1,6 @@
 package com.beachcheck.base;
 
+import com.beachcheck.config.FirebaseTestConfig;
 import com.beachcheck.config.TestcontainersConfig;
 import com.beachcheck.domain.User;
 import com.beachcheck.util.JwtUtils;
@@ -18,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @AutoConfigureMockMvc // MockMvc 자동 설정
-@Import(TestcontainersConfig.class)
+@Import({TestcontainersConfig.class, FirebaseTestConfig.class}) // Testcontainers + Firebase Mock 설정
 @ActiveProfiles("test")
 @Transactional
 public abstract class ApiTest {
