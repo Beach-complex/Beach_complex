@@ -1,4 +1,18 @@
+<#
+.SYNOPSIS
+트러블슈팅 문서 인덱스(`docs/troubleshooting/docs-README.md`)를 자동 갱신합니다.
+
+.DESCRIPTION
+- 최신순 목록(RECENT)과 컴포넌트별 목록(API_WEB, AUTH, DB_MIGRATION, INFRA_DEVX)을 재생성합니다.
+- 문서의 `해결 날짜`를 우선 사용하고, 없으면 `작성일`을 사용합니다.
+- `TS_INDEX_STRICT_CREATED_DATE=1`이면 `작성일` 메타가 없는 문서가 있을 때 실패합니다.
+
+.NOTES
+인덱스 갱신은 `<!-- INDEX:*:START -->` / `<!-- INDEX:*:END -->` 토큰 사이를 치환하는 방식으로 동작합니다.
+#>
 $ErrorActionPreference = "Stop"
+# 엄격 모드: 작성일 메타가 누락된 문서가 있으면 예외를 발생시킵니다.
+$strictCreatedDate = $env:TS_INDEX_STRICT_CREATED_DATE -eq "1"
 
 function Normalize-Date {
     param([string]$Raw)
@@ -32,20 +46,41 @@ function Extract-Title {
     return $null
 }
 
+function Extract-DateFromLine {
+    param([string]$Line)
+    if (-not $Line) {
+        return $null
+    }
+    if ($Line -match "\d{4}[./-]\d{1,2}[./-]\d{1,2}") {
+        return (Normalize-Date $Matches[0])
+    }
+    return $null
+}
+
 function Extract-Date {
     param([string]$Content)
-    $line = ($Content -split "`r?`n" | Where-Object { $_ -match "해결\s*날짜" } | Select-Object -First 1)
+    $lines = $Content -split "`r?`n"
 
-    $raw = $null
-    if ($line -and ($line -match "\d{4}[./-]\d{1,2}[./-]\d{1,2}")) {
-        $raw = $Matches[0]
+    $resolvedLine = ($lines | Where-Object { $_ -match "해결\s*날짜" } | Select-Object -First 1)
+    $resolvedDate = Extract-DateFromLine $resolvedLine
+    if ($resolvedDate) {
+        return $resolvedDate
     }
 
-    if (-not $raw -and ($Content -match "\d{4}[./-]\d{1,2}[./-]\d{1,2}")) {
-        $raw = $Matches[0]
+    $createdLine = ($lines | Where-Object { $_ -match "작성일" } | Select-Object -First 1)
+    $createdDate = Extract-DateFromLine $createdLine
+    if ($createdDate) {
+        return $createdDate
     }
 
-    return (Normalize-Date $raw)
+    return $null
+}
+
+function Extract-CreatedDate {
+    param([string]$Content)
+    $lines = $Content -split "`r?`n"
+    $createdLine = ($lines | Where-Object { $_ -match "작성일" } | Select-Object -First 1)
+    return (Extract-DateFromLine $createdLine)
 }
 
 function Extract-Components {
@@ -55,7 +90,7 @@ function Extract-Components {
         return @()
     }
 
-    if ($line -match "컴포넌트\s*[:：]\s*(.+)$") {
+    if ($line -match "컴포넌트\*?\*?\s*[:：]\*?\*?\s*(.+)$") {
         $raw = $Matches[1]
     } else {
         return @()
@@ -84,14 +119,15 @@ function Replace-Section {
     )
     $startIndex = $Content.IndexOf($StartToken)
     if ($startIndex -lt 0) {
-        throw "Start token not found: $StartToken"
+        throw "섹션 시작 토큰을 찾을 수 없습니다: $StartToken"
     }
 
     $endIndex = $Content.IndexOf($EndToken, $startIndex)
     if ($endIndex -lt 0) {
-        throw "End token not found: $EndToken"
+        throw "섹션 종료 토큰을 찾을 수 없습니다: $EndToken"
     }
 
+    # START/END 토큰은 유지하고, 토큰 사이의 본문만 교체합니다.
     $before = $Content.Substring(0, $startIndex + $StartToken.Length)
     $after = $Content.Substring($endIndex)
     return "$before`r`n$NewLines`r`n$after"
@@ -109,14 +145,18 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $docsDir = Join-Path $repoRoot "docs\troubleshooting"
 $indexPath = Join-Path $docsDir "docs-README.md"
 
-$files = Get-ChildItem $docsDir -Filter "troubleshooting-*.md" |
-    Where-Object { $_.Name -ne "troubleshooting-template.md" }
+$files = Get-ChildItem $docsDir -Filter "*.md" |
+    Where-Object {
+        $_.Name -notin @("docs-README.md", "template.md", "troubleshooting-template.md")
+    }
 
 $entries = foreach ($file in $files) {
     $content = Get-Content -Raw -Encoding utf8 $file.FullName
     $title = Extract-Title $content
     $date = Extract-Date $content
+    $createdDate = Extract-CreatedDate $content
 
+    # 날짜가 없으면 가장 오래된 값으로 처리하여 정렬 시 뒤로 보내기 위함입니다.
     $sortDate = if ($date) {
         [DateTime]::ParseExact($date, "yyyy-MM-dd", $null)
     } else {
@@ -133,17 +173,33 @@ $entries = foreach ($file in $files) {
         File = $file.Name
         Title = $title
         Date = $date
+        CreatedDate = $createdDate
         SortDate = $sortDate
         Buckets = $buckets
     }
 }
 
+$missingCreatedDate = @($entries | Where-Object { -not $_.CreatedDate } | Sort-Object -Property File)
+if ($missingCreatedDate.Count -gt 0) {
+    $missingList = ($missingCreatedDate | ForEach-Object { $_.File }) -join ", "
+    Write-Warning "작성일 메타가 누락된 문서: $missingList"
+    Write-Warning "권장: 각 문서 상단에 '**작성일:** YYYY-MM-DD'를 추가하세요."
+    # CI 등에서 품질 게이트로 사용할 수 있도록 엄격 모드에서는 실패 처리합니다.
+    if ($strictCreatedDate) {
+        throw "작성일 메타 누락 문서가 있습니다. (TS_INDEX_STRICT_CREATED_DATE=1)"
+    }
+}
+
 $recentLines = $entries |
-    Sort-Object -Property SortDate -Descending |
+    Sort-Object -Property @{ Expression = "SortDate"; Descending = $true }, @{ Expression = "Title"; Descending = $false }, @{ Expression = "File"; Descending = $false } |
     ForEach-Object {
-        $dateLabel = if ($_.Date) { $_.Date } else { "날짜 미정" }
-        $title = Escape-LinkText $_.Title
-        "- [$dateLabel] [$title](./$($_.File))"
+        $titleValue = if ($_.Title) { $_.Title } else { [System.IO.Path]::GetFileNameWithoutExtension($_.File) }
+        $title = Escape-LinkText $titleValue
+        if ($_.Date) {
+            "- [$($_.Date)] [$title](./$($_.File))"
+        } else {
+            "- [$title](./$($_.File))"
+        }
     }
 
 $content = Get-Content -Raw -Encoding utf8 $indexPath
@@ -151,21 +207,26 @@ $content = Replace-Section $content "<!-- INDEX:RECENT:START -->" "<!-- INDEX:RE
 
 $hasComponentData = $entries | Where-Object { $_.Buckets.Count -gt 0 }
 if ($hasComponentData) {
-    $componentMap = @{
+    $componentMap = [ordered]@{
         "API_WEB" = "<!-- INDEX:API_WEB:START -->"
         "AUTH" = "<!-- INDEX:AUTH:START -->"
         "DB_MIGRATION" = "<!-- INDEX:DB_MIGRATION:START -->"
         "INFRA_DEVX" = "<!-- INDEX:INFRA_DEVX:START -->"
     }
 
+    # 컴포넌트 태그가 매핑된 문서만 버킷별로 분류하여 섹션을 갱신합니다.
     foreach ($bucket in $componentMap.Keys) {
         $lines = $entries |
             Where-Object { $_.Buckets -contains $bucket } |
-            Sort-Object -Property SortDate -Descending |
+            Sort-Object -Property @{ Expression = "SortDate"; Descending = $true }, @{ Expression = "Title"; Descending = $false }, @{ Expression = "File"; Descending = $false } |
             ForEach-Object {
-                $dateLabel = if ($_.Date) { $_.Date } else { "날짜 미정" }
-                $title = Escape-LinkText $_.Title
-                "- [$dateLabel] [$title](./$($_.File))"
+                $titleValue = if ($_.Title) { $_.Title } else { [System.IO.Path]::GetFileNameWithoutExtension($_.File) }
+                $title = Escape-LinkText $titleValue
+                if ($_.Date) {
+                    "- [$($_.Date)] [$title](./$($_.File))"
+                } else {
+                    "- [$title](./$($_.File))"
+                }
             }
 
         if (-not $lines) {
