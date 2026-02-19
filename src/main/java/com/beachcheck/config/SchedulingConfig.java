@@ -1,6 +1,7 @@
 package com.beachcheck.config;
 
 import com.beachcheck.service.OutboxPublisher;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,12 +37,22 @@ public class SchedulingConfig {
    * <p>Policy:
    *
    * <ul>
-   *   <li>fixedDelay: application.yml의 outbox.polling.fixed-delay 값 사용 (기본 1초)
-   *   <li>enabled: application.yml의 outbox.polling.enabled가 true일 때만 실행
+   *   <li>fixedDelay: application.yml의 app.outbox.polling.fixed-delay 값 사용 (기본 1초)
+   *   <li>enabled: application.yml의 app.outbox.polling.enabled가 true일 때만 실행
    * </ul>
    */
-  @Scheduled(fixedDelayString = "${outbox.polling.fixed-delay:1000}")
+  @Scheduled(fixedDelayString = "${app.outbox.polling.fixed-delay:1000}")
+  @ConditionalOnProperty(
+      prefix = "app.outbox.polling",
+      name = "enabled",
+      havingValue = "true",
+      matchIfMissing = false)
   public void scheduleOutboxPolling() {
     outboxPublisher.processPendingOutboxEvents();
   }
+
+  // TODO: 향후 추가 스케줄러
+  // - 캐시 정리 스케줄러 (만료된 캐시 항목 정리)
+  // - 데이터 동기화 스케줄러 (외부 API 데이터 갱신)
+  // - 배치 작업 스케줄러 (대용량 데이터 처리)
 }
