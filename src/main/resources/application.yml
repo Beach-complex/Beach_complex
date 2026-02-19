@@ -37,6 +37,7 @@ spring:
       enabled: true
   mail:
     host: smtp.gmail.com
+#    host: smtp.invalid-host-for-test.com  # 잘못된 호스트
     port: 587
     username: ${SPRING_MAIL_USERNAME:}
     password: ${SPRING_MAIL_PASSWORD:}
@@ -113,3 +114,8 @@ app:
   mail:
     default-from: ${APP_MAIL_DEFAULT_FROM:${SPRING_MAIL_USERNAME:}}
     enabled: true # 운영 환경에서 메일 전송 활성화
+  outbox:
+    polling:
+      enabled: true
+      fixed-delay: 1000  # 1초 (밀리초)
+      batch-size: 10
