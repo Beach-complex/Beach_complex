@@ -3,6 +3,7 @@ package com.beachcheck.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
 import java.io.IOException;
 import java.io.InputStream;
 import org.slf4j.Logger;
@@ -60,5 +61,21 @@ public class FirebaseConfig {
           e);
       throw e;
     }
+  }
+
+  /**
+   * FirebaseMessaging 인스턴스 생성
+   *
+   * <p>Why: FCM(Firebase Cloud Messaging) 푸시 알림 전송을 위한 클라이언트 제공
+   *
+   * <p>Policy: FirebaseApp을 기반으로 FirebaseMessaging 인스턴스를 생성하여 Spring Bean으로 등록
+   *
+   * <p>Contract(Input): FirebaseApp 빈 필요 (자동 주입)
+   *
+   * <p>Contract(Output): FirebaseMessaging 인스턴스 반환
+   */
+  @Bean
+  public FirebaseMessaging firebaseMessaging(FirebaseApp firebaseApp) {
+    return FirebaseMessaging.getInstance(firebaseApp);
   }
 }
