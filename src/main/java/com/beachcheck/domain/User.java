@@ -81,6 +81,32 @@ public class User implements UserDetails {
     updatedAt = Instant.now();
   }
 
+  /**
+   * 기본 사용자 생성
+   *
+   * <p>Why: 사용자 생성 로직을 도메인에 캡슐화하여 일관된 초기 상태 보장
+   *
+   * <p>Policy:
+   *
+   * <ul>
+   *   <li>role은 기본값 USER
+   *   <li>enabled는 기본값 true
+   *   <li>createdAt, updatedAt은 @PrePersist에서 자동 설정
+   * </ul>
+   *
+   * <p>Contract(Input): email (unique), password, name은 NULL 불가
+   *
+   * <p>Contract(Output): role=USER, enabled=true로 설정된 User 인스턴스
+   */
+  public static User create(String email, String password, String name) {
+    User user = new User();
+    user.setEmail(email);
+    user.setPassword(password);
+    user.setName(name);
+    // role, enabled는 필드 기본값 사용 (Role.USER, true)
+    return user;
+  }
+
   // UserDetails 인터페이스 구현
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
