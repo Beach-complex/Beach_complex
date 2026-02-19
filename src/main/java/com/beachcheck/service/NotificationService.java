@@ -11,20 +11,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationService {
 
   private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
+  // TODO [관측 스프린트] JSON 로깅 + MDC로 userId, notificationId 등을 자동 포함시키는 구조 적용
+
   private final NotificationRepository notificationRepository;
   private final NotificationStatusWriter statusWriter;
+  private final FirebaseMessaging firebaseMessaging;
 
   public NotificationService(
-      NotificationRepository notificationRepository, NotificationStatusWriter statusWriter) {
+      NotificationRepository notificationRepository,
+      NotificationStatusWriter statusWriter,
+      FirebaseMessaging firebaseMessaging) {
     this.notificationRepository = notificationRepository;
     this.statusWriter = statusWriter;
+    this.firebaseMessaging = firebaseMessaging;
   }
 
   /**
@@ -114,14 +119,13 @@ public class NotificationService {
    * <p>Contract(Output):
    *
    * <ul>
-   *   <li>알림 엔티티 반환
+   *   <li>알림 엔티티 반환 (findById에 @Transactional(readOnly = true) 적용됨)
    *   <li>존재하지 않으면 IllegalArgumentException 발생
    * </ul>
    */
-  @Transactional(readOnly = true)
   protected Notification findNotification(UUID notificationId) {
     return notificationRepository
-        .findById(notificationId)
+        .findById(notificationId) // findById 안에 @Transactional(readOnly = true) 적용됨
         .orElseThrow(() -> new IllegalArgumentException("Notification을 찾을 수 없습니다."));
   }
 
@@ -152,6 +156,6 @@ public class NotificationService {
    */
   private String sendToFcm(Notification notification) throws FirebaseMessagingException {
     Message message = notification.toFcmMessage();
-    return FirebaseMessaging.getInstance().send(message);
+    return firebaseMessaging.send(message);
   }
 }
