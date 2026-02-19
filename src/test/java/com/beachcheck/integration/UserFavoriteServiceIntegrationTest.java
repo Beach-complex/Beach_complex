@@ -1,10 +1,12 @@
 package com.beachcheck.integration;
 
+import static com.beachcheck.fixture.BeachTestFixtures.createBeachWithLocation;
 import static com.beachcheck.fixture.CacheTestHelper.getCacheValue;
 import static com.beachcheck.fixture.CacheTestHelper.hasKey;
 import static com.beachcheck.fixture.CacheTestHelper.printCacheState;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createBeachWithLocation;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueBeachCode;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -66,8 +68,8 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
   void setUp() {
     // Fixture를 사용하여 해수욕장 생성 (PostGIS location 포함)
     // Why: UUID 기반 동적 code 생성으로 테스트 간 UNIQUE 제약 충돌 방지
-    String uniqueCode1 = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
-    String uniqueCode2 = "TEST_BEACH_" + UUID.randomUUID().toString().substring(0, 8);
+    String uniqueCode1 = uniqueBeachCode();
+    String uniqueCode2 = uniqueBeachCode();
 
     beach1 =
         beachRepository.save(createBeachWithLocation(uniqueCode1, "테스트해수욕장1", 129.1603, 35.1587));
@@ -76,8 +78,8 @@ class UserFavoriteServiceIntegrationTest extends IntegrationTest {
 
     // Fixture를 사용하여 사용자 생성
     // Why: UUID 기반 동적 email 생성으로 UNIQUE 제약 충돌 방지
-    String uniqueEmail1 = "user1_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
-    String uniqueEmail2 = "user2_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    String uniqueEmail1 = uniqueEmail("user1");
+    String uniqueEmail2 = uniqueEmail("user2");
 
     user1 = userRepository.save(createUser(uniqueEmail1, "User 1"));
     user2 = userRepository.save(createUser(uniqueEmail2, "User 2"));

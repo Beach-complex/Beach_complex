@@ -1,7 +1,7 @@
 package com.beachcheck.service;
 
-import static com.beachcheck.fixture.FavoriteTestFixtures.createBeach;
-import static com.beachcheck.fixture.FavoriteTestFixtures.createUser;
+import static com.beachcheck.fixture.BeachTestFixtures.createBeach;
+import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;

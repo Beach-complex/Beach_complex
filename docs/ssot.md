@@ -157,6 +157,18 @@
 
 ### 2.2 입력 검증 전략
 
+### 2.3 인증/인가 API 계약 (요약)
+
+- `GET /api/auth/me`
+  - 인증 토큰 없음: `401 Unauthorized`
+  - ProblemDetail 계약: `title=UNAUTHORIZED`, `code=UNAUTHORIZED`
+- `POST /api/auth/refresh`
+  - invalid refresh token: `400 Bad Request`
+  - ProblemDetail 계약: `title=INVALID_REQUEST`, `code=INVALID_REQUEST`
+
+근거:
+- OAuth 2.0 RFC 6749 §6, §5.2 (`https://www.rfc-editor.org/rfc/rfc6749`)
+
 #### 검증 레이어 구분
 
 | 검증 종류 | 레이어 | 사용 도구 | 예시 |

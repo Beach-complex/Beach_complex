@@ -42,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       String jwt = getJwtFromRequest(request);
 
-      if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
+      if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt) && jwtUtils.isAccessToken(jwt)) {
         UUID userId = jwtUtils.getUserIdFromToken(jwt);
 
         UserDetails userDetails =

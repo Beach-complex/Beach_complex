@@ -7,6 +7,8 @@ import com.beachcheck.dto.auth.request.SignUpRequestDto;
 import com.beachcheck.dto.auth.response.AuthResponseDto;
 import com.beachcheck.dto.auth.response.TokenResponseDto;
 import com.beachcheck.dto.auth.response.UserResponseDto;
+import com.beachcheck.exception.ApiException;
+import com.beachcheck.exception.ErrorCode;
 import com.beachcheck.repository.RefreshTokenRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.util.JwtUtils;
@@ -123,20 +125,20 @@ public class AuthService {
     RefreshToken refreshToken =
         refreshTokenRepository
             .findByToken(refreshTokenStr)
-            .orElseThrow(() -> new EntityNotFoundException("리프레시 토큰을 찾을 수 없습니다."));
+            .orElseThrow(() -> invalidRefreshToken());
 
-    if (refreshToken.getRevoked()) {
-      throw new IllegalStateException("폐기된 리프레시 토큰입니다.");
-    }
-
-    if (refreshToken.isExpired()) {
-      throw new IllegalStateException("만료된 리프레시 토큰입니다.");
+    if (Boolean.TRUE.equals(refreshToken.getRevoked()) || refreshToken.isExpired()) {
+      throw invalidRefreshToken();
     }
 
     User user = refreshToken.getUser();
     String newAccessToken = jwtUtils.generateAccessToken(user);
 
     return TokenResponseDto.of(newAccessToken, jwtUtils.getAccessTokenExpiration());
+  }
+
+  private ApiException invalidRefreshToken() {
+    return new ApiException(ErrorCode.INVALID_GRANT, "Invalid refresh token");
   }
 
   public UserResponseDto getCurrentUser(UUID userId) {

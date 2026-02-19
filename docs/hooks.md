@@ -19,8 +19,8 @@
 
 ## 동작
 
-- pre-commit: `./gradlew spotlessApply` 실행 후 스테이징 변경을 비밀정보 스캔.
-- pre-push: 푸시 전에 스테이징 변경을 비밀정보 스캔 (방어적 체크).
+- pre-commit: `./gradlew spotlessApply` 실행 후 스테이징 변경의 added line(+)만 비밀정보 스캔.
+- pre-push: 푸시 전에 스테이징 변경의 added line(+)만 비밀정보 스캔 (방어적 체크).
 - prepare-commit-msg: 브랜치 이름에서 `PB-123` 키를 찾아 메시지에 삽입.
 - commit-msg: `PB-<number>` 키가 없는 커밋을 차단.
 

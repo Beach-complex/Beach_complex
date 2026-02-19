@@ -7,7 +7,11 @@ paths = [
 regexes = [
   # Ignore env/template placeholders like ${DB_PASSWORD} or ${{ secrets.X }}
   '''(?i)(password|passwd|pwd|secret|client_secret|jwt_secret|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?\$\{[^}]+\}["']?''',
-  '''(?i)(password|passwd|pwd|secret|client_secret|jwt_secret|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?\$\{\{[^}]+\}\}["']?'''
+  '''(?i)(password|passwd|pwd|secret|client_secret|jwt_secret|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?\$\{\{[^}]+\}\}["']?''',
+  # Allow test-only dummy password constants.
+  '''^\s*private\s+static\s+final\s+String\s+RAW_(PASSWORD|PASS|CREDENTIAL)\s*=\s*"Password1!";\s*$''',
+  # Allow fixed test-only JWT secret from application-test.yml.
+  '''^\s*secret:\s*test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256\s*$'''
 ]
 
 [[rules]]
