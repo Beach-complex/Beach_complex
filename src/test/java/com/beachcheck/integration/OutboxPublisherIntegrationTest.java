@@ -28,7 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
 
 /**
  * OutboxPublisher 통합 테스트
@@ -52,7 +51,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Autowired private UserRepository userRepository;
 
-  @MockBean private FirebaseMessaging firebaseMessaging; // 외부 서비스는 Mock 처리 (E2E 테스트에서는 실제 호출)
+  @Autowired private FirebaseMessaging firebaseMessaging; // 외부 서비스는 Mock 처리 (E2E 테스트에서는 실제 호출)
 
   @BeforeEach
   void setUp() throws FirebaseMessagingException {
@@ -72,7 +71,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
     OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
 
-    // When: OutboxPublisher 수동 실행
+    // When: OutboxPublisher 수동 실행 (스케줄러 대신 직접 호출하여 테스트 제어)
     outboxPublisher.processPendingOutboxEvents();
 
     // Then: 이벤트 상태 확인
