@@ -126,8 +126,7 @@ class EmailVerificationServiceTest {
     @DisplayName("이미 사용된 토큰이면 예외")
     void verifyToken_used_throws() {
       EmailVerificationToken token =
-          usedToken(
-              stubEmailUser(USER_EMAIL, false), RAW_TOKEN, VALID_TOKEN_LIFETIME_SECONDS);
+          usedToken(stubEmailUser(USER_EMAIL, false), RAW_TOKEN, VALID_TOKEN_LIFETIME_SECONDS);
       given(tokenRepository.findByToken(any(String.class))).willReturn(Optional.of(token));
 
       assertThatThrownBy(() -> service.verifyToken(RAW_TOKEN))
@@ -200,10 +199,7 @@ class EmailVerificationServiceTest {
       var user = stubEmailUser(USER_EMAIL, false);
       EmailVerificationToken last =
           cooldownWindowToken(
-              user,
-              OLD_TOKEN,
-              RECENT_TOKEN_EXPIRES_IN_MINUTES,
-              RECENT_TOKEN_CREATED_MINUTES_AGO);
+              user, OLD_TOKEN, RECENT_TOKEN_EXPIRES_IN_MINUTES, RECENT_TOKEN_CREATED_MINUTES_AGO);
 
       given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.of(user));
       given(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId()))
