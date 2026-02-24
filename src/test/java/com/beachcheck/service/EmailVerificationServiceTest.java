@@ -44,13 +44,14 @@ class EmailVerificationServiceTest {
   private static final String RAW_TOKEN = "raw-token";
   private static final String OLD_TOKEN = "old-token";
   private static final long EXP_MINUTES = 30L;
+  private static final long EXP_TOLERANCE_MINUTES = 1L;
   private static final long COOLDOWN_MINUTES = 3L;
   private static final long VALID_TOKEN_LIFETIME_SECONDS = 60L;
   private static final long EXPIRED_TOKEN_SECONDS_AGO = 1L;
   private static final long RECENT_TOKEN_EXPIRES_IN_MINUTES = 10L;
   private static final long RECENT_TOKEN_CREATED_MINUTES_AGO = 1L;
-  private static final long EXP_MIN_LOWER_BOUND = 29L;
-  private static final long EXP_MIN_UPPER_BOUND = 30L;
+  private static final long EXP_MIN_LOWER_BOUND = EXP_MINUTES - EXP_TOLERANCE_MINUTES;
+  private static final long EXP_MIN_UPPER_BOUND = EXP_MINUTES;
 
   @Mock private AsyncEmailService asyncEmailService;
   @Mock private EmailVerificationTokenRepository tokenRepository;
