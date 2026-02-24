@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 
 import com.beachcheck.base.IntegrationTest;
@@ -55,6 +56,9 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @BeforeEach
   void setUp() throws FirebaseMessagingException {
+    // Mock 호출 기록 초기화 (테스트 간 격리)
+    clearInvocations(firebaseMessaging);
+
     // 테스트 전에 데이터 정리 (FK 제약 조건 순서 고려)
     outboxEventRepository.deleteAll();
     notificationRepository.deleteAll();
