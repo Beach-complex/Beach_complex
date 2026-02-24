@@ -39,7 +39,9 @@ public class EmailVerificationToken {
 
   @PrePersist
   public void onCreate() {
-    createdAt = Instant.now();
+    if (createdAt == null) {
+      createdAt = Instant.now();
+    }
   }
 
   protected EmailVerificationToken() {}
@@ -57,6 +59,14 @@ public class EmailVerificationToken {
   public static EmailVerificationToken issue(User user, String token, long expirationMinutes) {
     return new EmailVerificationToken(
         user, token, Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES));
+  }
+
+  public static EmailVerificationToken testToken(
+      User user, String token, Instant expiresAt, Instant createdAt) {
+    EmailVerificationToken emailVerificationToken =
+        new EmailVerificationToken(user, token, expiresAt);
+    emailVerificationToken.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+    return emailVerificationToken;
   }
 
   public boolean isExpired() {

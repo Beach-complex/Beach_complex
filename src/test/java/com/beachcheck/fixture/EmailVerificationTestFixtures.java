@@ -9,7 +9,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.UUID;
-import org.springframework.test.util.ReflectionTestUtils;
 
 public final class EmailVerificationTestFixtures {
 
@@ -51,13 +50,11 @@ public final class EmailVerificationTestFixtures {
 
   public static EmailVerificationToken cooldownWindowToken(
       User user, String rawToken, long expiresInMinutes, long createdMinutesAgo) {
-    EmailVerificationToken token =
-        EmailVerificationToken.of(
-            user, sha256Hex(rawToken), Instant.now().plus(expiresInMinutes, ChronoUnit.MINUTES));
-    // createdAt has no setter by design; set it in tests to emulate cooldown window.
-    ReflectionTestUtils.setField(
-        token, "createdAt", Instant.now().minus(createdMinutesAgo, ChronoUnit.MINUTES));
-    return token;
+    return EmailVerificationToken.testToken(
+        user,
+        sha256Hex(rawToken),
+        Instant.now().plus(expiresInMinutes, ChronoUnit.MINUTES),
+        Instant.now().minus(createdMinutesAgo, ChronoUnit.MINUTES));
   }
 
   public static String sha256Hex(String value) {
