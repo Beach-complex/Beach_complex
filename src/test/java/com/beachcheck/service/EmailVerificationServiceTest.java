@@ -2,10 +2,10 @@ package com.beachcheck.service;
 
 import static com.beachcheck.fixture.EmailVerificationTestFixtures.cooldownWindowToken;
 import static com.beachcheck.fixture.EmailVerificationTestFixtures.expiredToken;
-import static com.beachcheck.fixture.EmailVerificationTestFixtures.sha256Hex;
 import static com.beachcheck.fixture.EmailVerificationTestFixtures.stubEmailUser;
 import static com.beachcheck.fixture.EmailVerificationTestFixtures.usedToken;
 import static com.beachcheck.fixture.EmailVerificationTestFixtures.validToken;
+import static com.beachcheck.util.HashUtils.sha256Hex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;

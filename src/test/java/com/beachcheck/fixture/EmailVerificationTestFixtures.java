@@ -2,12 +2,9 @@ package com.beachcheck.fixture;
 
 import com.beachcheck.domain.EmailVerificationToken;
 import com.beachcheck.domain.User;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.beachcheck.util.HashUtils;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.HexFormat;
 import java.util.UUID;
 
 public final class EmailVerificationTestFixtures {
@@ -34,12 +31,12 @@ public final class EmailVerificationTestFixtures {
   public static EmailVerificationToken validToken(
       User user, String rawToken, long lifetimeSeconds) {
     return EmailVerificationToken.of(
-        user, sha256Hex(rawToken), Instant.now().plusSeconds(lifetimeSeconds));
+        user, HashUtils.sha256Hex(rawToken), Instant.now().plusSeconds(lifetimeSeconds));
   }
 
   public static EmailVerificationToken expiredToken(User user, String rawToken, long secondsAgo) {
     return EmailVerificationToken.of(
-        user, sha256Hex(rawToken), Instant.now().minusSeconds(secondsAgo));
+        user, HashUtils.sha256Hex(rawToken), Instant.now().minusSeconds(secondsAgo));
   }
 
   public static EmailVerificationToken usedToken(User user, String rawToken, long lifetimeSeconds) {
@@ -52,18 +49,8 @@ public final class EmailVerificationTestFixtures {
       User user, String rawToken, long expiresInMinutes, long createdMinutesAgo) {
     return EmailVerificationToken.testToken(
         user,
-        sha256Hex(rawToken),
+        HashUtils.sha256Hex(rawToken),
         Instant.now().plus(expiresInMinutes, ChronoUnit.MINUTES),
         Instant.now().minus(createdMinutesAgo, ChronoUnit.MINUTES));
-  }
-
-  public static String sha256Hex(String value) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashed = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(hashed);
-    } catch (NoSuchAlgorithmException ex) {
-      throw new IllegalStateException(ex);
-    }
   }
 }
