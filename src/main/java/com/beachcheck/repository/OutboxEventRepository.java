@@ -18,11 +18,11 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
   /**
    * 폴링 대상 이벤트 조회 (PENDING 또는 FAILED_RETRIABLE이고 재시도 시간 도달)
    *
-   * <p>Why: FOR UPDATE SKIP LOCKED로 다중 워커 환경에서 동일 이벤트 중복 처리를 방지한다. 각 워커는 다른 워커가 이미 선점한
-   * 이벤트를 건너뛰고, 잠기지 않은 이벤트만 조회하여 병렬 처리를 가능하게 한다.
+   * <p>Why: FOR UPDATE SKIP LOCKED로 다중 워커 환경에서 동일 이벤트 중복 처리를 방지한다. 각 워커는 다른 워커가 이미 선점한 이벤트를 건너뛰고,
+   * 잠기지 않은 이벤트만 조회하여 병렬 처리를 가능하게 한다.
    *
-   * <p>Policy: PESSIMISTIC_WRITE로 조회된 row를 잠그고, lock.timeout=-2로 SKIP LOCKED를 활성화한다.
-   * (Hibernate 6+: -2 = SKIP LOCKED)
+   * <p>Policy: PESSIMISTIC_WRITE로 조회된 row를 잠그고, lock.timeout=-2로 SKIP LOCKED를 활성화한다. (Hibernate 6+:
+   * -2 = SKIP LOCKED)
    *
    * @param now 현재 시간
    * @param pageable 페이징 정보 (pageSize만큼 조회)
@@ -34,7 +34,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
       """
       SELECT e FROM OutboxEvent e
       WHERE e.status IN ('PENDING', 'FAILED_RETRIABLE')
-        AND e.nextRetryAt <= :now
+        AND COALESCE(e.nextRetryAt, e.createdAt) <= :now
       ORDER BY e.createdAt ASC
       """)
   List<OutboxEvent> findPendingEvents(@Param("now") Instant now, Pageable pageable);
