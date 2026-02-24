@@ -1,5 +1,11 @@
 package com.beachcheck.service;
 
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.cooldownWindowToken;
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.expiredToken;
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.sha256Hex;
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.stubEmailUser;
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.usedToken;
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.validToken;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,16 +15,10 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.beachcheck.domain.EmailVerificationToken;
-import com.beachcheck.domain.User;
 import com.beachcheck.repository.EmailVerificationTokenRepository;
 import com.beachcheck.repository.UserRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +31,6 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("이메일 인증 서비스 단위 테스트")
@@ -83,7 +82,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("토큰 저장 후 이벤트 발행")
     void sendVerification_success_savesTokenAndPublishesEvent() {
-      User user = user(USER_EMAIL, false);
+      var user = stubEmailUser(USER_EMAIL, false);
 
       service.sendVerification(user);
 
@@ -98,7 +97,7 @@ class EmailVerificationServiceTest {
       String rawToken = extractRawToken(event.verificationLink());
       assertThat(rawToken).isNotBlank();
       assertThat(savedToken.getUser()).isEqualTo(user);
-      assertThat(savedToken.getToken()).isEqualTo(sha256(rawToken));
+      assertThat(savedToken.getToken()).isEqualTo(sha256Hex(rawToken));
 
       long diffMinutes = Duration.between(Instant.now(), savedToken.getExpiresAt()).toMinutes();
       assertThat(diffMinutes).isBetween(EXP_MIN_LOWER_BOUND, EXP_MIN_UPPER_BOUND);
@@ -119,7 +118,7 @@ class EmailVerificationServiceTest {
           .hasMessageContaining("유효 하지 않은 인증 토큰");
 
       then(tokenRepository).should().findByToken(hashedTokenCaptor.capture());
-      assertThat(hashedTokenCaptor.getValue()).isEqualTo(sha256(RAW_TOKEN));
+      assertThat(hashedTokenCaptor.getValue()).isEqualTo(sha256Hex(RAW_TOKEN));
       assertNoUserOrTokenSaveOperations();
     }
 
@@ -127,11 +126,8 @@ class EmailVerificationServiceTest {
     @DisplayName("이미 사용된 토큰이면 예외")
     void verifyToken_used_throws() {
       EmailVerificationToken token =
-          new EmailVerificationToken(
-              user(USER_EMAIL, false),
-              sha256(RAW_TOKEN),
-              Instant.now().plusSeconds(VALID_TOKEN_LIFETIME_SECONDS));
-      token.markUsed();
+          usedToken(
+              stubEmailUser(USER_EMAIL, false), RAW_TOKEN, VALID_TOKEN_LIFETIME_SECONDS);
       given(tokenRepository.findByToken(any(String.class))).willReturn(Optional.of(token));
 
       assertThatThrownBy(() -> service.verifyToken(RAW_TOKEN))
@@ -145,10 +141,7 @@ class EmailVerificationServiceTest {
     @DisplayName("만료된 토큰이면 예외")
     void verifyToken_expired_throws() {
       EmailVerificationToken token =
-          new EmailVerificationToken(
-              user(USER_EMAIL, false),
-              sha256(RAW_TOKEN),
-              Instant.now().minusSeconds(EXPIRED_TOKEN_SECONDS_AGO));
+          expiredToken(stubEmailUser(USER_EMAIL, false), RAW_TOKEN, EXPIRED_TOKEN_SECONDS_AGO);
       given(tokenRepository.findByToken(any(String.class))).willReturn(Optional.of(token));
 
       assertThatThrownBy(() -> service.verifyToken(RAW_TOKEN))
@@ -161,10 +154,8 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("유효 토큰이면 사용자 활성화 및 토큰 사용 처리")
     void verifyToken_success_enablesUserAndMarksTokenUsed() {
-      User user = user(USER_EMAIL, false);
-      EmailVerificationToken token =
-          new EmailVerificationToken(
-              user, sha256(RAW_TOKEN), Instant.now().plusSeconds(VALID_TOKEN_LIFETIME_SECONDS));
+      var user = stubEmailUser(USER_EMAIL, false);
+      EmailVerificationToken token = validToken(user, RAW_TOKEN, VALID_TOKEN_LIFETIME_SECONDS);
       given(tokenRepository.findByToken(any(String.class))).willReturn(Optional.of(token));
 
       service.verifyToken(RAW_TOKEN);
@@ -194,7 +185,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("이미 활성화된 사용자는 무동작")
     void resendVerification_enabledUser_noOp() {
-      User user = user(USER_EMAIL, true);
+      var user = stubEmailUser(USER_EMAIL, true);
       given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.of(user));
 
       service.resendVerification(USER_EMAIL);
@@ -206,17 +197,13 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("쿨다운 위반 시 예외")
     void resendVerification_cooldownViolation_throws() {
-      User user = user(USER_EMAIL, false);
+      var user = stubEmailUser(USER_EMAIL, false);
       EmailVerificationToken last =
-          new EmailVerificationToken(
+          cooldownWindowToken(
               user,
-              sha256(OLD_TOKEN),
-              Instant.now().plus(RECENT_TOKEN_EXPIRES_IN_MINUTES, ChronoUnit.MINUTES));
-      // createdAt setter가 없어, 쿨다운(최근 생성) 상황을 테스트에서만 강제로 구성한다.
-      ReflectionTestUtils.setField(
-          last,
-          "createdAt",
-          Instant.now().minus(RECENT_TOKEN_CREATED_MINUTES_AGO, ChronoUnit.MINUTES));
+              OLD_TOKEN,
+              RECENT_TOKEN_EXPIRES_IN_MINUTES,
+              RECENT_TOKEN_CREATED_MINUTES_AGO);
 
       given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.of(user));
       given(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId()))
@@ -236,7 +223,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("비활성 사용자면 쿨다운 확인 후 재전송")
     void resendVerification_success_marksOldAndPublishesEvent() {
-      User user = user(USER_EMAIL, false);
+      var user = stubEmailUser(USER_EMAIL, false);
       given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.of(user));
       given(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId()))
           .willReturn(Optional.empty());
@@ -253,7 +240,7 @@ class EmailVerificationServiceTest {
       String rawToken = extractRawToken(event.verificationLink());
 
       assertThat(event.email()).isEqualTo(USER_EMAIL);
-      assertThat(savedToken.getToken()).isEqualTo(sha256(rawToken));
+      assertThat(savedToken.getToken()).isEqualTo(sha256Hex(rawToken));
       assertThat(savedToken.getUser()).isEqualTo(user);
     }
   }
@@ -267,27 +254,5 @@ class EmailVerificationServiceTest {
   private String extractRawToken(String verificationLink) {
     // 호출 전에 startsWith(prefix)로 링크 형식을 검증한 뒤 사용한다.
     return verificationLink.substring(VERIFICATION_LINK_PREFIX.length());
-  }
-
-  private User user(String email, boolean enabled) {
-    User user = new User();
-    user.setId(UUID.randomUUID());
-    user.setEmail(email);
-    user.setName("tester");
-    user.setPassword("encoded");
-    user.setEnabled(enabled);
-    user.setRole(User.Role.USER);
-    user.setAuthProvider(User.AuthProvider.EMAIL);
-    return user;
-  }
-
-  private String sha256(String token) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(hashed);
-    } catch (NoSuchAlgorithmException ex) {
-      throw new IllegalStateException(ex);
-    }
   }
 }

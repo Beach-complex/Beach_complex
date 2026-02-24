@@ -10,6 +10,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
@@ -47,6 +48,15 @@ public class EmailVerificationToken {
     this.user = Objects.requireNonNull(user, "user");
     this.token = Objects.requireNonNull(token, "token");
     this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt");
+  }
+
+  public static EmailVerificationToken of(User user, String token, Instant expiresAt) {
+    return new EmailVerificationToken(user, token, expiresAt);
+  }
+
+  public static EmailVerificationToken issue(User user, String token, long expirationMinutes) {
+    return new EmailVerificationToken(
+        user, token, Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES));
   }
 
   public boolean isExpired() {

@@ -125,10 +125,7 @@ public class EmailVerificationService {
   private String createToken(User user) {
     String rawToken = UUID.randomUUID().toString();
     EmailVerificationToken token =
-        new EmailVerificationToken(
-            user,
-            hashToken(rawToken),
-            Instant.now().plus(tokenExpirationMinutes, ChronoUnit.MINUTES));
+        EmailVerificationToken.issue(user, hashToken(rawToken), tokenExpirationMinutes);
     tokenRepository.save(token);
     return rawToken;
   }
