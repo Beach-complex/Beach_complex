@@ -4,9 +4,7 @@ import com.beachcheck.domain.EmailVerificationToken;
 import com.beachcheck.domain.User;
 import com.beachcheck.repository.EmailVerificationTokenRepository;
 import com.beachcheck.repository.UserRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.beachcheck.util.HashUtils;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -125,27 +123,14 @@ public class EmailVerificationService {
   private String createToken(User user) {
     String rawToken = UUID.randomUUID().toString();
     EmailVerificationToken token =
-        new EmailVerificationToken(
-            user,
-            hashToken(rawToken),
-            Instant.now().plus(tokenExpirationMinutes, ChronoUnit.MINUTES));
+        EmailVerificationToken.issue(user, hashToken(rawToken), tokenExpirationMinutes);
     tokenRepository.save(token);
     return rawToken;
   }
 
   private String hashToken(String token) {
     // DB 유출 시 원문 토큰 노출을 막기 위해 해시로 저장한다.
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-      StringBuilder sb = new StringBuilder(hashed.length * 2);
-      for (byte b : hashed) {
-        sb.append(String.format("%02x", b & 0xff));
-      }
-      return sb.toString();
-    } catch (NoSuchAlgorithmException ex) {
-      throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", ex);
-    }
+    return HashUtils.sha256Hex(token);
   }
 
   /**
