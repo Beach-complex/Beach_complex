@@ -102,6 +102,8 @@ public class OutboxEvent {
   }
 
   // 상태 전이 메서드
+  // 상태 변경은 markAsSent(), markAsFailedRetriable(), markAsFailedPermanent()를 사용할 것
+  // 테스트 셋업 용도로만 setter 허용
   // TODO: 상태가 확장되면 Enum에 allowedTargets Set을 내장하는 방식으로 리팩토링 검토
   public void markAsSent() {
     validateNotTerminal(OutboxEventStatus.SENT);
