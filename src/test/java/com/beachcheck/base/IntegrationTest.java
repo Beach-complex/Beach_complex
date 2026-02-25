@@ -1,5 +1,6 @@
 package com.beachcheck.base;
 
+import com.beachcheck.config.FirebaseTestConfig;
 import com.beachcheck.config.TestcontainersConfig;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 상속 Contract(Output): 각 테스트는 깨끗한 DB 상태에서 시작
  */
 @SpringBootTest
-@Import(TestcontainersConfig.class) // Testcontainers 설정 임포트
+@Import({TestcontainersConfig.class, FirebaseTestConfig.class}) // Testcontainers + Firebase Mock 설정
 @ActiveProfiles("test") // application-test.yml 활성화
 @Transactional // 각 테스트 후 자동 롤백
 public abstract class IntegrationTest { // 추상 클래스 선언(이 클래스로는 직접적인 테스트 실행 불가)
