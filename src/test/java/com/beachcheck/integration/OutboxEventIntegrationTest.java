@@ -143,18 +143,32 @@ class OutboxEventIntegrationTest extends IntegrationTest {
         OutboxEvent event1 = createEvent(PENDING, now.minusSeconds(10));
         Thread.sleep(10); // createdAt 차이를 만들기 위해
         OutboxEvent event2 = createEvent(PENDING, now.minusSeconds(10));
-        Thread.sleep(10);
-        OutboxEvent event3 = createEvent(PENDING, now.minusSeconds(10));
 
         // When
         List<OutboxEvent> result =
             outboxEventRepository.findPendingEvents(now, PageRequest.of(0, 10));
 
         // Then
-        assertThat(result).hasSize(3);
+        assertThat(result).hasSize(2);
         assertThat(result.get(0).getId()).isEqualTo(event1.getId());
         assertThat(result.get(1).getId()).isEqualTo(event2.getId());
-        assertThat(result.get(2).getId()).isEqualTo(event3.getId());
+      }
+
+      @Test
+      @DisplayName("createdAt 동일 시 id 오름차순 정렬")
+      void shouldOrderByIdWhenCreatedAtIsSame() {
+        // Given
+        Instant now = Instant.now();
+        createEvent(PENDING, now.minusSeconds(10));
+        createEvent(PENDING, now.minusSeconds(10));
+
+        // When
+        List<OutboxEvent> result =
+            outboxEventRepository.findPendingEvents(now, PageRequest.of(0, 10));
+
+        // Then
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getId()).isLessThan(result.get(1).getId());
       }
 
       @Test
