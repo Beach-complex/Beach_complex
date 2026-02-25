@@ -102,20 +102,31 @@ public class OutboxEvent {
   }
 
   // 상태 전이 메서드
+  // TODO: 상태가 확장되면 Enum에 allowedTargets Set을 내장하는 방식으로 리팩토링 검토
   public void markAsSent() {
+    validateNotTerminal(OutboxEventStatus.SENT);
     this.status = OutboxEventStatus.SENT;
     this.processedAt = Instant.now();
   }
 
   public void markAsFailedRetriable(Duration nextRetryDelay) {
+    validateNotTerminal(OutboxEventStatus.FAILED_RETRIABLE);
     this.status = OutboxEventStatus.FAILED_RETRIABLE;
     this.retryCount++;
     this.nextRetryAt = Instant.now().plus(nextRetryDelay);
   }
 
   public void markAsFailedPermanent() {
+    validateNotTerminal(OutboxEventStatus.FAILED_PERMANENT);
     this.status = OutboxEventStatus.FAILED_PERMANENT;
     this.processedAt = Instant.now();
+  }
+
+  private void validateNotTerminal(OutboxEventStatus target) {
+    if (this.status == OutboxEventStatus.SENT
+        || this.status == OutboxEventStatus.FAILED_PERMANENT) {
+      throw new IllegalStateException(String.format("%s에서 %s로 전이할 수 없습니다.", this.status, target));
+    }
   }
 
   // Getters and Setters
