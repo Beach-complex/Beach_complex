@@ -26,7 +26,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
    *
    * @param now 현재 시간
    * @param pageable 페이징 정보 (pageSize만큼 조회)
-   * @return 처리 대상 이벤트 목록 (잠기지 않은 이벤트만, createdAt 오름차순 정렬)
+   * @return 처리 대상 이벤트 목록 (잠기지 않은 이벤트만, createdAt 오름차순 · 동일 시 id 오름차순 정렬)
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
@@ -35,7 +35,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
       SELECT e FROM OutboxEvent e
       WHERE e.status IN ('PENDING', 'FAILED_RETRIABLE')
         AND COALESCE(e.nextRetryAt, e.createdAt) <= :now
-      ORDER BY e.createdAt ASC
+      ORDER BY e.createdAt ASC, e.id ASC
       """)
   List<OutboxEvent> findPendingEvents(@Param("now") Instant now, Pageable pageable);
 
