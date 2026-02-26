@@ -58,7 +58,7 @@ class EmailAfterCommitIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("커밋 후 이메일 비동기 전송이 호출된다")
+  @DisplayName("커밋                        후 이메일 비동기 전송이 호출된다")
   void sendVerification_afterCommit_triggersListener() {
     // given
     User user = saveUser();
