@@ -5,11 +5,9 @@ import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.FAILED_RETRIAB
 import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.PENDING;
 import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus.SENT;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,17 +43,20 @@ class OutboxEventTest {
     event.setRetryCount(0);
     Duration nextRetryDelay = Duration.ofSeconds(2);
 
-    Instant beforeCall = Instant.now();
+    Instant before = Instant.now();
 
     // When
     event.markAsFailedRetriable(nextRetryDelay);
+
+    Instant after = Instant.now();
 
     // Then
     assertThat(event.getStatus()).isEqualTo(FAILED_RETRIABLE);
     assertThat(event.getRetryCount()).isEqualTo(1);
     assertThat(event.getNextRetryAt()).isNotNull();
+    // isCloseTo(고정 허용치)는 CI 환경 지연 시 플래키 테스트가 될 가능성 존재 → before/after 범위 검증 사용
     assertThat(event.getNextRetryAt())
-        .isCloseTo(beforeCall.plus(nextRetryDelay), within(100, ChronoUnit.MILLIS));
+        .isBetween(before.plus(nextRetryDelay), after.plus(nextRetryDelay));
   }
 
   @Test
@@ -87,21 +88,24 @@ class OutboxEventTest {
     OutboxEvent event3 = new OutboxEvent();
     event3.setRetryCount(2);
 
-    Instant now = Instant.now();
-
     // When
+    Instant before1 = Instant.now();
     event1.markAsFailedRetriable(Duration.ofSeconds(2)); // 첫 재시도: 2초
-    event2.markAsFailedRetriable(Duration.ofSeconds(4)); // 두 번째 재시도: 4초
-    event3.markAsFailedRetriable(Duration.ofSeconds(8)); // 세 번째 재시도: 8초
+    Instant after1 = Instant.now();
 
-    // Then
-    // 각각 2초, 4초, 8초 후로 설정되어야 함
-    assertThat(event1.getNextRetryAt())
-        .isCloseTo(now.plusSeconds(2), within(100, ChronoUnit.MILLIS));
-    assertThat(event2.getNextRetryAt())
-        .isCloseTo(now.plusSeconds(4), within(100, ChronoUnit.MILLIS));
-    assertThat(event3.getNextRetryAt())
-        .isCloseTo(now.plusSeconds(8), within(100, ChronoUnit.MILLIS));
+    Instant before2 = Instant.now();
+    event2.markAsFailedRetriable(Duration.ofSeconds(4)); // 두 번째 재시도: 4초
+    Instant after2 = Instant.now();
+
+    Instant before3 = Instant.now();
+    event3.markAsFailedRetriable(Duration.ofSeconds(8)); // 세 번째 재시도: 8초
+    Instant after3 = Instant.now();
+
+    // Then - 각각 2초, 4초, 8초 후로 설정되어야 함
+    // isCloseTo(고정 허용치)는 CI 환경 지연 시 플래키 테스트가 될 가능성 존재 → before/after 범위 검증 사용
+    assertThat(event1.getNextRetryAt()).isBetween(before1.plusSeconds(2), after1.plusSeconds(2));
+    assertThat(event2.getNextRetryAt()).isBetween(before2.plusSeconds(4), after2.plusSeconds(4));
+    assertThat(event3.getNextRetryAt()).isBetween(before3.plusSeconds(8), after3.plusSeconds(8));
   }
 
   @Test
