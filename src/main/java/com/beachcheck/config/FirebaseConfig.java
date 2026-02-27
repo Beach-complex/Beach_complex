@@ -14,7 +14,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.firebase", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(
+    prefix = "app.firebase",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 public class FirebaseConfig {
 
   private static final Logger log = LoggerFactory.getLogger(FirebaseConfig.class);
