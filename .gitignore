@@ -29,6 +29,7 @@ front/pnpm-debug.log*
 
 # ---------- Backend (Spring/Gradle) ----------
 .gradle/
+.gradle-user-home/
 build/
 target/
 **/*.log
