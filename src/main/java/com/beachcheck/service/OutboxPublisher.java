@@ -2,6 +2,10 @@ package com.beachcheck.service;
 
 import com.beachcheck.domain.OutboxEvent;
 import com.beachcheck.repository.OutboxEventRepository;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -91,8 +95,16 @@ public class OutboxPublisher {
       event.markAsSent();
       outboxEventRepository.save(event);
     } catch (FirebaseMessagingException e) {
-      // TODO: 예외 처리는 Refactor 단계 또는 PR#3(재시도 로직)에서 구현
-      throw new RuntimeException("FCM 전송 실패", e);
+      // Exponential Backoff 재시도 로직
+      Duration backoff = Duration.ofSeconds(1L << event.getRetryCount()); // 1s, 2s, 4s, 8s, 16s
+
+      if (event.getRetryCount() >= 3) { // 최대 재시도 횟수 초과 시 영구 실패로 전이
+        event.markAsFailedPermanent();
+        outboxEventRepository.save(event);
+      } else {
+        event.markAsFailedRetriable(backoff);
+        outboxEventRepository.save(event);
+      }
     }
   }
 }
