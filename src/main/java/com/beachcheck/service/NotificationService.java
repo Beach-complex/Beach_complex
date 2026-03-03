@@ -119,13 +119,13 @@ public class NotificationService {
    * <p>Contract(Output):
    *
    * <ul>
-   *   <li>알림 엔티티 반환 (findById에 @Transactional(readOnly = true) 적용됨)
+   *   <li>알림 엔티티 반환 (Spring Data JPA 기본 구현에서 read-only 트랜잭션이 적용됨)
    *   <li>존재하지 않으면 IllegalArgumentException 발생
    * </ul>
    */
   protected Notification findNotification(UUID notificationId) {
     return notificationRepository
-        .findById(notificationId) // findById 안에 @Transactional(readOnly = true) 적용됨
+        .findById(notificationId) // Spring Data JPA 기본 구현에서 read-only 트랜잭션이 적용됨
         .orElseThrow(() -> new IllegalArgumentException("Notification을 찾을 수 없습니다."));
   }
 
