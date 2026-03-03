@@ -23,7 +23,7 @@ public class OutboxPublisher {
   public OutboxPublisher(
       OutboxEventRepository outboxEventRepository,
       OutboxEventDispatcher outboxEventDispatcher,
-      @Value("${app.outbox.batch-size:10}") int batchSize) {
+      @Value("${app.outbox.polling.batch-size:10}") int batchSize) {
     this.outboxEventRepository = outboxEventRepository;
     this.outboxEventDispatcher = outboxEventDispatcher;
     this.batchSize = batchSize;
