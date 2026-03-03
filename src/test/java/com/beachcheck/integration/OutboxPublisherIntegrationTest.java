@@ -29,6 +29,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OutboxPublisher 통합 테스트
@@ -42,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  *   <li>FirebaseMessaging만 Mock (실제 FCM 호출 방지)
  * </ul>
  */
+@Transactional(propagation = Propagation.NOT_SUPPORTED) // 스케줄러 트랜잭션과 격리하여 테스트 제어
 class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Autowired private OutboxPublisher outboxPublisher;

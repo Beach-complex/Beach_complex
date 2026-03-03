@@ -12,6 +12,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 
@@ -28,6 +30,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
    * @param pageable 페이징 정보 (pageSize만큼 조회)
    * @return 처리 대상 이벤트 목록 (잠기지 않은 이벤트만, createdAt 오름차순 · 동일 시 id 오름차순 정렬)
    */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
   @Query(
