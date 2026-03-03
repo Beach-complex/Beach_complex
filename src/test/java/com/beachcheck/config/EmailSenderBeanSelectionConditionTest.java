@@ -1,4 +1,4 @@
-package com.beachcheck.integration;
+package com.beachcheck.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -14,8 +14,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.mail.javamail.JavaMailSender;
 
-@DisplayName("EmailSender 조건부 빈 선택 통합 테스트")
-class EmailSenderBeanSelectionIntegrationTest {
+@DisplayName("EmailSender 조건부 빈 선택 컨텍스트 테스트")
+class EmailSenderBeanSelectionConditionTest {
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
