@@ -9,6 +9,9 @@ import com.beachcheck.service.SmtpEmailSender;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.mail.javamail.JavaMailSender;
 
 @DisplayName("EmailSender 조건부 빈 선택 통합 테스트")
@@ -16,7 +19,8 @@ class EmailSenderBeanSelectionIntegrationTest {
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
-          .withUserConfiguration(SmtpEmailSender.class, NoopEmailSender.class);
+          .withUserConfiguration(
+              SmtpEmailSender.class, NoopEmailSender.class, StrictPlaceholderConfig.class);
 
   @Test
   @DisplayName("enabled=false면 NoopEmailSender를 사용한다")
@@ -60,6 +64,22 @@ class EmailSenderBeanSelectionIntegrationTest {
   }
 
   @Test
+  @DisplayName("enabled=true이고 default-from이 미설정이면 placeholder 해석 단계에서 실패한다")
+  void whenMailEnabledAndDefaultFromMissing_thenContextFailsAtPlaceholderResolution() {
+    contextRunner
+        .withBean(JavaMailSender.class, () -> mock(JavaMailSender.class))
+        .withPropertyValues("app.mail.enabled=true")
+        .run(
+            context -> {
+              assertThat(context).hasFailed();
+              assertThat(context.getStartupFailure())
+                  .hasRootCauseInstanceOf(IllegalArgumentException.class)
+                  .rootCause()
+                  .hasMessageContaining("Could not resolve placeholder 'app.mail.default-from'");
+            });
+  }
+
+  @Test
   @DisplayName("enabled 미설정이면 NoopEmailSender를 사용한다")
   void whenMailEnabledMissing_thenUseNoopSender() {
     contextRunner
@@ -70,5 +90,15 @@ class EmailSenderBeanSelectionIntegrationTest {
               assertThat(context).hasSingleBean(EmailSender.class);
               assertThat(context.getBean(EmailSender.class)).isInstanceOf(NoopEmailSender.class);
             });
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  static class StrictPlaceholderConfig {
+    @Bean
+    static PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer() {
+      PropertySourcesPlaceholderConfigurer configurer = new PropertySourcesPlaceholderConfigurer();
+      configurer.setIgnoreUnresolvablePlaceholders(false);
+      return configurer;
+    }
   }
 }
