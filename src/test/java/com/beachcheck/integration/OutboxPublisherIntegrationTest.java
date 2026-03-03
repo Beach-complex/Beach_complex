@@ -23,7 +23,6 @@ import com.beachcheck.service.OutboxPublisher;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -110,26 +109,46 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName("TC2 - 여러 PENDING 이벤트를 배치 처리")
-  void shouldProcessMultiplePendingEvents() throws FirebaseMessagingException {
+  void shouldProcessMultiplePendingEvents() {
     // Given: 3개의 PENDING 이벤트 생성
     Notification notification1 = createAndSaveNotification(NotificationStatus.PENDING);
     Notification notification2 = createAndSaveNotification(NotificationStatus.PENDING);
     Notification notification3 = createAndSaveNotification(NotificationStatus.PENDING);
 
-    createAndSaveOutboxEvent(notification1.getId());
-    createAndSaveOutboxEvent(notification2.getId());
-    createAndSaveOutboxEvent(notification3.getId());
+    OutboxEvent event1 = createAndSaveOutboxEvent(notification1.getId());
+    OutboxEvent event2 = createAndSaveOutboxEvent(notification2.getId());
+    OutboxEvent event3 = createAndSaveOutboxEvent(notification3.getId());
 
     // When: OutboxPublisher 실행
     outboxPublisher.processPendingOutboxEvents();
 
-    // Then: 모든 이벤트가 SENT 상태
-    List<OutboxEvent> allEvents = outboxEventRepository.findAll();
-    assertThat(allEvents).hasSize(3).allMatch(e -> e.getStatus() == OutboxEventStatus.SENT);
+    // Then: 생성한 이벤트 각각 SENT 상태 확인 (findAll() 대신 ID 기반으로 전역 데이터 오염 방지)
+    assertThat(outboxEventRepository.findById(event1.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo(OutboxEventStatus.SENT);
+    assertThat(outboxEventRepository.findById(event2.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo(OutboxEventStatus.SENT);
+    assertThat(outboxEventRepository.findById(event3.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo(OutboxEventStatus.SENT);
 
-    // Then: 모든 Notification이 SENT 상태
-    List<Notification> allNotifications = notificationRepository.findAll();
-    assertThat(allNotifications).hasSize(3).allMatch(n -> n.getStatus() == NotificationStatus.SENT);
+    // Then: 생성한 Notification 각각 SENT 상태 확인
+    assertThat(notificationRepository.findById(notification1.getId()))
+        .get()
+        .extracting(Notification::getStatus)
+        .isEqualTo(NotificationStatus.SENT);
+    assertThat(notificationRepository.findById(notification2.getId()))
+        .get()
+        .extracting(Notification::getStatus)
+        .isEqualTo(NotificationStatus.SENT);
+    assertThat(notificationRepository.findById(notification3.getId()))
+        .get()
+        .extracting(Notification::getStatus)
+        .isEqualTo(NotificationStatus.SENT);
   }
 
   @Test
