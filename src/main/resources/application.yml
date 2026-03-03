@@ -37,7 +37,6 @@ spring:
       enabled: true
   mail:
     host: smtp.gmail.com
-#    host: smtp.invalid-host-for-test.com  # 잘못된 호스트
     port: 587
     username: ${SPRING_MAIL_USERNAME:}
     password: ${SPRING_MAIL_PASSWORD:}
