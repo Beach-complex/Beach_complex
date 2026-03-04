@@ -22,8 +22,8 @@ import org.springframework.context.annotation.Primary;
  * </ul>
  *
  * <p>Context: test 환경에서는 app.firebase.enabled=false로 FirebaseMessaging 빈이 생성되지 않지만,
- * SchedulingConfig → OutboxPublisher → FirebaseMessaging 의존성 체인으로 인해 ApplicationContext 로딩이 실패함. 모든
- * 통합 테스트에 Mock을 제공하여 문제 해결.
+ * OutboxSchedulingConfig → OutboxPublisher → OutboxEventDispatcher → FirebaseMessaging 의존성 체인으로 인해
+ * ApplicationContext 로딩이 실패함. 모든 통합 테스트에 Mock을 제공하여 문제 해결.
  */
 @TestConfiguration
 public class FirebaseTestConfig {
