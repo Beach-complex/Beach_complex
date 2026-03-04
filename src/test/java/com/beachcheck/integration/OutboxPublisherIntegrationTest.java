@@ -24,12 +24,13 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OutboxPublisher 통합 테스트
@@ -39,10 +40,16 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <p>Policy:
  *
  * <ul>
- *   <li>IntegrationTest 상속: Testcontainers + 트랜잭션 롤백 자동 설정
+ *   <li>NOT_SUPPORTED: OutboxEventDispatcher의 REQUIRES_NEW와 격리. 롤백 대신 @BeforeEach deleteAll()로 테스트
+ *       격리
  *   <li>FirebaseMessaging만 Mock (실제 FCM 호출 방지)
  * </ul>
  */
+@Transactional(
+    propagation =
+        Propagation
+            .NOT_SUPPORTED) // OutboxPublisher의 REQUIRES_NEW 트랜잭션과 격리하여 테스트 간 트랜잭션 롤백이 영향을 주지 않도록 함.
+// 대신 @BeforeEach에서 deleteAll()로 DB 상태 초기화
 class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Autowired private OutboxPublisher outboxPublisher;
@@ -60,7 +67,9 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     // Mock 호출 기록 초기화 (테스트 간 격리)
     clearInvocations(firebaseMessaging);
 
-    // 테스트 전에 데이터 정리 (FK 제약 조건 순서 고려)
+    // NOT_SUPPORTED로 외부 트랜잭션이 없어 롤백이 동작하지 않으므로 명시적 정리 필요
+    // OutboxEventDispatcher의 REQUIRES_NEW 커밋 데이터도 롤백 대상 외라 deleteAll()이 실질적 격리 수단
+    // FK 제약 조건 순서 고려하여 삭제
     outboxEventRepository.deleteAll();
     notificationRepository.deleteAll();
     userRepository.deleteAll();
@@ -101,26 +110,46 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName("TC2 - 여러 PENDING 이벤트를 배치 처리")
-  void shouldProcessMultiplePendingEvents() throws FirebaseMessagingException {
+  void shouldProcessMultiplePendingEvents() {
     // Given: 3개의 PENDING 이벤트 생성
     Notification notification1 = createAndSaveNotification(NotificationStatus.PENDING);
     Notification notification2 = createAndSaveNotification(NotificationStatus.PENDING);
     Notification notification3 = createAndSaveNotification(NotificationStatus.PENDING);
 
-    createAndSaveOutboxEvent(notification1.getId());
-    createAndSaveOutboxEvent(notification2.getId());
-    createAndSaveOutboxEvent(notification3.getId());
+    OutboxEvent event1 = createAndSaveOutboxEvent(notification1.getId());
+    OutboxEvent event2 = createAndSaveOutboxEvent(notification2.getId());
+    OutboxEvent event3 = createAndSaveOutboxEvent(notification3.getId());
 
     // When: OutboxPublisher 실행
     outboxPublisher.processPendingOutboxEvents();
 
-    // Then: 모든 이벤트가 SENT 상태
-    List<OutboxEvent> allEvents = outboxEventRepository.findAll();
-    assertThat(allEvents).hasSize(3).allMatch(e -> e.getStatus() == OutboxEventStatus.SENT);
+    // Then: 생성한 이벤트 각각 SENT 상태 확인 (findAll() 대신 ID 기반으로 전역 데이터 오염 방지)
+    assertThat(outboxEventRepository.findById(event1.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo(OutboxEventStatus.SENT);
+    assertThat(outboxEventRepository.findById(event2.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo(OutboxEventStatus.SENT);
+    assertThat(outboxEventRepository.findById(event3.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo(OutboxEventStatus.SENT);
 
-    // Then: 모든 Notification이 SENT 상태
-    List<Notification> allNotifications = notificationRepository.findAll();
-    assertThat(allNotifications).hasSize(3).allMatch(n -> n.getStatus() == NotificationStatus.SENT);
+    // Then: 생성한 Notification 각각 SENT 상태 확인
+    assertThat(notificationRepository.findById(notification1.getId()))
+        .get()
+        .extracting(Notification::getStatus)
+        .isEqualTo(NotificationStatus.SENT);
+    assertThat(notificationRepository.findById(notification2.getId()))
+        .get()
+        .extracting(Notification::getStatus)
+        .isEqualTo(NotificationStatus.SENT);
+    assertThat(notificationRepository.findById(notification3.getId()))
+        .get()
+        .extracting(Notification::getStatus)
+        .isEqualTo(NotificationStatus.SENT);
   }
 
   @Test
@@ -230,6 +259,10 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
   }
 
   // TODO: 향후 Dead Letter Queue 도입 시 별도 테이블 이관 여부 검증 필요
+
+  // TODO(후속 PR): createAndSaveNotification(status) 헬퍼를 상태별 메서드로 분리
+  // - createAndSavePendingNotification() / createAndSaveSentNotification()
+  // - status 파라미터 노출 시 sentAt 누락 등 fixture 불일치 실수 방지
 
   // ==========================
   // 테스트 헬퍼 메서드

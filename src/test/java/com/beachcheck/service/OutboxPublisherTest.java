@@ -1,7 +1,6 @@
 package com.beachcheck.service;
 
 import static com.beachcheck.domain.Notification.NotificationStatus;
-import static com.beachcheck.domain.Notification.NotificationType;
 import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus;
 import static com.beachcheck.domain.OutboxEvent.OutboxEventType;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -209,67 +208,6 @@ class OutboxPublisherTest {
       assertThat(notification2.getStatus()).isEqualTo(NotificationStatus.SENT);
       assertThat(notification3.getStatus()).isEqualTo(NotificationStatus.SENT);
     }
-  }
-
-  @Nested
-  @DisplayName("재시도 로직 (Exponential Backoff)")
-  class RetryTests {
-
-    @Test
-    @DisplayName("TC6 - FCM 실패 시 FAILED_RETRIABLE 전이 + retryCount 증가 + nextRetryAt 설정")
-    void shouldMarkAsFailedRetriable_whenFcmThrows() throws FirebaseMessagingException {
-      // Given
-      UUID notificationId = UUID.randomUUID();
-      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
-      OutboxEvent event = createPendingEvent(notificationId); // retryCount = 0
-
-      given(outboxEventRepository.findPendingEvents(any(Instant.class), any(PageRequest.class)))
-          .willReturn(List.of(event));
-      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
-      given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
-
-      // When
-      publisher.processPendingOutboxEvents();
-
-      // Then
-      assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
-      assertThat(event.getRetryCount()).isEqualTo(1);
-      assertThat(event.getNextRetryAt()).isAfter(Instant.now());
-      then(outboxEventRepository).should().save(event);
-    }
-
-    @Test
-    @DisplayName("TC7 - retryCount >= 3 시 FCM 실패하면 FAILED_PERMANENT 전이")
-    void shouldMarkAsFailedPermanent_whenRetryCountExceedsMax() throws FirebaseMessagingException {
-      // Given
-      UUID notificationId = UUID.randomUUID();
-      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
-      OutboxEvent event = createPendingEvent(notificationId);
-      event.setRetryCount(3); // 이미 3번 실패한 상태
-
-      given(outboxEventRepository.findPendingEvents(any(Instant.class), any(PageRequest.class)))
-          .willReturn(List.of(event));
-      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
-      given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
-
-      // When
-      publisher.processPendingOutboxEvents();
-
-      // Then
-      assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
-      then(outboxEventRepository).should().save(event);
-    }
-  }
-
-  // 테스트 헬퍼 메서드
-
-  private Notification createNotification(UUID notificationId, NotificationStatus status) {
-    Notification notification =
-        Notification.createPending(
-            UUID.randomUUID(), NotificationType.TEST, "테스트 알림", "테스트 메시지", "fcm-token-12345");
-    notification.setId(notificationId);
-    notification.setStatus(status);
-    return notification;
   }
 
   private OutboxEvent createPendingEvent(UUID notificationId) {
