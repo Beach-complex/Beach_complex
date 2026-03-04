@@ -18,13 +18,21 @@ import com.beachcheck.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /** OutboxEvent 통합 테스트 (Repository + 추후 Service/트랜잭션 테스트 확장 가능) */
+@Transactional(
+    propagation =
+        Propagation
+            .NOT_SUPPORTED) // Repository 테스트는 트랜잭션 롤백이 적용되지 않도록 격리. 대신 @BeforeEach에서 deleteAll()로
+// DB 상태 초기화
 @DisplayName("OutboxEvent 통합 테스트")
 class OutboxEventIntegrationTest extends IntegrationTest {
 
@@ -32,31 +40,11 @@ class OutboxEventIntegrationTest extends IntegrationTest {
   @Autowired private NotificationRepository notificationRepository;
   @Autowired private UserRepository userRepository;
 
-  // 공통 헬퍼 메서드
-
-  private User createUser() {
-    User user = User.create("test-" + UUID.randomUUID() + "@example.com", "password123", "테스트 사용자");
-    return userRepository.save(user);
-  }
-
-  private Notification createNotification() {
-    User user = createUser();
-    Notification notification =
-        Notification.createPending(
-            user.getId(), Notification.NotificationType.TEST, "테스트 알림", "테스트 내용", "test-fcm-token");
-    return notificationRepository.save(notification);
-  }
-
-  private OutboxEvent createEvent(OutboxEventStatus status, Instant nextRetryAt) {
-    Notification notification = createNotification();
-    OutboxEvent event =
-        OutboxEvent.createPending(
-            notification.getId(), PUSH_NOTIFICATION, "{\"title\":\"테스트\",\"body\":\"내용\"}");
-    event.setStatus(status); // 테스트를 위해 상태 변경
-    if (nextRetryAt != null) {
-      event.setNextRetryAt(nextRetryAt); // 테스트를 위해 재시도 시간 변경
-    }
-    return outboxEventRepository.save(event); // JPA가 @PrePersist 자동 호출
+  @BeforeEach
+  void setUp() {
+    outboxEventRepository.deleteAll();
+    notificationRepository.deleteAll();
+    userRepository.deleteAll();
   }
 
   @Nested
@@ -240,5 +228,32 @@ class OutboxEventIntegrationTest extends IntegrationTest {
         assertThat(outboxEventRepository.countByStatus(PENDING)).isEqualTo(0);
       }
     }
+  }
+
+  // ── 헬퍼 메서드 ──────────────────────────────────────────────────────────────
+
+  private User createUser() {
+    User user = User.create("test-" + UUID.randomUUID() + "@example.com", "password123", "테스트 사용자");
+    return userRepository.save(user);
+  }
+
+  private Notification createNotification() {
+    User user = createUser();
+    Notification notification =
+        Notification.createPending(
+            user.getId(), Notification.NotificationType.TEST, "테스트 알림", "테스트 내용", "test-fcm-token");
+    return notificationRepository.save(notification);
+  }
+
+  private OutboxEvent createEvent(OutboxEventStatus status, Instant nextRetryAt) {
+    Notification notification = createNotification();
+    OutboxEvent event =
+        OutboxEvent.createPending(
+            notification.getId(), PUSH_NOTIFICATION, "{\"title\":\"테스트\",\"body\":\"내용\"}");
+    event.setStatus(status);
+    if (nextRetryAt != null) {
+      event.setNextRetryAt(nextRetryAt);
+    }
+    return outboxEventRepository.save(event);
   }
 }

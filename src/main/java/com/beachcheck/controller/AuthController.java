@@ -56,7 +56,7 @@ public class AuthController {
   public ResponseEntity<Map<String, String>> logOut(
       @Valid @RequestBody RefreshTokenRequestDto request) {
     authService.logOut(request.refreshToken());
-    return ResponseEntity.ok(Map.of("message", "Successfully signed out"));
+    return ResponseEntity.ok(Map.of("message", "로그아웃되었습니다."));
   }
 
   @PostMapping("/refresh")
@@ -95,13 +95,13 @@ public class AuthController {
   @PostMapping("/verify-email/confirm")
   public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token) {
     emailVerificationService.verifyToken(token);
-    return ResponseEntity.ok(Map.of("message", "Email verified"));
+    return ResponseEntity.ok(Map.of("message", "이메일 인증이 완료되었습니다."));
   }
 
   @PostMapping("/resend-verification")
   public ResponseEntity<Map<String, String>> resendVerification(
       @Valid @RequestBody ResendVerificationRequestDto request) {
     emailVerificationService.resendVerification(request.email());
-    return ResponseEntity.ok(Map.of("message", "Verification email resent"));
+    return ResponseEntity.ok(Map.of("message", "인증 이메일이 재전송되었습니다."));
   }
 }
