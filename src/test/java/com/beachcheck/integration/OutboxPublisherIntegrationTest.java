@@ -177,6 +177,10 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
   // - 재시도 카운트 관리
   // - Dead Letter Queue 패턴
 
+  // TODO(후속 PR): createAndSaveNotification(status) 헬퍼를 상태별 메서드로 분리
+  // - createAndSavePendingNotification() / createAndSaveSentNotification()
+  // - status 파라미터 노출 시 sentAt 누락 등 fixture 불일치 실수 방지
+
   // ==========================
   // 테스트 헬퍼 메서드
   // ==========================
