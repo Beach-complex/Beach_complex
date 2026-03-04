@@ -37,6 +37,7 @@ spring:
       enabled: true
   mail:
     host: smtp.gmail.com
+
     port: 587
     username: ${SPRING_MAIL_USERNAME:}
     password: ${SPRING_MAIL_PASSWORD:}
