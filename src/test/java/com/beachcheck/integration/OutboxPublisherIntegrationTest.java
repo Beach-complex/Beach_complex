@@ -258,6 +258,39 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     assertThat(saved.getProcessedAt()).isNotNull();
   }
 
+  @Test
+  @DisplayName("TC7 - FAILED_RETRIABLE이지만 nextRetryAt 미도달 시 폴링에서 스킵")
+  void shouldNotProcessRetriableEvent_whenNextRetryAtNotYetReached()
+      throws FirebaseMessagingException {
+    // Given: FCM 실패 → FAILED_RETRIABLE 전이 (nextRetryAt = now + 1초)
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Given: nextRetryAt이 아직 미래임을 확인
+    OutboxEvent failedEvent =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(failedEvent.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(failedEvent.getNextRetryAt()).isAfter(now()); // 아직 재시도 시간 미도달
+
+    clearInvocations(firebaseMessaging);
+
+    // When: 즉시 재폴링 (nextRetryAt 미도달 상태)
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then: FCM 호출 없음, 상태 변화 없음
+    then(firebaseMessaging).should(never()).send(any(Message.class));
+    OutboxEvent unchanged =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(unchanged.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(unchanged.getRetryCount()).isEqualTo(1);
+  }
+
   // TODO: 향후 Dead Letter Queue 도입 시 별도 테이블 이관 여부 검증 필요
 
   // TODO(후속 PR): createAndSaveNotification(status) 헬퍼를 상태별 메서드로 분리
