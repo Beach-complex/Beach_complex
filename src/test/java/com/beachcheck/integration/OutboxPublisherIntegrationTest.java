@@ -259,7 +259,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("TC7 - FAILED_RETRIABLE이지만 nextRetryAt 미도달 시 폴링에서 스킵")
+  @DisplayName("TC7 - FAILED_RETRIABLE이지만 재시도 시간이 지나지 않은 이벤트는 폴링 대상에서 제외")
   void shouldNotProcessRetriableEvent_whenNextRetryAtNotYetReached()
       throws FirebaseMessagingException {
     // Given: FCM 실패 → FAILED_RETRIABLE 전이 (nextRetryAt = now + 1초)
@@ -289,6 +289,44 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
             .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
     assertThat(unchanged.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
     assertThat(unchanged.getRetryCount()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("TC8 - 2회 연속 실패 후 nextRetryAt ≈ now+2s가 DB에 저장되는지 (backoff 증가 통합 검증)")
+  void shouldPersistDoubledBackoff_whenFcmFailsTwiceConsecutively()
+      throws FirebaseMessagingException {
+    // Given: PENDING 이벤트 + FCM 계속 실패
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+
+    // When: 1차 실패 (retryCount=0 → backoff 1s, nextRetryAt = now+1s)
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Given: nextRetryAt을 과거로 조작하여 재폴링 조건 충족 (시간 경과 시뮬레이션)
+    OutboxEvent afterFirst =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(afterFirst.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(afterFirst.getRetryCount()).isEqualTo(1);
+
+    afterFirst.setNextRetryAt(now().minusSeconds(10));
+    outboxEventRepository.save(afterFirst);
+
+    // When: 2차 실패 (retryCount=1 → backoff 2s, nextRetryAt = now+2s)
+    Instant before = now();
+    outboxPublisher.processPendingOutboxEvents();
+    Instant after = now();
+
+    // Then: retryCount=2, nextRetryAt ≈ now+2s가 실제 DB에 저장되는지 검증
+    OutboxEvent afterSecond =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(afterSecond.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(afterSecond.getRetryCount()).isEqualTo(2);
+    assertThat(afterSecond.getNextRetryAt()).isBetween(before.plusSeconds(2), after.plusSeconds(2));
   }
 
   // TODO: 향후 Dead Letter Queue 도입 시 별도 테이블 이관 여부 검증 필요
