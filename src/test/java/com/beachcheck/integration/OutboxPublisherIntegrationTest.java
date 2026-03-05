@@ -23,6 +23,7 @@ import com.beachcheck.service.OutboxPublisher;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -172,10 +173,163 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     then(firebaseMessaging).should(never()).send(any(Message.class));
   }
 
-  // TODO(PR#3 재시도 로직): Notification 조회 실패 시 에러 처리 테스트 추가
-  // - FAILED_PERMANENT 상태로 전이하여 무한 재시도 방지
-  // - 재시도 카운트 관리
-  // - Dead Letter Queue 패턴
+  @Test
+  @DisplayName("TC4 - FCM 실패 시 실제 DB에 FAILED_RETRIABLE 저장 (retryCount+1, nextRetryAt 설정)")
+  void shouldPersistFailedRetriableToDb_whenFcmThrows() throws FirebaseMessagingException {
+
+    // Given: PENDING 이벤트 + FCM 예외 설정
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+
+    // When: OutboxPublisher 실행
+
+    Instant before = now();
+
+    outboxPublisher.processPendingOutboxEvents();
+
+    Instant after = now();
+
+    // Then: OutboxEvent가 FAILED_RETRIABLE로 영속화되고 retryCount=1, nextRetryAt > now
+    OutboxEvent processedEvent =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(processedEvent.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(processedEvent.getRetryCount()).isEqualTo(1);
+    assertThat(processedEvent.getNextRetryAt())
+        .isBetween(before.plusSeconds(1), after.plusSeconds(1));
+  }
+
+  @Test
+  @DisplayName("TC5 - retryCount=3에서 FCM 실패 시 실제 DB에 FAILED_PERMANENT 저장")
+  void shouldPersistFailedPermanentToDb_whenRetryCountExceedsMax()
+      throws FirebaseMessagingException {
+    // Given
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    event.setRetryCount(3); // 이미 3번 실패한 상태로 세팅
+    outboxEventRepository.save(event);
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+
+    // When
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then
+    OutboxEvent saved =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(saved.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
+  }
+
+  @Test
+  @DisplayName("TC6 - FAILED_RETRIABLE 이벤트가 nextRetryAt 경과 후 재폴링되어 SENT로 전이")
+  void shouldRetryAndSendSuccessfully_whenNextRetryAtHasPassed() throws FirebaseMessagingException {
+    // Given: Phase 1 - FCM 실패로 FAILED_RETRIABLE 상태로 전이
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+
+    outboxPublisher.processPendingOutboxEvents(); // 1차 실행: FAILED_RETRIABLE로 전이
+
+    // Given: Phase 2 - nextRetryAt을 과거로 조작하여 재폴링 조건 충족 (시간 경과 시뮬레이션)
+    OutboxEvent failedEvent =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(failedEvent.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE); // 중간 상태 확인
+
+    failedEvent.setNextRetryAt(now().minusSeconds(10)); // 10초 전으로 조작 → 재폴링 대상
+    outboxEventRepository.save(failedEvent);
+
+    given(firebaseMessaging.send(any(Message.class))).willReturn("mock-message-id"); // FCM 성공으로 전환
+
+    // When: 2차 실행 - FAILED_RETRIABLE 이벤트가 재폴링되어 처리
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then: 최종 상태 SENT 확인
+    OutboxEvent saved =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(saved.getStatus()).isEqualTo(OutboxEventStatus.SENT);
+    assertThat(saved.getProcessedAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("TC7 - FAILED_RETRIABLE이지만 재시도 시간이 지나지 않은 이벤트는 폴링 대상에서 제외")
+  void shouldNotProcessRetriableEvent_whenNextRetryAtNotYetReached()
+      throws FirebaseMessagingException {
+    // Given: FCM 실패 → FAILED_RETRIABLE 전이 (nextRetryAt = now + 1초)
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Given: nextRetryAt이 아직 미래임을 확인
+    OutboxEvent failedEvent =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(failedEvent.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(failedEvent.getNextRetryAt()).isAfter(now()); // 아직 재시도 시간 미도달
+
+    clearInvocations(firebaseMessaging);
+
+    // When: 즉시 재폴링 (nextRetryAt 미도달 상태)
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then: FCM 호출 없음, 상태 변화 없음
+    then(firebaseMessaging).should(never()).send(any(Message.class));
+    OutboxEvent unchanged =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(unchanged.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(unchanged.getRetryCount()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("TC8 - 2회 연속 실패 후 nextRetryAt ≈ now+2s가 DB에 저장되는지 (backoff 증가 통합 검증)")
+  void shouldPersistDoubledBackoff_whenFcmFailsTwiceConsecutively()
+      throws FirebaseMessagingException {
+    // Given: PENDING 이벤트 + FCM 계속 실패
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+
+    // When: 1차 실패 (retryCount=0 → backoff 1s, nextRetryAt = now+1s)
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Given: nextRetryAt을 과거로 조작하여 재폴링 조건 충족 (시간 경과 시뮬레이션)
+    OutboxEvent afterFirst =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(afterFirst.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(afterFirst.getRetryCount()).isEqualTo(1);
+
+    afterFirst.setNextRetryAt(now().minusSeconds(10));
+    outboxEventRepository.save(afterFirst);
+
+    // When: 2차 실패 (retryCount=1 → backoff 2s, nextRetryAt = now+2s)
+    Instant before = now();
+    outboxPublisher.processPendingOutboxEvents();
+    Instant after = now();
+
+    // Then: retryCount=2, nextRetryAt ≈ now+2s가 실제 DB에 저장되는지 검증
+    OutboxEvent afterSecond =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(afterSecond.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
+    assertThat(afterSecond.getRetryCount()).isEqualTo(2);
+    assertThat(afterSecond.getNextRetryAt()).isBetween(before.plusSeconds(2), after.plusSeconds(2));
+  }
+
+  // TODO: 향후 Dead Letter Queue 도입 시 별도 테이블 이관 여부 검증 필요
 
   // TODO(후속 PR): createAndSaveNotification(status) 헬퍼를 상태별 메서드로 분리
   // - createAndSavePendingNotification() / createAndSaveSentNotification()
