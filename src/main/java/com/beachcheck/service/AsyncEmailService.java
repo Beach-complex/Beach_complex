@@ -54,9 +54,11 @@ public class AsyncEmailService {
   @Async("emailTaskExecutor")
   @Retryable(
       retryFor = {MailSendException.class},
-      maxAttempts = 4, // 최초 1회 + 재시도 3회 = 총 4회
-      backoff = @Backoff(delay = 5000, multiplier = 2) // 지수 백오프 (5초, 10초, 20초)
-      )
+      maxAttemptsExpression = "${app.email.retry.max-attempts:4}",
+      backoff =
+          @Backoff(
+              delayExpression = "${app.email.retry.delay-ms:5000}",
+              multiplierExpression = "${app.email.retry.multiplier:2}"))
   public void sendVerificationEmailAsync(String to, String verificationLink) {
 
     String subject = "이메일 인증";
