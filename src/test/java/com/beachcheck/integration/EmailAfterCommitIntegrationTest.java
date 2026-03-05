@@ -1,5 +1,7 @@
 package com.beachcheck.integration;
 
+import static com.beachcheck.fixture.EmailVerificationTestFixtures.emailUser;
+import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.then;
 
@@ -73,16 +75,8 @@ class EmailAfterCommitIntegrationTest extends IntegrationTest {
           then(asyncEmailService).shouldHaveNoInteractions();
         });
 
-    ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<String> linkCaptor = ArgumentCaptor.forClass(String.class);
-    then(asyncEmailService)
-        .should()
-        .sendVerificationEmailAsync(emailCaptor.capture(), linkCaptor.capture());
-
     // then
-    assertThat(emailCaptor.getValue()).isEqualTo(user.getEmail());
-    assertThat(linkCaptor.getValue()).contains("?token=");
-    assertThat(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())).isPresent();
+    assertAfterCommitEmailSent(user);
   }
 
   @Test
@@ -105,16 +99,22 @@ class EmailAfterCommitIntegrationTest extends IntegrationTest {
   }
 
   private User saveUser() {
-    User user = new User();
-    user.setEmail("after-commit-" + UUID.randomUUID() + "@test.com");
-    user.setName("after-commit-tester");
-    user.setPassword("encoded-password");
-    user.setEnabled(false);
-    user.setRole(User.Role.USER);
-    user.setAuthProvider(User.AuthProvider.EMAIL);
+    User user = emailUser(uniqueEmail("after-commit"), false);
 
     User saved = userRepository.save(user);
     createdUserIds.add(saved.getId());
     return saved;
+  }
+
+  private void assertAfterCommitEmailSent(User user) {
+    ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> linkCaptor = ArgumentCaptor.forClass(String.class);
+    then(asyncEmailService)
+        .should()
+        .sendVerificationEmailAsync(emailCaptor.capture(), linkCaptor.capture());
+
+    assertThat(emailCaptor.getValue()).isEqualTo(user.getEmail());
+    assertThat(linkCaptor.getValue()).contains("?token=");
+    assertThat(tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())).isPresent();
   }
 }
