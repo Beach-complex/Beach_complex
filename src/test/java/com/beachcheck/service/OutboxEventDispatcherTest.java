@@ -165,6 +165,29 @@ class OutboxEventDispatcherTest {
       // (FAILED로 동기화할지, PENDING 유지할지 정책에 따라 테스트 고정)
       then(outboxEventRepository).should().save(event);
     }
+
+    @Test
+    @DisplayName("TC6 - 2번째 실패 시 backoff 2초 (retryCount=1 → 1<<1)")
+    void shouldApplyDoubledBackoff_whenRetryCountIsOne() throws FirebaseMessagingException {
+      // Given: retryCount=1인 이벤트 (1차 실패 이후 상태)
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId);
+      event.setRetryCount(1);
+
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class)))
+          .willThrow(mock(FirebaseMessagingException.class));
+
+      // When
+      Instant before = Instant.now();
+      dispatcher.dispatch(event);
+      Instant after = Instant.now();
+
+      // Then: retryCount=2, nextRetryAt ≈ now + 2s (1<<1 = 2)
+      assertThat(event.getRetryCount()).isEqualTo(2);
+      assertThat(event.getNextRetryAt()).isBetween(before.plusSeconds(2), after.plusSeconds(2));
+    }
   }
 
   private Notification createNotification(UUID notificationId, NotificationStatus status) {
