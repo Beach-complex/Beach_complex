@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import com.beachcheck.base.IntegrationTest;
@@ -23,6 +24,7 @@ import com.beachcheck.service.OutboxPublisher;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -327,6 +329,30 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     assertThat(afterSecond.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
     assertThat(afterSecond.getRetryCount()).isEqualTo(2);
     assertThat(afterSecond.getNextRetryAt()).isBetween(before.plusSeconds(2), after.plusSeconds(2));
+  }
+
+  @Test
+  @DisplayName("TC9 - UNREGISTERED 에러 코드 수신 시 retryCount=0에서도 즉시 FAILED_PERMANENT로 DB 저장")
+  void shouldPersistFailedPermanent_whenFcmReturnsUnregistered() throws FirebaseMessagingException {
+    // Given
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+
+    FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
+    given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
+    given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+
+    // When
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then: Exponential Backoff 없이 즉시 영구 실패
+    OutboxEvent saved =
+        outboxEventRepository
+            .findById(event.getId())
+            .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
+    assertThat(saved.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
+    assertThat(saved.getRetryCount()).isEqualTo(0);
+    assertThat(saved.getProcessedAt()).isNotNull();
   }
 
   // TODO: 향후 Dead Letter Queue 도입 시 별도 테이블 이관 여부 검증 필요
