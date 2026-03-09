@@ -85,7 +85,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
   @DisplayName("TC4-01: 메일 전송이 일시 실패하면 재시도 후 성공한다")
   void sendVerificationEmailAsync_retryThenSuccess() {
     // given
-    givenEmailSenderFailsThenSucceeds(FAIL_UNTIL_ATTEMPT);
+    givenEmailSenderFailsThenSucceeds();
 
     // when
     asyncEmailService.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
@@ -115,7 +115,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
   void sendVerification_viaEventListener_retryThenSuccess() {
     // given
     User user = saveUser();
-    givenEmailSenderFailsThenSucceeds(FAIL_UNTIL_ATTEMPT);
+    givenEmailSenderFailsThenSucceeds();
 
     // when
     transactionTemplate.executeWithoutResult(
@@ -155,11 +155,11 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
         .recoverFromEmailFailure(any(MailSendException.class), anyString(), anyString());
   }
 
-  private void givenEmailSenderFailsThenSucceeds(int failureCount) {
+  private void givenEmailSenderFailsThenSucceeds() {
     AtomicInteger attempts = new AtomicInteger(0);
     doAnswer(
             invocation -> {
-              if (attempts.incrementAndGet() <= failureCount) {
+              if (attempts.incrementAndGet() <= FAIL_UNTIL_ATTEMPT) {
                 throw new MailSendException("일시적 SMTP 전송 실패");
               }
               return null;
