@@ -12,6 +12,7 @@ import com.beachcheck.repository.EmailVerificationTokenRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.service.EmailVerificationService;
 import com.beachcheck.util.HashUtils;
+import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = "app.email-verification.resend-cooldown-minutes=0")
 class EmailVerificationStateTransitionIntegrationTest extends IntegrationTest {
 
-  private static final long NON_EXPIRED_TOKEN_LIFETIME_SECONDS = 24L * 60L * 60L;
+  private static final long NON_EXPIRED_TOKEN_LIFETIME_SECONDS = Duration.ofDays(1).getSeconds();
 
   @Autowired private EmailVerificationService emailVerificationService;
   @Autowired private UserRepository userRepository;
