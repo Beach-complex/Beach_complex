@@ -19,6 +19,7 @@ import com.beachcheck.repository.OutboxEventRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -187,6 +188,54 @@ class OutboxEventDispatcherTest {
       // Then: retryCount=2, nextRetryAt ≈ now + 2s (1<<1 = 2)
       assertThat(event.getRetryCount()).isEqualTo(2);
       assertThat(event.getNextRetryAt()).isBetween(before.plusSeconds(2), after.plusSeconds(2));
+    }
+
+    @Test
+    @DisplayName("TC7 - UNREGISTERED 에러 코드는 retryCount 무관 즉시 FAILED_PERMANENT")
+    void shouldMarkAsFailedPermanent_whenFcmErrorIsUnregistered()
+        throws FirebaseMessagingException {
+      // Given
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId); // retryCount = 0
+
+      FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
+      given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+
+      // When
+      dispatcher.dispatch(event);
+
+      // Then: retryCount=0인데도 FAILED_PERMANENT (backoff 없이 즉시 종료)
+      assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
+      assertThat(event.getRetryCount()).isEqualTo(0);
+      assertThat(event.getProcessedAt()).isNotNull();
+      then(outboxEventRepository).should().save(event);
+    }
+
+    @Test
+    @DisplayName("TC8 - INVALID_ARGUMENT 에러 코드는 retryCount 무관 즉시 FAILED_PERMANENT")
+    void shouldMarkAsFailedPermanent_whenFcmErrorIsInvalidArgument()
+        throws FirebaseMessagingException {
+      // Given
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId); // retryCount = 0
+
+      FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
+      given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.INVALID_ARGUMENT);
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+
+      // When
+      dispatcher.dispatch(event);
+
+      // Then
+      assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
+      assertThat(event.getRetryCount()).isEqualTo(0);
+      assertThat(event.getProcessedAt()).isNotNull();
+      then(outboxEventRepository).should().save(event);
     }
   }
 
