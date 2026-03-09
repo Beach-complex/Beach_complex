@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 public interface EmailVerificationTokenCleanupRepository
     extends JpaRepository<EmailVerificationToken, UUID> {
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(clearAutomatically = true)
   @Query(
       value = "delete from email_verification_tokens where user_id in (:userIds)",
       nativeQuery = true)
