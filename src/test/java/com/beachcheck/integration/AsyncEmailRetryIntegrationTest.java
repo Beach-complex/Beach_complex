@@ -65,9 +65,6 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
   @Value("${app.email.retry.delay-ms}")
   private long retryDelayMs;
 
-  @Value("${app.email.retry.multiplier}")
-  private double retryMultiplier;
-
   @SpyBean private AsyncEmailService asyncEmailService;
   @MockBean private EmailSender emailSender;
 
@@ -197,23 +194,6 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
   }
 
   private int calculateAsyncTimeoutMs() {
-    long retryWaitMs = 0L;
-    double nextDelayMs = Math.max(0L, retryDelayMs);
-
-    for (int retryIndex = 1; retryIndex < retryMaxAttempts; retryIndex++) {
-      long backoffMs = (long) Math.ceil(nextDelayMs);
-      retryWaitMs = safeAdd(retryWaitMs, backoffMs);
-      nextDelayMs *= retryMultiplier;
-    }
-
-    long timeoutMs = safeAdd(retryWaitMs, ASYNC_TIMEOUT_BUFFER_MS);
-    return timeoutMs > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) timeoutMs;
-  }
-
-  private long safeAdd(long left, long right) {
-    if (Long.MAX_VALUE - left < right) {
-      return Long.MAX_VALUE;
-    }
-    return left + right;
+    return (retryMaxAttempts - 1) * (int) retryDelayMs + ASYNC_TIMEOUT_BUFFER_MS;
   }
 }
