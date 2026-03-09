@@ -46,6 +46,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DisplayName("TC4: AsyncEmailService 재시도 통합 테스트")
 class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
+  // 비동기 실행 지연을 고려해 경험적으로 잡은 여유 버퍼
   private static final int ASYNC_TIMEOUT_BUFFER_MS = 2500;
   private static final int FAIL_UNTIL_ATTEMPT = 2;
 
