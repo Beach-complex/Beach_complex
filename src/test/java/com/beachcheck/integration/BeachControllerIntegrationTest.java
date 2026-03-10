@@ -6,6 +6,7 @@ import static com.beachcheck.fixture.UniqueTestFixtures.uniqueCode;
 import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static com.beachcheck.fixture.UserFavoriteTestFixtures.createFavorite;
 import static com.beachcheck.fixture.UserTestFixtures.createUser;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,10 +20,12 @@ import com.beachcheck.fixture.ApiRoutes;
 import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
 import com.beachcheck.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.web.servlet.MvcResult;
 
 @DisplayName("BeachController 통합 테스트")
 class BeachControllerIntegrationTest extends ApiTest {
@@ -130,16 +133,23 @@ class BeachControllerIntegrationTest extends ApiTest {
   @Test
   @DisplayName("TC6: 위도 검증 실패는 400 Validation Error 계약으로 고정된다")
   void searchBeaches_invalidLatitude_returnsBadRequest() throws Exception {
-    mockMvc
-        .perform(
-            get(ApiRoutes.BEACHES)
-                .param("lat", "91")
-                .param("lon", "129.1603")
-                .param("radiusKm", "1"))
-        .andExpect(status().isBadRequest())
-        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400))
-        .andExpect(jsonPath("$.title").value("Bad Request"))
-        .andExpect(jsonPath("$.detail").value("Invalid request content."));
+    MvcResult result =
+        mockMvc
+            .perform(
+                get(ApiRoutes.BEACHES)
+                    .param("lat", "91")
+                    .param("lon", "129.1603")
+                    .param("radiusKm", "1"))
+            .andExpect(status().isBadRequest())
+            .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400))
+            .andReturn();
+
+    JsonNode problem = objectMapper.readTree(result.getResponse().getContentAsString());
+    assertThat(problem.path("type").asText()).isEqualTo("about:blank");
+    assertThat(problem.path("title").asText()).isEqualTo("Bad Request");
+    assertThat(problem.path("status").asInt()).isEqualTo(400);
+    assertThat(problem.path("instance").asText()).isEqualTo(ApiRoutes.BEACHES);
+    assertThat(problem.path("detail").asText()).isNotBlank();
   }
 
   private Beach saveBeach(

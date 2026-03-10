@@ -6,13 +6,10 @@ import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static com.beachcheck.fixture.UserFavoriteTestFixtures.createFavorite;
 import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,10 +22,14 @@ import com.beachcheck.repository.BeachRepository;
 import com.beachcheck.repository.UserFavoriteRepository;
 import com.beachcheck.repository.UserRepository;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.util.StringUtils;
 
 @DisplayName("UserFavoriteController 통합 테스트")
 class UserFavoriteControllerIntegrationTest extends ApiTest {
@@ -59,12 +60,25 @@ class UserFavoriteControllerIntegrationTest extends ApiTest {
   @Test
   @DisplayName("TC1: 내 찜 목록 조회는 인증 사용자의 데이터만 반환한다")
   void getMyFavorites_authenticated_returnsOwnFavorites() throws Exception {
-    mockMvc
-        .perform(get(ApiRoutes.FAVORITES).header("Authorization", authHeader(user)))
-        .andExpect(status().isOk())
-        .andExpect(content().string(containsString(favoriteBeach.getId().toString())))
-        .andExpect(content().string(containsString("Favorite Beach")))
-        .andExpect(content().string(not(containsString(toggleBeach.getId().toString()))));
+    MvcResult result =
+        mockMvc
+            .perform(get(ApiRoutes.FAVORITES).header("Authorization", authHeader(user)))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    String body = result.getResponse().getContentAsString();
+    Pattern topLevelFavoritePattern =
+        Pattern.compile(
+            "^\\[\\{\"id\":\"([^\"]+)\",\"code\":\"([^\"]+)\",\"name\":\"([^\"]+)\",\"status\":\"([^\"]+)\",\"location\":");
+    Matcher matcher = topLevelFavoritePattern.matcher(body);
+
+    assertThat(body).startsWith("[{").endsWith("}]");
+    assertThat(StringUtils.countOccurrencesOf(body, "\"id\":\"")).isEqualTo(1);
+    assertThat(matcher.find()).isTrue();
+    assertThat(matcher.group(1)).isEqualTo(favoriteBeach.getId().toString());
+    assertThat(matcher.group(2)).isEqualTo(favoriteBeach.getCode());
+    assertThat(matcher.group(3)).isEqualTo("Favorite Beach");
+    assertThat(matcher.group(4)).isEqualTo("OPEN");
   }
 
   @Test
