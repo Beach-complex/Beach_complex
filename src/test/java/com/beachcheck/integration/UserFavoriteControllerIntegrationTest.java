@@ -198,7 +198,36 @@ class UserFavoriteControllerIntegrationTest extends ApiTest {
   }
 
   @Test
-  @DisplayName("TC12: 찜 목록은 빈 결과를 허용한다")
+  @DisplayName("TC12: 찜 제거는 인증이 없으면 401 ProblemDetail을 반환한다")
+  void removeFavorite_missingAuth_returnsUnauthorized() throws Exception {
+    mockMvc
+        .perform(delete(ApiRoutes.FAVORITE_ITEM, favoriteBeach.getId()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
+  }
+
+  @Test
+  @DisplayName("TC13: 찜 토글과 찜 여부 확인은 인증이 없으면 401 ProblemDetail을 반환한다")
+  void toggleAndCheck_missingAuth_returnsUnauthorized() throws Exception {
+    mockMvc
+        .perform(put(ApiRoutes.FAVORITE_TOGGLE, favoriteBeach.getId()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
+
+    mockMvc
+        .perform(get(ApiRoutes.FAVORITE_CHECK, favoriteBeach.getId()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            ApiErrorTestFixtures.problemDetail(
+                objectMapper, 401, "Authentication required", "UNAUTHORIZED"));
+  }
+
+  @Test
+  @DisplayName("TC14: 찜 목록은 빈 결과를 허용한다")
   void getMyFavorites_empty_returnsEmptyArray() throws Exception {
     userFavoriteRepository.deleteAll(userFavoriteRepository.findByUserId(user.getId()));
 
