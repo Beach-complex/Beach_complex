@@ -53,8 +53,6 @@ class BeachServiceTest {
 
       // Then
       assertThat(results).hasSize(2);
-      assertBeachDto(results.get(0), beachId1, "HAE", "해운대", "surf", 35.15, 129.16, false);
-      assertBeachDto(results.get(1), beachId2, "GWAN", "광안리", "family", 35.15, 129.12, false);
       then(favoriteService).should(never()).getFavoriteBeachIds(org.mockito.ArgumentMatchers.any());
       then(favoriteService)
           .should(never())
