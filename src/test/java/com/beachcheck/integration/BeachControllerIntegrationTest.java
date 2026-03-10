@@ -73,7 +73,18 @@ class BeachControllerIntegrationTest extends ApiTest {
   }
 
   @Test
-  @DisplayName("TC2: 검색 요청은 q/tag 분기로 필터링되고 인증 사용자의 찜 여부를 반영한다")
+  @DisplayName("TC2: 기본 목록 조회는 인증 사용자의 찜 여부를 반영한다")
+  void searchBeaches_defaultList_authenticated_reflectsFavorite() throws Exception {
+    mockMvc
+        .perform(get(ApiRoutes.BEACHES).header("Authorization", authHeader(user)))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$[?(@.id=='" + favoriteBeach.getId() + "')].isFavorite", hasItem(true)))
+        .andExpect(jsonPath("$[?(@.id=='" + otherBeach.getId() + "')].isFavorite", hasItem(false)));
+  }
+
+  @Test
+  @DisplayName("TC3: 검색 요청은 q/tag 분기로 필터링되고 인증 사용자의 찜 여부를 반영한다")
   void searchBeaches_searchBranch_authenticated_reflectsFavorite() throws Exception {
     mockMvc
         .perform(
@@ -90,7 +101,7 @@ class BeachControllerIntegrationTest extends ApiTest {
   }
 
   @Test
-  @DisplayName("TC3: 반경 검색은 nearby 분기로 라우팅되어 반경 내 해변만 반환한다")
+  @DisplayName("TC4: 반경 검색은 nearby 분기로 라우팅되어 반경 내 해변만 반환한다")
   void searchBeaches_radiusBranch_returnsNearbyBeaches() throws Exception {
     mockMvc
         .perform(
@@ -104,7 +115,7 @@ class BeachControllerIntegrationTest extends ApiTest {
   }
 
   @Test
-  @DisplayName("TC4: 반경 검색 파라미터가 일부만 오면 400 ProblemDetail을 반환한다")
+  @DisplayName("TC5: 반경 검색 파라미터가 일부만 오면 400 ProblemDetail을 반환한다")
   void searchBeaches_partialRadiusParams_returnsBadRequestProblemDetail() throws Exception {
     mockMvc
         .perform(get(ApiRoutes.BEACHES).param("lat", "35.1587").param("lon", "129.1603"))
@@ -117,7 +128,7 @@ class BeachControllerIntegrationTest extends ApiTest {
   }
 
   @Test
-  @DisplayName("TC5: 위도/경도 검증 실패는 400으로 고정된다")
+  @DisplayName("TC6: 위도 검증 실패는 400 Validation Error 계약으로 고정된다")
   void searchBeaches_invalidLatitude_returnsBadRequest() throws Exception {
     mockMvc
         .perform(
@@ -126,7 +137,9 @@ class BeachControllerIntegrationTest extends ApiTest {
                 .param("lon", "129.1603")
                 .param("radiusKm", "1"))
         .andExpect(status().isBadRequest())
-        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400));
+        .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400))
+        .andExpect(jsonPath("$.title").value("Validation Error"))
+        .andExpect(jsonPath("$.errors.lat").value("Latitude must be between -90 and 90"));
   }
 
   private Beach saveBeach(
