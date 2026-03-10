@@ -4,6 +4,8 @@ import static com.beachcheck.fixture.BeachTestFixtures.createBeach;
 import static com.beachcheck.fixture.BeachTestFixtures.createBeachWithLocation;
 import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -53,10 +55,8 @@ class BeachServiceTest {
 
       // Then
       assertThat(results).hasSize(2);
-      then(favoriteService).should(never()).getFavoriteBeachIds(org.mockito.ArgumentMatchers.any());
-      then(favoriteService)
-          .should(never())
-          .isFavorite(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+      then(favoriteService).should(never()).getFavoriteBeachIds(any());
+      then(favoriteService).should(never()).isFavorite(any(), any());
     }
 
     @Test
@@ -80,9 +80,7 @@ class BeachServiceTest {
       assertThat(results).hasSize(3);
       assertThat(results).extracting(BeachDto::isFavorite).containsExactly(true, false, true);
       then(favoriteService).should().getFavoriteBeachIds(user);
-      then(favoriteService)
-          .should(never())
-          .isFavorite(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+      then(favoriteService).should(never()).isFavorite(any(), any());
     }
   }
 
@@ -107,8 +105,7 @@ class BeachServiceTest {
       then(beachRepository).should().findAll();
       then(beachRepository)
           .should(never())
-          .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(
-              org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+          .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(anyString(), anyString());
     }
 
     @Test
@@ -130,8 +127,7 @@ class BeachServiceTest {
       then(beachRepository).should().findAll();
       then(beachRepository)
           .should(never())
-          .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(
-              org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+          .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(anyString(), anyString());
     }
 
     @Test
@@ -200,8 +196,7 @@ class BeachServiceTest {
       then(beachRepository).should().findAll();
       then(beachRepository)
           .should(never())
-          .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(
-              org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+          .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(anyString(), anyString());
     }
   }
 
@@ -251,9 +246,7 @@ class BeachServiceTest {
       assertThat(results).extracting(BeachDto::isFavorite).containsExactly(true, false);
       then(beachRepository).should().findAll();
       then(favoriteService).should().getFavoriteBeachIds(user);
-      then(favoriteService)
-          .should(never())
-          .isFavorite(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+      then(favoriteService).should(never()).isFavorite(any(), any());
     }
 
     @Test
@@ -302,10 +295,8 @@ class BeachServiceTest {
       // Then
       assertThat(results).hasSize(1);
       assertThat(results.get(0).isFavorite()).isFalse();
-      then(favoriteService).should(never()).getFavoriteBeachIds(org.mockito.ArgumentMatchers.any());
-      then(favoriteService)
-          .should(never())
-          .isFavorite(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+      then(favoriteService).should(never()).getFavoriteBeachIds(any());
+      then(favoriteService).should(never()).isFavorite(any(), any());
     }
   }
 
