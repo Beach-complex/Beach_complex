@@ -25,6 +25,21 @@ class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
+  // 아래 영어 title/detail 값은 GlobalExceptionHandler와 ErrorCode가 정의한 실제 API 응답 계약을 검증한다.
+  private static final String VALIDATION_ERROR_TITLE = "Validation Error";
+  private static final String VALIDATION_ERROR_DETAIL =
+      "Validation failed. Please check the request fields.";
+  private static final String DUPLICATE_FAVORITE_TITLE = "Duplicate Favorite";
+  private static final String RESERVATION_DUPLICATE_MESSAGE = "Reservation already exists";
+  private static final String DATA_INTEGRITY_VIOLATION_TITLE = "Data Integrity Violation";
+  private static final String INVALID_REQUEST_TITLE = "Invalid Request";
+  private static final String AUTHENTICATION_FAILED_TITLE = "Authentication Failed";
+  private static final String RESOURCE_NOT_FOUND_TITLE = "Resource Not Found";
+  private static final String INVALID_STATE_TITLE = "Invalid State";
+  private static final String INTERNAL_SERVER_ERROR_TITLE = "Internal Server Error";
+  private static final String INTERNAL_SERVER_ERROR_DETAIL =
+      "An unexpected error occurred. Please try again later.";
+
   @Nested
   @DisplayName("ApiException 처리")
   class ApiExceptionHandling {
@@ -35,17 +50,15 @@ class GlobalExceptionHandlerTest {
       // Given
       ApiException ex =
           new ApiException(
-              ErrorCode.RESERVATION_DUPLICATE,
-              "duplicate reservation",
-              Map.of("beachId", "beach-1"));
+              ErrorCode.RESERVATION_DUPLICATE, "중복 예약입니다.", Map.of("beachId", "beach-1"));
 
       // When
       ProblemDetail problemDetail = handler.handleApiException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(409);
-      assertThat(problemDetail.getTitle()).isEqualTo("Reservation already exists");
-      assertThat(problemDetail.getDetail()).isEqualTo("duplicate reservation");
+      assertThat(problemDetail.getTitle()).isEqualTo(RESERVATION_DUPLICATE_MESSAGE);
+      assertThat(problemDetail.getDetail()).isEqualTo("중복 예약입니다.");
       assertThat(problemDetail.getProperties())
           .containsEntry("code", "RESERVATION_DUPLICATE")
           .containsEntry("details", Map.of("beachId", "beach-1"));
@@ -55,7 +68,7 @@ class GlobalExceptionHandlerTest {
     @DisplayName("TC-EX-13: details가 null이면 빈 맵으로 정규화한다")
     void tcEx13_normalizeNullDetailsToEmptyMap() {
       // Given
-      ApiException ex = new ApiException(ErrorCode.INVALID_REQUEST, "invalid request", null);
+      ApiException ex = new ApiException(ErrorCode.INVALID_REQUEST, "잘못된 요청입니다.", null);
 
       // When
       ProblemDetail problemDetail = handler.handleApiException(ex);
@@ -63,7 +76,7 @@ class GlobalExceptionHandlerTest {
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(400);
       assertThat(problemDetail.getTitle()).isEqualTo("Invalid request");
-      assertThat(problemDetail.getDetail()).isEqualTo("invalid request");
+      assertThat(problemDetail.getDetail()).isEqualTo("잘못된 요청입니다.");
       assertThat(problemDetail.getProperties()).containsEntry("code", "INVALID_REQUEST");
       assertThat(problemDetail.getProperties()).containsKey("details");
       assertThat(problemDetail.getProperties().get("details")).isEqualTo(Map.of());
@@ -80,24 +93,23 @@ class GlobalExceptionHandlerTest {
       // Given
       MethodArgumentNotValidException ex =
           createValidationExceptionFromFieldErrors(
-              new FieldError("request", "email", "must not be blank"),
-              new FieldError("request", "password", "size must be between 8 and 20"));
+              new FieldError("request", "email", "비어 있을 수 없습니다."),
+              new FieldError("request", "password", "길이는 8자 이상 20자 이하여야 합니다."));
 
       // When
       ProblemDetail problemDetail = handler.handleValidationException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(400);
-      assertThat(problemDetail.getTitle()).isEqualTo("Validation Error");
-      assertThat(problemDetail.getDetail())
-          .isEqualTo("Validation failed. Please check the request fields.");
+      assertThat(problemDetail.getTitle()).isEqualTo(VALIDATION_ERROR_TITLE);
+      assertThat(problemDetail.getDetail()).isEqualTo(VALIDATION_ERROR_DETAIL);
       assertThat(problemDetail.getProperties()).containsKey("errors");
       @SuppressWarnings("unchecked")
       Map<String, String> errors =
           (Map<String, String>) problemDetail.getProperties().get("errors");
       assertThat(errors)
-          .containsEntry("email", "must not be blank")
-          .containsEntry("password", "size must be between 8 and 20");
+          .containsEntry("email", "비어 있을 수 없습니다.")
+          .containsEntry("password", "길이는 8자 이상 20자 이하여야 합니다.");
     }
   }
 
@@ -116,7 +128,7 @@ class GlobalExceptionHandlerTest {
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(409);
-      assertThat(problemDetail.getTitle()).isEqualTo("Duplicate Favorite");
+      assertThat(problemDetail.getTitle()).isEqualTo(DUPLICATE_FAVORITE_TITLE);
       assertThat(problemDetail.getDetail()).isEqualTo("이미 찜한 해수욕장입니다.");
       assertThat(problemDetail.getProperties())
           .containsEntry("constraintName", DBConstraints.UK_USER_BEACH);
@@ -134,7 +146,7 @@ class GlobalExceptionHandlerTest {
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(409);
-      assertThat(problemDetail.getTitle()).isEqualTo("Duplicate Favorite");
+      assertThat(problemDetail.getTitle()).isEqualTo(DUPLICATE_FAVORITE_TITLE);
       assertThat(problemDetail.getDetail()).isEqualTo("이미 찜한 해수욕장입니다.");
       assertThat(problemDetail.getProperties())
           .containsEntry("constraintName", DBConstraints.UK_USER_BEACH);
@@ -173,14 +185,14 @@ class GlobalExceptionHandlerTest {
     @DisplayName("TC-EX-07: 알 수 없는 데이터 무결성 예외를 일반 잘못된 요청으로 매핑한다")
     void tcEx07_mapUnknownDataIntegrityException() {
       // Given
-      DataIntegrityViolationException ex = new DataIntegrityViolationException("generic violation");
+      DataIntegrityViolationException ex = new DataIntegrityViolationException("일반적인 제약 위반");
 
       // When
       ProblemDetail problemDetail = handler.handleDataIntegrityViolationException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(400);
-      assertThat(problemDetail.getTitle()).isEqualTo("Data Integrity Violation");
+      assertThat(problemDetail.getTitle()).isEqualTo(DATA_INTEGRITY_VIOLATION_TITLE);
       assertThat(problemDetail.getDetail()).isEqualTo("데이터 무결성 제약 위반입니다.");
     }
   }
@@ -193,79 +205,78 @@ class GlobalExceptionHandlerTest {
     @DisplayName("TC-EX-08: IllegalArgumentException을 잘못된 요청으로 매핑한다")
     void tcEx08_mapIllegalArgumentException() {
       // Given
-      IllegalArgumentException ex = new IllegalArgumentException("invalid request");
+      IllegalArgumentException ex = new IllegalArgumentException("잘못된 요청입니다.");
 
       // When
       ProblemDetail problemDetail = handler.handleIllegalArgumentException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(400);
-      assertThat(problemDetail.getTitle()).isEqualTo("Invalid Request");
-      assertThat(problemDetail.getDetail()).isEqualTo("invalid request");
+      assertThat(problemDetail.getTitle()).isEqualTo(INVALID_REQUEST_TITLE);
+      assertThat(problemDetail.getDetail()).isEqualTo("잘못된 요청입니다.");
     }
 
     @Test
     @DisplayName("TC-EX-09: BadCredentialsException을 인증 실패로 매핑한다")
     void tcEx09_mapBadCredentialsException() {
       // Given
-      BadCredentialsException ex = new BadCredentialsException("bad credentials");
+      BadCredentialsException ex = new BadCredentialsException("인증 정보가 올바르지 않습니다.");
 
       // When
       ProblemDetail problemDetail = handler.handleBadCredentialsException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(401);
-      assertThat(problemDetail.getTitle()).isEqualTo("Authentication Failed");
-      assertThat(problemDetail.getDetail()).isEqualTo("bad credentials");
+      assertThat(problemDetail.getTitle()).isEqualTo(AUTHENTICATION_FAILED_TITLE);
+      assertThat(problemDetail.getDetail()).isEqualTo("인증 정보가 올바르지 않습니다.");
     }
 
     @Test
     @DisplayName("TC-EX-10: EntityNotFoundException을 리소스 없음으로 매핑한다")
     void tcEx10_mapEntityNotFoundException() {
       // Given
-      EntityNotFoundException ex = new EntityNotFoundException("resource not found");
+      EntityNotFoundException ex = new EntityNotFoundException("리소스를 찾을 수 없습니다.");
 
       // When
       ProblemDetail problemDetail = handler.handleEntityNotFoundException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(404);
-      assertThat(problemDetail.getTitle()).isEqualTo("Resource Not Found");
-      assertThat(problemDetail.getDetail()).isEqualTo("resource not found");
+      assertThat(problemDetail.getTitle()).isEqualTo(RESOURCE_NOT_FOUND_TITLE);
+      assertThat(problemDetail.getDetail()).isEqualTo("리소스를 찾을 수 없습니다.");
     }
 
     @Test
     @DisplayName("TC-EX-11: IllegalStateException을 충돌 상태로 매핑한다")
     void tcEx11_mapIllegalStateException() {
       // Given
-      IllegalStateException ex = new IllegalStateException("invalid state");
+      IllegalStateException ex = new IllegalStateException("잘못된 상태입니다.");
 
       // When
       ProblemDetail problemDetail = handler.handleIllegalStateException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(409);
-      assertThat(problemDetail.getTitle()).isEqualTo("Invalid State");
-      assertThat(problemDetail.getDetail()).isEqualTo("invalid state");
+      assertThat(problemDetail.getTitle()).isEqualTo(INVALID_STATE_TITLE);
+      assertThat(problemDetail.getDetail()).isEqualTo("잘못된 상태입니다.");
     }
 
     @Test
     @DisplayName("TC-EX-12: 일반 예외를 내부 서버 오류로 매핑한다")
     void tcEx12_mapGeneralException() {
       // Given
-      RuntimeException ex = new RuntimeException("boom");
+      RuntimeException ex = new RuntimeException("예상하지 못한 오류");
 
       // When
       ProblemDetail problemDetail = handler.handleGeneralException(ex);
 
       // Then
       assertThat(problemDetail.getStatus()).isEqualTo(500);
-      assertThat(problemDetail.getTitle()).isEqualTo("Internal Server Error");
-      assertThat(problemDetail.getDetail())
-          .isEqualTo("An unexpected error occurred. Please try again later.");
+      assertThat(problemDetail.getTitle()).isEqualTo(INTERNAL_SERVER_ERROR_TITLE);
+      assertThat(problemDetail.getDetail()).isEqualTo(INTERNAL_SERVER_ERROR_DETAIL);
       assertThat(problemDetail.getProperties())
           .containsEntry("errorType", "RuntimeException")
-          .containsEntry("message", "boom");
+          .containsEntry("message", "예상하지 못한 오류");
     }
   }
 
@@ -302,8 +313,8 @@ class GlobalExceptionHandlerTest {
 
   private void assertReservationDuplicate(ProblemDetail problemDetail) {
     assertThat(problemDetail.getStatus()).isEqualTo(409);
-    assertThat(problemDetail.getTitle()).isEqualTo("Reservation already exists");
-    assertThat(problemDetail.getDetail()).isEqualTo("Reservation already exists");
+    assertThat(problemDetail.getTitle()).isEqualTo(RESERVATION_DUPLICATE_MESSAGE);
+    assertThat(problemDetail.getDetail()).isEqualTo(RESERVATION_DUPLICATE_MESSAGE);
     assertThat(problemDetail.getProperties())
         .containsEntry("code", "RESERVATION_DUPLICATE")
         .containsEntry("constraintName", DBConstraints.UK_RESERVATION_USER_BEACH_TIME);
@@ -319,7 +330,7 @@ class GlobalExceptionHandlerTest {
           ValidationController.class.getDeclaredMethod("handle", ValidationRequest.class);
       return new MethodParameter(method, 0);
     } catch (NoSuchMethodException ex) {
-      throw new IllegalStateException("Failed to resolve validation request parameter", ex);
+      throw new IllegalStateException("검증 요청 파라미터를 찾지 못했습니다.", ex);
     }
   }
 
