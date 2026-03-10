@@ -4,6 +4,7 @@ import static com.beachcheck.fixture.BeachTestFixtures.createBeach;
 import static com.beachcheck.fixture.BeachTestFixtures.createBeachWithLocation;
 import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -78,7 +79,10 @@ class BeachServiceTest {
 
       // Then
       assertThat(results).hasSize(3);
-      assertThat(results).extracting(BeachDto::isFavorite).containsExactly(true, false, true);
+      assertThat(results)
+          .extracting(BeachDto::id, BeachDto::isFavorite)
+          .containsExactlyInAnyOrder(
+              tuple(beachId1, true), tuple(beachId2, false), tuple(beachId3, true));
       then(favoriteService).should().getFavoriteBeachIds(user);
       then(favoriteService).should(never()).isFavorite(any(), any());
     }
@@ -167,7 +171,9 @@ class BeachServiceTest {
 
       // Then
       assertThat(results).hasSize(2);
-      assertThat(results).extracting(BeachDto::tag).containsExactly("surf", "SURF");
+      assertThat(results)
+          .extracting(BeachDto::id, BeachDto::tag)
+          .containsExactlyInAnyOrder(tuple(surf1.getId(), "surf"), tuple(surf2.getId(), "SURF"));
       then(beachRepository)
           .should()
           .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase("hae", "hae");
@@ -191,8 +197,10 @@ class BeachServiceTest {
 
       // Then
       assertThat(results).hasSize(2);
-      assertThat(results).extracting(BeachDto::isFavorite).containsExactly(true, false);
-      assertThat(results).extracting(BeachDto::tag).containsExactly("camp", "CAMP");
+      assertThat(results)
+          .extracting(BeachDto::id, BeachDto::tag, BeachDto::isFavorite)
+          .containsExactlyInAnyOrder(
+              tuple(campFavoriteId, "camp", true), tuple(campNonFavorite.getId(), "CAMP", false));
       then(beachRepository).should().findAll();
       then(beachRepository)
           .should(never())
@@ -243,7 +251,10 @@ class BeachServiceTest {
 
       // Then
       assertThat(results).hasSize(2);
-      assertThat(results).extracting(BeachDto::isFavorite).containsExactly(true, false);
+      assertThat(results)
+          .extracting(BeachDto::id, BeachDto::isFavorite)
+          .containsExactlyInAnyOrder(
+              tuple(favoriteBeach.getId(), true), tuple(normalBeach.getId(), false));
       then(beachRepository).should().findAll();
       then(favoriteService).should().getFavoriteBeachIds(user);
       then(favoriteService).should(never()).isFavorite(any(), any());
