@@ -170,6 +170,10 @@ class BeachConditionSchedulerTest {
       scheduler.refreshConditions();
 
       // Then
+      BeachCondition savedCondition = capturedCondition();
+      assertThat(savedCondition.getBeach()).isSameAs(beach);
+      assertThat(savedCondition.getObservedAt()).isEqualTo(FIXED_TIMESTAMP);
+      then(congestionClient).should().fetchCurrent("HAE");
       assertThat(beach.getStatus()).isEqualTo("busy");
       then(beachRepository).should().save(beach);
     }
@@ -188,6 +192,10 @@ class BeachConditionSchedulerTest {
       scheduler.refreshConditions();
 
       // Then
+      BeachCondition savedCondition = capturedCondition();
+      assertThat(savedCondition.getBeach()).isSameAs(beach);
+      assertThat(savedCondition.getObservedAt()).isEqualTo(FIXED_TIMESTAMP);
+      then(congestionClient).should().fetchCurrent("HAE");
       assertThat(beach.getStatus()).isEqualTo("normal");
       then(beachRepository).should().save(beach);
     }
