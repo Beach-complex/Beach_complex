@@ -223,7 +223,7 @@ class BeachConditionSchedulerTest {
 
     @Test
     @DisplayName("TC-SCH-09-1: AI level 정보 블록이 없으면 상태 정보만 저장한다")
-    void tcSch09_1_persistConditionWhenAiLevelSourceBlockIsMissing() {
+    void tcSch09_1_persistConditionWhenAiLevelBlockIsMissing() {
       // Given
       Beach beach = beach("HAE", "OPEN", 129.16, 35.15);
       BeachConditionScheduler scheduler = schedulerWithMode("ai");
@@ -241,8 +241,8 @@ class BeachConditionSchedulerTest {
     }
 
     @Test
-    @DisplayName("TC-SCH-10: level 문자열이 지원되지 않으면 상태 정보만 저장한다")
-    void tcSch10_persistConditionWhenLevelStringIsUnsupported() {
+    @DisplayName("TC-SCH-10: AI level 문자열이 지원되지 않으면 상태 정보만 저장한다")
+    void tcSch10_persistConditionWhenAiLevelStringIsUnsupported() {
       // Given
       Beach beach = beach("HAE", "OPEN", 129.16, 35.15);
       BeachConditionScheduler scheduler = schedulerWithMode("ai");
