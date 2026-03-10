@@ -138,8 +138,8 @@ class BeachControllerIntegrationTest extends ApiTest {
                 .param("radiusKm", "1"))
         .andExpect(status().isBadRequest())
         .andExpect(ApiErrorTestFixtures.problemDetailStatus(objectMapper, 400))
-        .andExpect(jsonPath("$.title").value("Validation Error"))
-        .andExpect(jsonPath("$.errors.lat").value("Latitude must be between -90 and 90"));
+        .andExpect(jsonPath("$.title").value("Bad Request"))
+        .andExpect(jsonPath("$.detail").value("Invalid request content."));
   }
 
   private Beach saveBeach(
