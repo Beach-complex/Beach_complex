@@ -2,7 +2,6 @@ package com.beachcheck.controller;
 
 import com.beachcheck.domain.Notification;
 import com.beachcheck.domain.User;
-import com.beachcheck.repository.NotificationRepository;
 import com.beachcheck.repository.UserRepository;
 import com.beachcheck.service.NotificationService;
 import jakarta.validation.Valid;
@@ -22,15 +21,11 @@ public class NotificationController {
 
   // TODO(OAuth): OAuth 도입 시 인증 Principal 타입(User vs OAuth2User) 통일 및 user 식별/권한 계약 재점검.
   private final UserRepository userRepository;
-  private final NotificationRepository notificationRepository;
   private final NotificationService notificationService;
 
   public NotificationController(
-      UserRepository userRepository,
-      NotificationRepository notificationRepository,
-      NotificationService notificationService) {
+      UserRepository userRepository, NotificationService notificationService) {
     this.userRepository = userRepository;
-    this.notificationRepository = notificationRepository;
     this.notificationService = notificationService;
   }
 
@@ -117,7 +112,7 @@ public class NotificationController {
    * <p>Contract(Output):
    *
    * <ul>
-   *   <li>202 ACCEPTED: 알림 발송 요청 접수 (백그라운드에서 처리)
+   *   <li>202 ACCEPTED: 알림 발송 요청 접수 (Outbox 스케줄러가 처리)
    *   <li>400 BAD REQUEST: FCM 토큰 없음
    * </ul>
    */
@@ -133,18 +128,13 @@ public class NotificationController {
       return ResponseEntity.badRequest().build();
     }
 
-    // 1. 알림 엔티티 생성 및 저장 (동기 - 요청 손실 방지)
-    Notification notification =
-        Notification.createPending(
-            dbUser.getId(),
-            Notification.NotificationType.TEST,
-            "테스트 알림",
-            "알림이 정상적으로 작동합니다!",
-            dbUser.getFcmToken());
-    notification = notificationRepository.save(notification);
-
-    // 2. 비동기로 알림 발송 (메시지 큐 도입 대비)
-    notificationService.sendPushNotification(notification.getId());
+    // Notification + OutboxEvent 원자적 저장 (단일 트랜잭션)
+    notificationService.createAndSchedule(
+        dbUser.getId(),
+        Notification.NotificationType.TEST,
+        "테스트 알림",
+        "이 알림은 테스트용입니다. FCM 토큰이 정상적으로 저장되고 알림이 도착하는지 확인하세요.",
+        dbUser.getFcmToken());
 
     return ResponseEntity.accepted().build();
   }
