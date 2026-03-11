@@ -28,17 +28,6 @@ public class AsyncConfig {
    *
    * @return 비동기 작업용 Executor
    */
-  @Bean(name = "notificationTaskExecutor")
-  public Executor notificationTaskExecutor() {
-    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-    executor.setCorePoolSize(5);
-    executor.setMaxPoolSize(10);
-    executor.setQueueCapacity(100);
-    executor.setThreadNamePrefix("notification-");
-    executor.initialize();
-    return executor;
-  }
-
   @Bean(name = "emailTaskExecutor")
   public Executor emailTaskExecutor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
