@@ -6,6 +6,7 @@ import com.beachcheck.domain.BeachCondition;
 import com.beachcheck.dto.congestion.CongestionCurrentResponse;
 import com.beachcheck.repository.BeachConditionRepository;
 import com.beachcheck.repository.BeachRepository;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -22,16 +23,19 @@ public class BeachConditionScheduler {
   private final BeachRepository beachRepository;
   private final BeachConditionRepository beachConditionRepository;
   private final CongestionClient congestionClient;
+  private final Clock clock;
   private final String mode;
 
   public BeachConditionScheduler(
       BeachRepository beachRepository,
       BeachConditionRepository beachConditionRepository,
       CongestionClient congestionClient,
+      Clock clock,
       @Value("${app.congestion.mode:ai}") String mode) {
     this.beachRepository = beachRepository;
     this.beachConditionRepository = beachConditionRepository;
     this.congestionClient = congestionClient;
+    this.clock = clock;
     this.mode = mode;
   }
 
@@ -52,7 +56,7 @@ public class BeachConditionScheduler {
         continue;
       }
 
-      Instant observedAt = Instant.now();
+      Instant observedAt = Instant.now(clock);
       Double tempC = null;
       Double rainMm = null;
       Double windMps = null;
