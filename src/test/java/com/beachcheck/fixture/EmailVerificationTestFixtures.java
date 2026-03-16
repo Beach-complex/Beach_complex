@@ -6,6 +6,7 @@ import com.beachcheck.util.HashUtils;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public final class EmailVerificationTestFixtures {
 
@@ -47,10 +48,13 @@ public final class EmailVerificationTestFixtures {
 
   public static EmailVerificationToken cooldownWindowToken(
       User user, String rawToken, long expiresInMinutes, long createdMinutesAgo) {
-    return EmailVerificationToken.testToken(
-        user,
-        HashUtils.sha256Hex(rawToken),
-        Instant.now().plus(expiresInMinutes, ChronoUnit.MINUTES),
-        Instant.now().minus(createdMinutesAgo, ChronoUnit.MINUTES));
+    EmailVerificationToken token =
+        EmailVerificationToken.of(
+            user,
+            HashUtils.sha256Hex(rawToken),
+            Instant.now().plus(expiresInMinutes, ChronoUnit.MINUTES));
+    ReflectionTestUtils.setField(
+        token, "createdAt", Instant.now().minus(createdMinutesAgo, ChronoUnit.MINUTES));
+    return token;
   }
 }

@@ -37,11 +37,8 @@ class EmailVerificationTokenTest {
   @DisplayName("만료 시각이 현재보다 이전이면 expired 상태다")
   void isExpired_returnsTrueWhenExpirationIsPast() {
     EmailVerificationToken token =
-        EmailVerificationToken.testToken(
-            createUser("expired@test.com"),
-            "hashed-token",
-            Instant.now().minusSeconds(1),
-            Instant.now().minusSeconds(10));
+        EmailVerificationToken.of(
+            createUser("expired@test.com"), "hashed-token", Instant.now().minusSeconds(1));
 
     assertThat(token.isExpired()).isTrue();
   }
@@ -50,11 +47,8 @@ class EmailVerificationTokenTest {
   @DisplayName("만료 시각이 현재보다 이후면 expired 상태가 아니다")
   void isExpired_returnsFalseWhenExpirationIsFuture() {
     EmailVerificationToken token =
-        EmailVerificationToken.testToken(
-            createUser("valid@test.com"),
-            "hashed-token",
-            Instant.now().plusSeconds(60),
-            Instant.now().minusSeconds(10));
+        EmailVerificationToken.of(
+            createUser("valid@test.com"), "hashed-token", Instant.now().plusSeconds(60));
 
     assertThat(token.isExpired()).isFalse();
   }
@@ -63,11 +57,8 @@ class EmailVerificationTokenTest {
   @DisplayName("markUsed 호출 전후로 사용 상태가 전이된다")
   void markUsed_transitionsTokenToUsed() {
     EmailVerificationToken token =
-        EmailVerificationToken.testToken(
-            createUser("used@test.com"),
-            "hashed-token",
-            Instant.now().plusSeconds(60),
-            Instant.now().minusSeconds(10));
+        EmailVerificationToken.of(
+            createUser("used@test.com"), "hashed-token", Instant.now().plusSeconds(60));
     Instant beforeMarkUsed = Instant.now();
 
     assertThat(token.isUsed()).isFalse();
