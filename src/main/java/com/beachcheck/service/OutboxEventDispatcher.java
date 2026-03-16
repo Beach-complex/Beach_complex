@@ -74,7 +74,7 @@ public class OutboxEventDispatcher {
       // Exponential Backoff 재시도 로직
       if (isPermanentFcmError(e)) {
         event.markAsFailedPermanent();
-        notification.markAsFailed(e.getMessage());
+        notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
         notificationRepository.save(notification);
         outboxEventRepository.save(event);
         return;
@@ -83,7 +83,7 @@ public class OutboxEventDispatcher {
 
       if (event.getRetryCount() >= 3) { // 최대 재시도 횟수 초과 시 영구 실패로 전이
         event.markAsFailedPermanent();
-        notification.markAsFailed(e.getMessage());
+        notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
         notificationRepository.save(notification);
         outboxEventRepository.save(event);
       } else {
