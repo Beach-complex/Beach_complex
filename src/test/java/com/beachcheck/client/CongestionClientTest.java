@@ -74,8 +74,8 @@ class CongestionClientTest {
   }
 
   @Test
-  @DisplayName("RestClient 예외가 발생하면 null fallback을 반환한다")
-  void fetchCurrent_returnsNullWhenRestClientFails() {
+  @DisplayName("500 응답이 발생하면 null fallback을 반환한다")
+  void fetchCurrent_returnsNullWhenInternalServerErrorOccurs() {
     RestClient.Builder builder = RestClient.builder();
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     CongestionClient client = new CongestionClient(BASE_URL, builder);
