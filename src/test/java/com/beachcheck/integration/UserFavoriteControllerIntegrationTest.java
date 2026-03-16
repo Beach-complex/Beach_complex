@@ -138,8 +138,8 @@ class UserFavoriteControllerIntegrationTest extends ApiTest {
   }
 
   @Test
-  @DisplayName("TC7: 찜 토글은 미찜 상태에서 추가 계약을 반환한다")
-  void toggleFavorite_addBranch_returnsAddedContract() throws Exception {
+  @DisplayName("TC7: 찜 토글은 미찜 상태에서 추가 계약을 반환하고 DB에 반영된다")
+  void toggleFavorite_addBranch_returnsAddedContractAndPersists() throws Exception {
     mockMvc
         .perform(
             put(ApiRoutes.FAVORITE_TOGGLE, toggleBeach.getId())
@@ -147,6 +147,9 @@ class UserFavoriteControllerIntegrationTest extends ApiTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("찜 목록에 추가되었습니다."))
         .andExpect(jsonPath("$.isFavorite").value(true));
+
+    assertThat(userFavoriteRepository.findByUserIdAndBeachId(user.getId(), toggleBeach.getId()))
+        .isPresent();
   }
 
   @Test
