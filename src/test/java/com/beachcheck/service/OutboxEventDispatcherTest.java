@@ -162,8 +162,8 @@ class OutboxEventDispatcherTest {
       // Then
       assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
       assertThat(event.getProcessedAt()).isNotNull();
-      // TODO(PR#4/5): 영구 실패 분류/정책 확정 후 Notification.status 기대값 assert 추가
-      // (FAILED로 동기화할지, PENDING 유지할지 정책에 따라 테스트 고정)
+      assertThat(notification.getStatus()).isEqualTo(NotificationStatus.FAILED);
+      assertThat(notification.getErrorMessage()).isNotNull();
       then(outboxEventRepository).should().save(event);
     }
 
@@ -211,6 +211,8 @@ class OutboxEventDispatcherTest {
       assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
       assertThat(event.getRetryCount()).isEqualTo(0);
       assertThat(event.getProcessedAt()).isNotNull();
+      assertThat(notification.getStatus()).isEqualTo(NotificationStatus.FAILED);
+      assertThat(notification.getErrorMessage()).isNotNull();
       then(outboxEventRepository).should().save(event);
     }
 
@@ -235,6 +237,8 @@ class OutboxEventDispatcherTest {
       assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
       assertThat(event.getRetryCount()).isEqualTo(0);
       assertThat(event.getProcessedAt()).isNotNull();
+      assertThat(notification.getStatus()).isEqualTo(NotificationStatus.FAILED);
+      assertThat(notification.getErrorMessage()).isNotNull();
       then(outboxEventRepository).should().save(event);
     }
   }

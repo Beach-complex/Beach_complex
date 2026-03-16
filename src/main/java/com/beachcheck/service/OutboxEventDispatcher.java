@@ -72,18 +72,19 @@ public class OutboxEventDispatcher {
       outboxEventRepository.save(event);
     } catch (FirebaseMessagingException e) {
       // Exponential Backoff 재시도 로직
-      // TODO(PR#4): FirebaseMessagingException errorCode 기반 영구 실패 분류 도입
-      // (예: UNREGISTERED, INVALID_ARGUMENT 등은 PENDING -> FAILED_PERMANENT 직행)
       if (isPermanentFcmError(e)) {
         event.markAsFailedPermanent();
+        notification.markAsFailed(e.getMessage());
+        notificationRepository.save(notification);
         outboxEventRepository.save(event);
         return;
       }
-      // TODO(PR#5): FAILED_PERMANENT 전이 시 Notification.status(FAILED) 동기화 정책 확정 후 반영
       Duration backoff = Duration.ofSeconds(1L << event.getRetryCount()); // 1s, 2s, 4s
 
       if (event.getRetryCount() >= 3) { // 최대 재시도 횟수 초과 시 영구 실패로 전이
         event.markAsFailedPermanent();
+        notification.markAsFailed(e.getMessage());
+        notificationRepository.save(notification);
         outboxEventRepository.save(event);
       } else {
         event.markAsFailedRetriable(backoff);
