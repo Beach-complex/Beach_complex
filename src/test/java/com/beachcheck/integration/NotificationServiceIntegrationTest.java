@@ -5,6 +5,9 @@ import static com.beachcheck.domain.Notification.NotificationType;
 import static com.beachcheck.domain.OutboxEvent.OutboxEventStatus;
 import static com.beachcheck.domain.OutboxEvent.OutboxEventType;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 import com.beachcheck.base.IntegrationTest;
 import com.beachcheck.domain.Notification;
@@ -19,6 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Why: createAndSchedule()이 단일 트랜잭션에서 Notification + OutboxEvent를 원자적으로 저장하는지 검증 (AC1)
@@ -41,6 +47,7 @@ class NotificationServiceIntegrationTest extends IntegrationTest {
   @Autowired private NotificationRepository notificationRepository;
   @Autowired private OutboxEventRepository outboxEventRepository;
   @Autowired private UserRepository userRepository;
+  @SpyBean private OutboxEventRepository outboxEventRepositorySpy;
 
   private User savedUser;
 
@@ -153,5 +160,26 @@ class NotificationServiceIntegrationTest extends IntegrationTest {
     assertThat(saved.getNextRetryAt()).isNotNull(); // @PrePersist에서 createdAt 기준으로 설정
     assertThat(saved.getProcessedAt()).isNull(); // OutboxPublisher가 아직 처리하지 않은 상태
     assertThat(saved.getCreatedAt()).isNotNull();
+  }
+
+  @Test
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  @DisplayName("TC5 - OutboxEvent 저장 실패 시 Notification도 함께 롤백 (원자성 보장)")
+  void shouldRollbackNotificationWhenOutboxEventSaveFails() {
+    // Given
+    UUID userId = savedUser.getId();
+    doThrow(new RuntimeException("강제 저장 실패"))
+        .when(outboxEventRepositorySpy)
+        .save(any(OutboxEvent.class));
+
+    // When: OutboxEvent 저장 실패 → 트랜잭션 전체 롤백
+    assertThatThrownBy(
+            () ->
+                notificationService.createAndSchedule(
+                    userId, NotificationType.TEST, "롤백 테스트", "내용", "fcm-token-rollback"))
+        .isInstanceOf(RuntimeException.class);
+
+    // Then: Notification도 저장되지 않음 (원자성 보장)
+    assertThat(notificationRepository.findByUserId(userId)).isEmpty();
   }
 }
