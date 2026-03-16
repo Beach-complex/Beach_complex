@@ -25,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.web.servlet.MvcResult;
 
 @DisplayName("BeachController 통합 테스트")
@@ -33,6 +35,7 @@ class BeachControllerIntegrationTest extends ApiTest {
   @Autowired private BeachRepository beachRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private UserFavoriteRepository userFavoriteRepository;
+  @Autowired private CacheManager cacheManager;
 
   private User user;
   private Beach favoriteBeach;
@@ -42,8 +45,15 @@ class BeachControllerIntegrationTest extends ApiTest {
   private String searchCodePrefix;
   private String searchTag;
 
+  private Cache getBeachSummariesCache() {
+    return java.util.Objects.requireNonNull(
+        cacheManager.getCache("beachSummaries"), "beachSummaries 캐시가 설정되지 않았습니다. 캐시 설정을 확인하세요.");
+  }
+
   @BeforeEach
   void setUp() {
+    getBeachSummariesCache().clear();
+
     user =
         userRepository.save(createUser(uniqueEmail("beach-controller"), "Beach Controller User"));
 
