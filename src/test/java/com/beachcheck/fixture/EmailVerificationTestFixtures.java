@@ -47,7 +47,7 @@ public final class EmailVerificationTestFixtures {
 
   public static EmailVerificationToken cooldownWindowToken(
       User user, String rawToken, long expiresInMinutes, long createdMinutesAgo) {
-    return EmailVerificationToken.testToken(
+    return EmailVerificationToken.of(
         user,
         HashUtils.sha256Hex(rawToken),
         Instant.now().plus(expiresInMinutes, ChronoUnit.MINUTES),
