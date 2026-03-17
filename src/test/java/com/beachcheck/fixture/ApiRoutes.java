@@ -12,6 +12,10 @@ public final class ApiRoutes {
   public static final String BEACHES = "/api/beaches";
   public static final String BEACH_CONDITIONS_RECENT = "/api/beaches/{beachId}/conditions/recent";
   public static final String BEACH_FACILITIES = "/api/beaches/{beachId}/facilities";
+  public static final String FAVORITES = "/api/favorites";
+  public static final String FAVORITE_ITEM = "/api/favorites/{beachId}";
+  public static final String FAVORITE_TOGGLE = "/api/favorites/{beachId}/toggle";
+  public static final String FAVORITE_CHECK = "/api/favorites/{beachId}/check";
 
   public static final String AUTH_LOGIN = "/api/auth/login";
   public static final String AUTH_REFRESH = "/api/auth/refresh";
