@@ -6,6 +6,8 @@ import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -41,6 +43,15 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
       ORDER BY e.createdAt ASC, e.id ASC
       """)
   List<OutboxEvent> findPendingEvents(@Param("now") Instant now, Pageable pageable);
+
+  /**
+   * Why: notificationId는 OutboxEvent의 유니크 컬럼이므로 Optional로 반환. 테스트에서 findAll().get(0) 대신 특정
+   * Notification에 연결된 이벤트를 명시적으로 조회하기 위해 사용.
+   *
+   * @param notificationId 연결된 Notification ID
+   * @return 해당 notificationId에 연결된 OutboxEvent (없으면 empty)
+   */
+  Optional<OutboxEvent> findByNotificationId(UUID notificationId);
 
   /**
    * 상태별 이벤트 개수 조회 (모니터링용)

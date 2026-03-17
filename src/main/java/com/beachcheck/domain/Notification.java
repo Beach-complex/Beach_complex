@@ -99,6 +99,14 @@ public class Notification {
    *
    * @return FCM Message 객체
    */
+  public void markAsFailed(String errorMessage) {
+    this.status = NotificationStatus.FAILED;
+    this.errorMessage =
+        errorMessage != null
+            ? errorMessage.substring(0, Math.min(errorMessage.length(), 500))
+            : null;
+  }
+
   public Message toFcmMessage() {
     return Message.builder()
         .setToken(this.recipientToken)
