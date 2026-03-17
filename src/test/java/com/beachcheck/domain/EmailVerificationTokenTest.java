@@ -54,6 +54,20 @@ class EmailVerificationTokenTest {
   }
 
   @Test
+  @DisplayName("createdAt을 주입한 토큰은 전달한 생성 시각을 유지한다")
+  void of_withCreatedAt_preservesInjectedCreatedAt() {
+    Instant createdAt = Instant.now().minusSeconds(180);
+    EmailVerificationToken token =
+        EmailVerificationToken.of(
+            createUser("cooldown@test.com"),
+            "hashed-token",
+            Instant.now().plusSeconds(60),
+            createdAt);
+
+    assertThat(token.getCreatedAt()).isEqualTo(createdAt);
+  }
+
+  @Test
   @DisplayName("markUsed 호출 전후로 사용 상태가 전이된다")
   void markUsed_transitionsTokenToUsed() {
     EmailVerificationToken token =

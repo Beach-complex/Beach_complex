@@ -47,13 +47,24 @@ public class EmailVerificationToken {
   protected EmailVerificationToken() {}
 
   public EmailVerificationToken(User user, String token, Instant expiresAt) {
+    this(user, token, expiresAt, null);
+  }
+
+  private EmailVerificationToken(User user, String token, Instant expiresAt, Instant createdAt) {
     this.user = Objects.requireNonNull(user, "user");
     this.token = Objects.requireNonNull(token, "token");
     this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt");
+    this.createdAt = createdAt;
   }
 
   public static EmailVerificationToken of(User user, String token, Instant expiresAt) {
     return new EmailVerificationToken(user, token, expiresAt);
+  }
+
+  public static EmailVerificationToken of(
+      User user, String token, Instant expiresAt, Instant createdAt) {
+    return new EmailVerificationToken(
+        user, token, expiresAt, Objects.requireNonNull(createdAt, "createdAt"));
   }
 
   public static EmailVerificationToken issue(User user, String token, long expirationMinutes) {
