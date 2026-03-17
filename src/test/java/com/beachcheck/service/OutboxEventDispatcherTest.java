@@ -36,6 +36,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
  *
  * <p>Policy: BDDMockito 스타일, Given-When-Then 구조
  *
+ * <p>상태 전이 정책: retriable 실패(FAILED_RETRIABLE) 시 Notification은 PENDING을 유지하고, permanent
+ * 실패(FAILED_PERMANENT)로 확정될 때만 Notification을 FAILED로 전이한다.
+ *
  * <p>Contract(Input): Mock 객체 (OutboxEventRepository, NotificationRepository, FirebaseMessaging)
  *
  * <p>Contract(Output): 각 TC가 정의한 상태 전이 및 저장 호출 검증
@@ -140,6 +143,8 @@ class OutboxEventDispatcherTest {
       assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED_RETRIABLE);
       assertThat(event.getRetryCount()).isEqualTo(1);
       assertThat(event.getNextRetryAt()).isBetween(before.plusSeconds(1), after.plusSeconds(1));
+      assertThat(notification.getStatus())
+          .isEqualTo(NotificationStatus.PENDING); // retriable → Notification은 PENDING 유지
       then(outboxEventRepository).should().save(event);
     }
 
@@ -188,6 +193,8 @@ class OutboxEventDispatcherTest {
       // Then: retryCount=2, nextRetryAt ≈ now + 2s (1<<1 = 2)
       assertThat(event.getRetryCount()).isEqualTo(2);
       assertThat(event.getNextRetryAt()).isBetween(before.plusSeconds(2), after.plusSeconds(2));
+      assertThat(notification.getStatus())
+          .isEqualTo(NotificationStatus.PENDING); // retriable → Notification은 PENDING 유지
     }
 
     @Test
