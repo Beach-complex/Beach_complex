@@ -6,14 +6,10 @@ import static com.beachcheck.fixture.UniqueTestFixtures.uniqueEmail;
 import static com.beachcheck.fixture.UserFavoriteTestFixtures.createFavorite;
 import static com.beachcheck.fixture.UserTestFixtures.createUser;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,11 +59,11 @@ class UserFavoriteControllerIntegrationTest extends ApiTest {
     mockMvc
         .perform(get(ApiRoutes.FAVORITES).header("Authorization", authHeader(user)))
         .andExpect(status().isOk())
-        .andExpect(content().string(startsWith("[{\"id\":\"" + favoriteBeach.getId() + "\"")))
-        .andExpect(content().string(containsString("\"code\":\"" + favoriteBeach.getCode() + "\"")))
-        .andExpect(content().string(containsString("\"name\":\"Favorite Beach\"")))
-        .andExpect(content().string(containsString("\"status\":\"OPEN\"")))
-        .andExpect(content().string(not(containsString(toggleBeach.getCode()))));
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].id").value(favoriteBeach.getId().toString()))
+        .andExpect(jsonPath("$[0].code").value(favoriteBeach.getCode()))
+        .andExpect(jsonPath("$[0].name").value("Favorite Beach"))
+        .andExpect(jsonPath("$[0].status").value("OPEN"));
   }
 
   @Test

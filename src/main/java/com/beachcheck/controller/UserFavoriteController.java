@@ -1,7 +1,7 @@
 package com.beachcheck.controller;
 
-import com.beachcheck.domain.Beach;
 import com.beachcheck.domain.User;
+import com.beachcheck.dto.beach.BeachDto;
 import com.beachcheck.service.UserFavoriteService;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +29,11 @@ public class UserFavoriteController {
 
   /** 내 찜 목록 조회 GET /api/favorites */
   @GetMapping
-  public ResponseEntity<List<Beach>> getMyFavorites(@AuthenticationPrincipal User user) {
-    List<Beach> favorites = favoriteService.getFavoriteBeaches(user);
+  public ResponseEntity<List<BeachDto>> getMyFavorites(@AuthenticationPrincipal User user) {
+    List<BeachDto> favorites =
+        favoriteService.getFavoriteBeaches(user).stream()
+            .map(beach -> BeachDto.from(beach, true))
+            .toList();
     return ResponseEntity.ok(favorites);
   }
 
