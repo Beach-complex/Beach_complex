@@ -48,6 +48,11 @@ dependencies {
     implementation 'org.springframework.retry:spring-retry'        // 스프링 재시도 라이브러리
     implementation 'org.springframework.boot:spring-boot-starter-aop'   // 스프링 AOP 스타터(의존성 명시를 위해 추가)
 
+    // AWS SDK v2 — Lambda Function URL SigV4 인증
+    implementation platform('software.amazon.awssdk:bom:2.42.23')
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:regions'
+
     // Testcontainers
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:junit-jupiter'

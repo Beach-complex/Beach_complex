@@ -25,7 +25,7 @@ class CongestionClientTest {
   void fetchCurrent_returnsResponseBody() {
     RestClient.Builder builder = RestClient.builder();
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    CongestionClient client = new CongestionClient(BASE_URL, builder);
+    CongestionClient client = new CongestionClient(BASE_URL, builder, new NoOpRequestInterceptor());
 
     server
         .expect(requestTo(BASE_URL + "/congestion/current?beach_id=" + BEACH_CODE))
@@ -78,7 +78,7 @@ class CongestionClientTest {
   void fetchCurrent_returnsNullWhenInternalServerErrorOccurs() {
     RestClient.Builder builder = RestClient.builder();
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    CongestionClient client = new CongestionClient(BASE_URL, builder);
+    CongestionClient client = new CongestionClient(BASE_URL, builder, new NoOpRequestInterceptor());
 
     server
         .expect(requestTo(BASE_URL + "/congestion/current?beach_id=" + BEACH_CODE))
