@@ -15,8 +15,14 @@ public class CongestionClient {
   private final RestClient restClient;
 
   public CongestionClient(
-      @Value("${app.congestion.base-url}") String baseUrl, RestClient.Builder builder) {
-    this.restClient = builder.baseUrl(baseUrl).build();
+      @Value("${app.congestion.base-url}") String baseUrl,
+      RestClient.Builder builder,
+      CongestionInterceptor sigV4Interceptor) {
+    this.restClient =
+        builder
+            .baseUrl(baseUrl)
+            .requestInterceptors(interceptors -> interceptors.add(sigV4Interceptor))
+            .build();
   }
 
   public CongestionCurrentResponse fetchCurrent(String beachCode) {
@@ -29,7 +35,7 @@ public class CongestionClient {
           .retrieve()
           .body(CongestionCurrentResponse.class);
     } catch (RestClientException ex) {
-      log.warn("Failed to fetch congestion for beachCode={}", beachCode, ex);
+      log.warn("혼잡도 조회 실패 - beachCode={}", beachCode, ex);
       return null;
     }
   }
