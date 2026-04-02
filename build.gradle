@@ -52,6 +52,8 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.42.23')
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'
+    implementation 'software.amazon.awssdk:sso'       // SSO 프로파일 자격증명 로더
+    implementation 'software.amazon.awssdk:ssooidc'   // OIDC 토큰 갱신 지원
 
     // Testcontainers
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
