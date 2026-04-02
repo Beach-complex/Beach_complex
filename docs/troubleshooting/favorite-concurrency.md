@@ -662,6 +662,5 @@ public UserFavorite addFavorite(User user, UUID beachId) {
 
 - **발견일**: 2025-12-30
 - **해결일**: 2025-12-30
-- **작성자**: Claude Sonnet 4.5
 - **검증**: 실제 프로덕션 환경 테스트 완료
 - **관련 문서**: favorite-not-showing.md
