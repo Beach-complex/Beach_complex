@@ -73,6 +73,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
     com.beachcheck: DEBUG
+    org.springframework.web.client: DEBUG
+    
 
 
 springdoc:
@@ -108,6 +110,8 @@ app:
     mode: ai
   aws:
     region: ${AWS_REGION:us-east-1}
+    profile: ${AWS_PROFILE:}
+    cli-command: ${AWS_CLI_COMMAND:aws}
   email-verification:
     base-url: ${APP_EMAIL_VERIFICATION_BASE_URL:http://localhost:8080/api/auth/verify-email}
     token-expiration-minutes: 30
