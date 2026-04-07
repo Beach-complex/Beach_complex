@@ -87,13 +87,12 @@ jobs:
 
     steps:
       - name: Deploy on EC2 over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT != '' && secrets.EC2_PORT || '22' }}
-          script_stop: true
           envs: IMAGE_REPOSITORY,IMAGE_TAG,GHCR_USERNAME,GHCR_READ_TOKEN,EC2_DEPLOY_PATH,EC2_COMPOSE_FILE,EC2_ENV_FILE
           script: |
             set -eu
