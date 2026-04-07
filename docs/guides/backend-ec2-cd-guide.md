@@ -18,7 +18,7 @@
 5. EC2에 SSH 접속
 6. EC2에서 최신 이미지 pull
 7. `docker compose up -d app` 재기동
-8. `http://127.0.0.1:8080/actuator/health` 헬스체크
+8. `http://127.0.0.1:8081/actuator/health` 헬스체크
 
 ## GitHub Secrets
 - `EC2_HOST`
