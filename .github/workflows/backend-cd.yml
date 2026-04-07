@@ -100,8 +100,6 @@ jobs:
             cd "${EC2_DEPLOY_PATH}"
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
 
-            export IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
-            export IMAGE_TAG="${IMAGE_TAG}"
             export APP_RUNTIME_ENV_FILE="${EC2_ENV_FILE}"
 
             docker compose -f "${EC2_COMPOSE_FILE}" pull app
