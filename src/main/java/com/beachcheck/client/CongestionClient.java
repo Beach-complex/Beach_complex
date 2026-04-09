@@ -35,6 +35,9 @@ public class CongestionClient {
           .retrieve()
           .body(CongestionCurrentResponse.class);
     } catch (RestClientException ex) {
+      // SdkClientException(자격증명 오류 등)은 의도적으로 잡지 않는다.
+      // 자격증명 문제는 모든 해변이 동일하게 실패하는 환경 문제이므로,
+      // 첫 해변에서 스케줄러를 중단하는 hard-fail이 정책이다.
       log.warn("혼잡도 조회 실패 - beachCode={}", beachCode, ex);
       return null;
     }
