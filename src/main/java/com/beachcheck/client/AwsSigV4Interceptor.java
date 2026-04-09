@@ -4,13 +4,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.support.HttpRequestWrapper;
-import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
@@ -18,7 +16,6 @@ import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
 
-@Component
 public class AwsSigV4Interceptor implements CongestionInterceptor {
 
   /**
@@ -41,8 +38,7 @@ public class AwsSigV4Interceptor implements CongestionInterceptor {
   private final String region;
   private final Aws4Signer signer = Aws4Signer.create();
 
-  public AwsSigV4Interceptor(
-      AwsCredentialsProvider credentialsProvider, @Value("${app.aws.region}") String region) {
+  public AwsSigV4Interceptor(AwsCredentialsProvider credentialsProvider, String region) {
     this.credentialsProvider = credentialsProvider;
     this.region = region;
   }
