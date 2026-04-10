@@ -2,9 +2,11 @@ package com.beachcheck.service;
 
 import com.beachcheck.domain.OutboxEvent;
 import com.beachcheck.repository.OutboxEventRepository;
+import com.google.firebase.messaging.FirebaseMessaging;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 문자열 키 오타/경로 불일치를 컴파일 타임에 차단 - @Min 등으로 batchSize > 0 제약을 애플리케이션 시작 시점에 fail-fast 검증
  */
 @Service
+@ConditionalOnBean(FirebaseMessaging.class)
 public class OutboxPublisher {
 
   private final OutboxEventRepository outboxEventRepository;

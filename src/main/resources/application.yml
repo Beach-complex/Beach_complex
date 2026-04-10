@@ -88,6 +88,8 @@ app:
     lookback-hours: 24
   firebase:
     enabled: true
+    credentials-path: ${APP_FIREBASE_CREDENTIALS_PATH:${GOOGLE_APPLICATION_CREDENTIALS:}}
+    credentials-json-base64: ${APP_FIREBASE_CREDENTIALS_JSON_BASE64:}
   # TODO: Externalize telemetry endpoints to configuration server when available.
   environment:
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/beach_complex

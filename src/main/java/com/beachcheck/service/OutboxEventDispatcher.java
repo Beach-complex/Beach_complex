@@ -11,6 +11,7 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import java.time.Duration;
 import java.time.Instant;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 스프린트에서 성능 병목 측정 후 비동기 도입 검토
  */
 @Service
+@ConditionalOnBean(FirebaseMessaging.class)
 public class OutboxEventDispatcher {
 
   private final OutboxEventRepository outboxEventRepository;
