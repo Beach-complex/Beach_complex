@@ -22,7 +22,8 @@ public class AwsConfig {
    * <p>Policy:
    *
    * <ul>
-   *   <li>로컬에서 AWS_PROFILE이 지정되면 AWS CLI의 export-credentials 결과를 그대로 사용한다.
+   *   <li>로컬에서 AWS_PROFILE이 지정되면 AWS CLI의 export-credentials 결과를 그대로 사용한다. 이는 SSO 기반 로컬 개발 환경의 표준
+   *       자격증명 전략이다.
    *   <li>프로파일이 없으면 DefaultCredentialsProvider로 fallback한다.
    *       <p>Policy: DefaultCredentialsProvider는 아래 순서로 자격증명을 조회하며, 먼저 찾은 곳에서 멈춘다.
    *       <ul>
