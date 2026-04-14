@@ -92,7 +92,8 @@ public class AwsSigV4Interceptor implements CongestionInterceptor {
 
     if (shouldAttachBodyForSigning(
         request.getMethod(),
-        body)) { // 빈 body + safe method 조합에서는 contentStreamProvider를 붙이지 않아 Content-Length 서명 문제 방지
+        body)) { // sdk 내부 canonical request 빌드 과정에서 contentStreamProvider가 있으면 Content-Length: 0이
+      // 자동 삽입되고, 없으면 body 없는 것으로 간주되어 Content-Length가 서명에 포함되지 않기 때문에 safe method +
       builder.contentStreamProvider(() -> new ByteArrayInputStream(body));
     }
 
@@ -101,8 +102,8 @@ public class AwsSigV4Interceptor implements CongestionInterceptor {
         .forEach(
             (headerName, headerValues) -> {
               if (shouldSkipTransportManagedHeader(
-                  headerName)) { // Content-Length, Transfer-Encoding 값과 무관하게 항상 제외 (Apache
-                // HttpClient가 전송 시점에 이 헤더들을 제거하거나 재결정하기 때문)
+                  headerName)) { // Content-Length, Transfer-Encoding 값과 무관하게 aws 서명 대상에서 항상 제외
+                // (Apache HttpClient가 전송 시점에 이 헤더들을 제거하거나 재결정하기 때문)
                 return;
               }
               builder.putHeader(headerName, headerValues);
@@ -115,7 +116,8 @@ public class AwsSigV4Interceptor implements CongestionInterceptor {
    * 실제 전송 직전 제거하거나 재결정한다. 서명 시점에 이 헤더를 canonical request에 포함하면, 전송 시점의 canonical request와 달라져
    * SignatureDoesNotMatch가 발생한다.
    *
-   * <p>Policy: Content-Length, Transfer-Encoding은 서명 대상에서 제외한다.
+   * <p>Policy: Content-Length, Transfer-Encoding은 서명 대상에서 제외한다. (safe method든 unsafe method든 무관하게
+   * 항상 제외)
    *
    * <p>Contract(Input): HTTP 헤더 이름 문자열
    *
