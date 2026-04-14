@@ -4,6 +4,8 @@
 |:---:|:---:|:---|
 | 2026-04-04 | 박건우(@geonusp) | 문서 생성 |
 
+**관련 트러블슈팅:** [Lambda Function URL SigV4 SignatureDoesNotMatch](../troubleshooting/lambda-function-url-sigv4-signature-mismatch.md)
+
 ---
 
 ## 1. 전체 클래스 관계
