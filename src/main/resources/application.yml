@@ -108,13 +108,11 @@ app:
   congestion:
     base-url: ${CONGESTION_BASE_URL:http://127.0.0.1:8000}  # 로컬 개발 fallback. 운영 시 Lambda Function URL 주입
     mode: ai
+    sigv4-enabled: ${CONGESTION_SIGV4_ENABLED:true}  # false로 설정 시 SigV4 서명 비활성화 (자격증명 없는 로컬 개발용)
   aws:
     region: ${AWS_REGION:us-east-1}
     profile: ${AWS_PROFILE:}
     cli-command: ${AWS_CLI_COMMAND:aws}
-    sigv4-enabled: ${CONGESTION_SIGV4_ENABLED:true}  # false로 설정 시 SigV4 서명 비활성화 (자격증명 없는 로컬 개발용)
-  aws:
-    region: ${AWS_REGION:us-east-1}
   email-verification:
     base-url: ${APP_EMAIL_VERIFICATION_BASE_URL:http://localhost:8080/api/auth/verify-email}
     token-expiration-minutes: 30
