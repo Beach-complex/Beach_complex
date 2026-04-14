@@ -28,7 +28,8 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
-@SuppressWarnings("resource") // MockClientHttpResponse는 byte[] 래퍼로 close()가 no-op
+@SuppressWarnings(
+    "resource") // MockClientHttpResponse는 byte[] 래퍼로 close()가 no-op라서 try-with-resources 불필요
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AwsSigV4Interceptor 단위 테스트")
 class AwsSigV4InterceptorTest {
