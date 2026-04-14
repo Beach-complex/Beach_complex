@@ -1,0 +1,10 @@
+services:
+  app:
+    image: ${IMAGE_REPOSITORY}:${IMAGE_TAG}
+    container_name: beach-complex-backend
+    restart: unless-stopped
+    env_file:
+      - ${APP_RUNTIME_ENV_FILE:-.env}
+    ports:
+      - "8080:8080"
+      - "8081:8081"
