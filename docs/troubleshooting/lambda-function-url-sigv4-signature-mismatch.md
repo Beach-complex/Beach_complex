@@ -135,7 +135,20 @@ GET https://vfhbaio7buzpf7frsaqcwvtyd40lzfso.lambda-url.us-east-1.on.aws/congest
 - **의심 이유:** 초기 로그에서 `SignedHeaders=content-length;host;x-amz-date;x-amz-security-token`이 찍혔고, 빈 GET에서는 `content-length: 0`이 실제 전송 계층에서 빠질 수 있다고 의심했다.
 - **근거:**
   - `signed -> spring mismatch: [contentLengthHeader=0 -> null, entityContentLength=0 -> null]` 로그로 Spring request factory 경계에서 차이가 발생함을 확인했다.
-  - 코드: `AwsSigV4Interceptor.java` — signer 입력에서 `Content-Length`, `Transfer-Encoding` 제외, 빈 safe method body stream 미부착으로 수정.
+  - 코드: `AwsSigV4Interceptor.java` — signer 입력(SignedHeaders)에서 `Content-Length`, `Transfer-Encoding` 제외, 빈 safe method body stream 미부착으로 수정.
+  - Apache HttpCore5 `RequestContent.java` — `overwrite=false`(기본값)일 때 `Content-Length` 헤더가 이미 존재하면 `ProtocolException`을 throw하므로, Spring은 Content-Length를 헤더가 아닌 entity로만 전달한다. Apache가 entity 크기로 직접 계산해 붙이므로, 서명 시점에 헤더로 넣은 `content-length: 0`은 전송 시점에 entity 없는 빈 GET에서 Apache에 의해 제거된다.
+    ```java
+    // httpcore5 RequestContent.java
+    if (this.overwrite) {
+        request.removeHeaders(HttpHeaders.TRANSFER_ENCODING);
+        request.removeHeaders(HttpHeaders.CONTENT_LENGTH); // 기존 헤더 제거 후 entity 크기로 재계산
+    } else {
+        if (request.containsHeader(HttpHeaders.CONTENT_LENGTH)) {
+            throw new ProtocolException("Content-Length header already present");
+        }
+    }
+    ```
+    `HttpClientBuilder`는 `new RequestContent()`(overwrite=false)로 등록하므로, Spring이 Content-Length를 헤더로 직접 세팅하면 ProtocolException이 발생한다. 그래서 Spring은 Content-Length를 헤더가 아닌 entity로 전달하고, Apache가 entity 크기로 직접 계산해 붙인다.
 - **결과:** 수정 후 `SignedHeaders=host;x-amz-date;x-amz-security-token`으로 바뀌었고 403이 사라졌다.
 
 #### 가설 10: 서명된 요청과 실제 전송 요청이 다르다 ✅ 가설 5 보완
@@ -230,3 +243,5 @@ aws sts get-caller-identity --profile gunwoo --region us-east-1 --no-verify-ssl
 - AWS SDKs and Tools Reference Guide: [Process credential provider](https://docs.aws.amazon.com/sdkref/latest/guide/feature-process-credentials.html)
 - AWS SDKs and Tools Reference Guide: [IAM Identity Center credential provider](https://docs.aws.amazon.com/sdkref/latest/guide/feature-sso-credentials.html)
 - RFC 9112 §6 Message Body: [https://www.rfc-editor.org/rfc/rfc9112#section-6](https://www.rfc-editor.org/rfc/rfc9112#section-6) — `Content-Length`·`Transfer-Encoding`이 메시지 프레이밍 헤더임을 정의. "Request message framing is independent of method semantics"
+- Apache HttpCore5 `RequestContent.java`: `overwrite=false`(기본값) 시 `Content-Length` 헤더가 이미 존재하면 `ProtocolException`을 throw하고, `overwrite=true` 시 기존 헤더를 제거 후 entity 크기로 재계산한다. `HttpClientBuilder`는 `new RequestContent()`(overwrite=false)로 등록 — Spring이 Content-Length를 헤더가 아닌 entity로만 전달하는 이유.
+  
