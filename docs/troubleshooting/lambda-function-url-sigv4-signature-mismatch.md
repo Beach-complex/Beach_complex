@@ -129,43 +129,21 @@ GET https://vfhbaio7buzpf7frsaqcwvtyd40lzfso.lambda-url.us-east-1.on.aws/congest
 | 8: CLI와 Java SDK가 다른 credentials 사용 | CLI는 정상인데 SDK 서명만 계속 실패 | credentials 통일 후에도 403 유지. 원인은 canonical request 불일치 |
 | 9: Fiddler/프록시가 직접 원인 | 디버깅 중 TLS 오류 다수 발생 | 프록시 해제 후에도 403 재현. 디버깅 환경 오염 문제 |
 
-#### 확정된 가설 (상세)
+#### 확정된 가설
 
-### 근거 (로그/코드/설정/DB 상태)
-- **로그/지표:**
-  - `uriHost`와 `signedHost`는 일관되게 동일했다.
-  - `signingScope=20260402/us-east-1/lambda/aws4_request`가 확인됐다.
-  - `X-Amz-Security-Token`이 로그에 존재했다.
-  - `Using AWS CLI export-credentials provider for profile=gunwoo` 시작 로그가 확인됐다.
-  - 2026-04-03 00:26:03 KST 로그에서 `SignedHeaders=content-length;host;x-amz-date;x-amz-security-token` 상태였고, 곧바로 `signed -> spring mismatch: [contentLengthHeader=0 -> null, entityContentLength=0 -> null]`가 관측됐다.
-  - 2026-04-03 00:38:05 KST 로그에서는 `SignedHeaders=host;x-amz-date;x-amz-security-token` 상태로 바뀐 뒤 `signed -> spring matched`, `spring -> apache matched`가 모두 확인됐다.
-  - 같은 2026-04-03 00:38:05.927+09:00 요청은 더 이상 403이 아니라 404 `해수욕장을 찾을 수 없음`을 반환했다.
-- **코드 포인트:**
-  - `src/main/java/com/beachcheck/client/CongestionClient.java`: `GET /congestion/current?beach_id=...` 호출
-  - `src/main/java/com/beachcheck/client/AwsSigV4Interceptor.java`: signer 입력에서 `Content-Length`, `Transfer-Encoding` 제외, 빈 safe method body 미부착
-  - `src/main/java/com/beachcheck/config/AwsConfig.java`: `ProcessCredentialsProvider`로 AWS CLI `export-credentials` 경로 사용
-  - `src/main/java/com/beachcheck/client/SigV4Diagnostics.java` **(진단용, 이후 제거)**: `signed -> spring -> apache` 레이어별 비교 로그
-  - `src/main/java/com/beachcheck/client/SigV4DiagnosticHttpClient.java` **(진단용, 이후 제거)**: Spring request factory 경계 스냅샷
-  - `src/main/java/com/beachcheck/client/SigV4DiagnosticApacheRequestInterceptor.java` **(진단용, 이후 제거)**: Apache execution chain 스냅샷
-- **설정 포인트:**
-  - `C:\Users\pro\.aws\config` 에는 다음 두 프로파일이 공존했다.
-    - `[profile beach-ai] login_session = arn:aws:iam::911107441116:root`
-    - `[profile gunwoo] sso_session = gunwoo`, `sso_account_id = 911107441116`, `sso_role_name = AdministratorAccess`
-  - `C:\Users\pro\.aws\credentials` 파일은 존재하지 않았다.
-  - `aws sts get-caller-identity --profile gunwoo --region us-east-1 --no-verify-ssl` 결과는 `arn:aws:sts::911107441116:assumed-role/AWSReservedSSO_AdministratorAccess_.../gunwoo` 였다.
-- **DB 상태:** 해당 없음
+#### 가설 5: 빈 GET의 `content-length` 서명 문제 ✅ 확정 원인
+- **의심 이유:** 초기 로그에서 `SignedHeaders=content-length;host;x-amz-date;x-amz-security-token`이 찍혔고, 빈 GET에서는 `content-length: 0`이 실제 전송 계층에서 빠질 수 있다고 의심했다.
+- **근거:**
+  - `signed -> spring mismatch: [contentLengthHeader=0 -> null, entityContentLength=0 -> null]` 로그로 Spring request factory 경계에서 차이가 발생함을 확인했다.
+  - 코드: `AwsSigV4Interceptor.java` — signer 입력에서 `Content-Length`, `Transfer-Encoding` 제외, 빈 safe method body stream 미부착으로 수정.
+- **결과:** 수정 후 `SignedHeaders=host;x-amz-date;x-amz-security-token`으로 바뀌었고 403이 사라졌다.
 
-### 확정 가설 상세
-
-#### 가설 5: 빈 GET의 `content-length` 서명 문제
-- **의심 이유:** 초기 로그에서 `SignedHeaders=content-length;host;x-amz-date;x-amz-security-token` 이 찍혔고, 빈 GET에서는 `content-length: 0`이 실제 전송 계층에서 빠질 수 있다고 의심했다.
-- **확인 방법:** `signed -> spring` 비교 로그로 실제 차이를 확인한 뒤, signer 입력에서 `Content-Length`, `Transfer-Encoding`을 제외하고 빈 safe method에는 body stream도 붙이지 않도록 수정했다.
-- **결과:** **확정 원인.** 수정 후 `SignedHeaders=host;x-amz-date;x-amz-security-token` 으로 바뀌었고 403이 사라졌다.
-
-#### 가설 10: 서명된 요청과 실제 전송 요청이 다르다
+#### 가설 10: 서명된 요청과 실제 전송 요청이 다르다 ✅ 가설 5 보완
 - **의심 이유:** AWS 공식 문서도 프록시 또는 클라이언트 핸들러가 헤더를 수정할 수 있다고 안내한다.
-- **확인 방법:** `SigV4Diagnostics`로 `signed -> spring -> apache` 비교를 추가했다.
-- **결과:** **가설 5 보완.** 가설 5의 원인이 파이프라인 어느 레벨에서 발생하는지 특정했다. 차이는 Apache 레벨이 아니라 Spring request factory 경계에서 발생했고, 실제 차이 항목은 `content-length: 0` 제거였다.
+- **근거:**
+  - `SigV4Diagnostics`로 `signed -> spring -> apache` 레이어별 비교 추가. 차이는 Apache 레벨이 아니라 Spring request factory 경계에서 발생했고, 실제 차이 항목은 `content-length: 0` 제거였다.
+  - 진단 도구: `SigV4Diagnostics.java`, `SigV4DiagnosticHttpClient.java`, `SigV4DiagnosticApacheRequestInterceptor.java` (이후 제거 예정)
+- **결과:** 가설 5의 원인이 파이프라인 어느 레벨에서 발생하는지 특정했다.
 
 ### 최종 원인 (One-liner)
 - 빈 `GET` 요청에 대해 `AwsSigV4Interceptor`가 `content-length: 0`을 canonical request에 포함해 서명했지만, Spring `HttpComponentsClientHttpRequest`가 실제 전송 직전 그 헤더를 제거해 AWS가 다른 canonical request를 재계산하면서 `SignatureDoesNotMatch`가 발생했다.
@@ -184,6 +162,7 @@ GET https://vfhbaio7buzpf7frsaqcwvtyd40lzfso.lambda-url.us-east-1.on.aws/congest
 - `AwsSigV4Interceptor`
   - signer 입력 생성 시 `Content-Length`, `Transfer-Encoding`을 제외
   - 빈 safe method(`GET`, `HEAD`, `OPTIONS`, `TRACE`)에는 body `contentStreamProvider`를 붙이지 않음
+    - `contentStreamProvider`는 AWS SDK가 요청 body를 읽기 위해 사용하는 스트림 공급자다. 빈 스트림이라도 붙이면 SDK가 `Content-Length: 0`을 canonical request에 자동 삽입하고, 이를 `SignedHeaders`에 포함시킨다. 그러나 Spring `HttpComponentsClientHttpRequest`는 실제 전송 직전 `Content-Length`를 제거하므로 서명 시점과 전송 시점의 canonical request가 달라져 `SignatureDoesNotMatch`가 발생한다. body가 없는 safe method에서 스트림 자체를 붙이지 않으면 SDK가 `Content-Length`를 서명에 포함하지 않아 이 문제를 방지할 수 있다.
 - `AwsSigV4InterceptorTest`
   - 빈 GET 요청에서 `Authorization`의 `SignedHeaders`에 `content-length`가 포함되지 않는 테스트 추가
 - 기존 `AwsConfig`의 `ProcessCredentialsProvider` 경로는 그대로 유지
