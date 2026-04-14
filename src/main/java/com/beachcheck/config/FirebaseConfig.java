@@ -76,7 +76,7 @@ public class FirebaseConfig {
 
     if (StringUtils.hasText(credentialsPath)) {
       Path path = Path.of(credentialsPath);
-      log.info("외부 파일 경로에서 Firebase 서비스 계정 키를 로드합니다. path={}", path);
+      log.info("외부 파일 경로에서 Firebase 서비스 계정 키를 로드합니다.");
       return Files.newInputStream(path);
     }
 
