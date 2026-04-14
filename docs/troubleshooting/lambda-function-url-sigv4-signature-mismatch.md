@@ -41,7 +41,11 @@
 ```text
 2026-03-30T20:46:06.405+09:00  WARN 83908 --- [beach-complex] [   scheduling-1] com.beachcheck.client.CongestionClient   : 혼잡도 조회 실패 - beachCode=SONGJEONG
 
-org.springframework.web.client.HttpClientErrorException$Forbidden: 403 Forbidden: "{"message":"The request signature we calculated does not match the signature you provided. Check your AWS Secret Access Key and signing method. Consult the service documentation for details."}"
+org.springframework.web.client.HttpClientErrorException$Forbidden: 403 Forbidden
+```
+
+```json
+{"message": "The request signature we calculated does not match the signature you provided. Check your AWS Secret Access Key and signing method. Consult the service documentation for details."}
 ```
 
 원인 확인 로그:
@@ -55,7 +59,11 @@ org.springframework.web.client.HttpClientErrorException$Forbidden: 403 Forbidden
 2026-04-03T00:38:05.726+09:00 DEBUG ... AwsSigV4Interceptor : ... SignedHeaders=host;x-amz-date;x-amz-security-token ...
 2026-04-03T00:38:05.726+09:00 DEBUG ... SigV4Diagnostics   : signed -> spring matched
 2026-04-03T00:38:05.726+09:00 DEBUG ... SigV4Diagnostics   : spring -> apache matched
-2026-04-03T00:38:05.927+09:00  WARN ... CongestionClient   : org.springframework.web.client.HttpClientErrorException$NotFound: 404 Not Found: "{"detail":"해수욕장을 찾을 수 없음"}"
+2026-04-03T00:38:05.927+09:00  WARN ... CongestionClient   : org.springframework.web.client.HttpClientErrorException$NotFound: 404 Not Found
+```
+
+``` json
+{"detail":"해수욕장을 찾을 수 없음"}
 ```
 
 ### 발생 조건 / 빈도
