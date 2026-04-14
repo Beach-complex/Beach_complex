@@ -81,9 +81,7 @@ public class AwsSigV4Interceptor implements CongestionInterceptor {
         };
 
     logSignedRequest(signedHttpRequest, body);
-    try (SigV4Diagnostics.Scope ignored = SigV4Diagnostics.open(signedHttpRequest, body)) {
-      return execution.execute(signedHttpRequest, body);
-    }
+    return execution.execute(signedHttpRequest, body);
   }
 
   private SdkHttpFullRequest toSdkRequest(HttpRequest request, byte[] body) {
