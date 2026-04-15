@@ -106,7 +106,7 @@ jobs:
             docker compose -f "${EC2_COMPOSE_FILE}" pull app
             docker compose -f "${EC2_COMPOSE_FILE}" up -d app
 
-            for i in $(seq 1 30); do
+            for i in {1..30}; do
               if curl --fail --silent --show-error http://127.0.0.1:8081/actuator/health; then
                 exit 0
               fi

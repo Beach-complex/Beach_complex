@@ -51,6 +51,6 @@ class OutboxFirebaseConditionContextTest {
   }
 
   @Configuration(proxyBeanMethods = false)
-  @Import({OutboxEventDispatcher.class, OutboxPublisher.class, OutboxSchedulingConfig.class})
+  @Import({OutboxFirebaseConfig.class, OutboxSchedulingConfig.class})
   static class OutboxBeansConfig {}
 }

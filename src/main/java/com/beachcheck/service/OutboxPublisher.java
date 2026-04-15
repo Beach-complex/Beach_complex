@@ -2,13 +2,9 @@ package com.beachcheck.service;
 
 import com.beachcheck.domain.OutboxEvent;
 import com.beachcheck.repository.OutboxEventRepository;
-import com.google.firebase.messaging.FirebaseMessaging;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>TODO(설정 항목 증가 시): @ConfigurationProperties(prefix = "app.outbox.polling") + @Validated 도입 검토 -
  * 문자열 키 오타/경로 불일치를 컴파일 타임에 차단 - @Min 등으로 batchSize > 0 제약을 애플리케이션 시작 시점에 fail-fast 검증
  */
-@Service
-@ConditionalOnBean(FirebaseMessaging.class)
 public class OutboxPublisher {
 
   private final OutboxEventRepository outboxEventRepository;
@@ -32,7 +26,7 @@ public class OutboxPublisher {
   public OutboxPublisher(
       OutboxEventRepository outboxEventRepository,
       OutboxEventDispatcher outboxEventDispatcher,
-      @Value("${app.outbox.polling.batch-size:10}") int batchSize) {
+      int batchSize) {
     this.outboxEventRepository = outboxEventRepository;
     this.outboxEventDispatcher = outboxEventDispatcher;
     this.batchSize = batchSize;

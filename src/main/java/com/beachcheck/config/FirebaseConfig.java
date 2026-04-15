@@ -19,6 +19,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 
+/**
+ * Why: Firebase 관련 빈을 app.firebase.enabled=true 일 때만 등록하고, 런타임 환경마다 다른 자격증명 주입 경로를 한곳에서 관리하기 위해.
+ *
+ * <p>Policy:
+ *
+ * <ul>
+ *   <li>우선순위 1: APP_FIREBASE_CREDENTIALS_JSON_BASE64
+ *   <li>우선순위 2: APP_FIREBASE_CREDENTIALS_PATH
+ *   <li>우선순위 3: classpath firebase-service-account.json
+ * </ul>
+ *
+ * <p>Contract(Output): FirebaseApp, FirebaseMessaging 빈 생성 시 Base64 -> 외부 파일 경로 -> classpath 순서로
+ * 자격증명을 탐색한다.
+ */
 @Configuration
 @ConditionalOnProperty(
     prefix = "app.firebase",
@@ -52,6 +66,12 @@ public class FirebaseConfig {
       FirebaseApp app = FirebaseApp.initializeApp(options);
       log.info("FirebaseApp이 성공적으로 초기화되었습니다.");
       return app;
+    } catch (IllegalArgumentException e) {
+      log.error(
+          "FirebaseApp 초기화에 실패했습니다. "
+              + "APP_FIREBASE_CREDENTIALS_JSON_BASE64 값이 올바른 Base64 JSON인지 확인해주세요.",
+          e);
+      throw e;
     } catch (IOException e) {
       log.error(
           "FirebaseApp을 초기화하는 데 실패했습니다. "
