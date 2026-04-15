@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Primary;
 /**
  * Firebase 테스트 설정
  *
- * <p>Why: 통합 테스트에서 FirebaseMessaging Mock 제공하여 의존성 문제 해결
+ * <p>Why: 통합 테스트에서 FirebaseMessaging Mock 제공하여 Firebase 외부 호출 없이 Outbox 경로를 검증할 수 있게 한다.
  *
  * <p>Policy:
  *
@@ -21,9 +21,8 @@ import org.springframework.context.annotation.Primary;
  *   <li>ApiTest, IntegrationTest 베이스 클래스에 @Import로 자동 적용
  * </ul>
  *
- * <p>Context: test 환경에서는 app.firebase.enabled=false로 FirebaseMessaging 빈이 생성되지 않지만,
- * OutboxSchedulingConfig → OutboxPublisher → OutboxEventDispatcher → FirebaseMessaging 의존성 체인으로 인해
- * ApplicationContext 로딩이 실패함. 모든 통합 테스트에 Mock을 제공하여 문제 해결.
+ * <p>Context: test 환경에서는 실제 Firebase 자격 증명을 사용하지 않으므로 Mock 빈을 제공해 Outbox/알림 테스트가 안정적으로 동작하도록 한다. 운영
+ * 코드에서는 Firebase 비활성화 시 관련 빈이 조건부로 제외된다.
  */
 @TestConfiguration
 public class FirebaseTestConfig {
@@ -31,7 +30,7 @@ public class FirebaseTestConfig {
   /**
    * FirebaseMessaging Mock 빈 생성
    *
-   * <p>Why: test 환경에서 FirebaseMessaging 의존성을 만족시키기 위함
+   * <p>Why: test 환경에서 FirebaseMessaging 의존성을 만족시키고 실제 FCM 호출을 차단하기 위함
    *
    * <p>Policy:
    *

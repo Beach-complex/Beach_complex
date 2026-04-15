@@ -11,7 +11,6 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import java.time.Duration;
 import java.time.Instant;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
  * 이벤트에 영향 없음 TODO(관측 스프린트 후): 처리량 증가가 필요한 경우 @Async 비동기 처리 고려 - 현재는 배치 10개, 1초 간격이라 동기 처리로 충분 - 관측
  * 스프린트에서 성능 병목 측정 후 비동기 도입 검토
  */
-@Service
 public class OutboxEventDispatcher {
 
   private final OutboxEventRepository outboxEventRepository;

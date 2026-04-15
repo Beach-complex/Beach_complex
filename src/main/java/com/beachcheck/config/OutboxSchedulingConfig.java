@@ -1,6 +1,7 @@
 package com.beachcheck.config;
 
 import com.beachcheck.service.OutboxPublisher;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  * </ul>
  */
 @Configuration
+@ConditionalOnBean(OutboxPublisher.class)
 @ConditionalOnProperty(
     prefix = "app.outbox.polling",
     name = "enabled",

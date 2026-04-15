@@ -39,6 +39,10 @@
    - 예: `/home/ubuntu/beach-backend/docker-compose.yml`
 4. 운영용 env 파일 배치
    - 예: `/home/ubuntu/beach-backend/.env`
+   - Firebase 알림을 운영에서 사용할 경우:
+     - `APP_FIREBASE_ENABLED=true`
+     - `APP_FIREBASE_CREDENTIALS_JSON_BASE64=<base64-encoded-json>` 또는
+     - `APP_FIREBASE_CREDENTIALS_PATH=<container-readable-path>`
 5. GHCR 이미지 pull 권한이 있는 토큰 준비
 
 ## 예시 배포 디렉터리 구조
@@ -53,6 +57,7 @@
 - 이미지는 `${IMAGE_REPOSITORY}:${IMAGE_TAG}` 형식으로 참조한다.
 - 앱 런타임 환경변수는 `EC2_ENV_FILE` 이 가리키는 서버의 env 파일에 둔다.
 - 이미지 태그만 GitHub Actions가 갱신하고, 비밀값은 EC2에서 유지한다.
+- Firebase 서비스 계정 키는 이미지에 포함하지 않고 EC2 env 또는 서버 파일로 주입한다.
 
 ## 첫 배포 전 확인 항목
 - `main` 직접 push 제한 및 PR merge 중심 운영 여부

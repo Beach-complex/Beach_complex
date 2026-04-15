@@ -37,12 +37,34 @@
 2. "새 비공개 키 생성" 버튼 클릭
 3. JSON 파일 다운로드
 4. 파일명을 `firebase-service-account.json`으로 변경
-5. 다음 위치에 저장:
+5. 로컬 개발 시 다음 위치에 저장:
    ```
    src/main/resources/firebase-service-account.json
    ```
 
 ⚠️ **중요**: 이 파일은 `.gitignore`에 포함되어 있으므로 Git에 커밋되지 않습니다!
+
+### 운영/배포 환경 권장 방식
+
+- 운영 컨테이너에서는 classpath 파일 대신 환경변수로 주입하는 방식을 권장합니다.
+- 지원 방식:
+  - `APP_FIREBASE_CREDENTIALS_JSON_BASE64`: 서비스 계정 JSON 전체를 base64 인코딩한 값
+  - `APP_FIREBASE_CREDENTIALS_PATH`: 컨테이너 내부에서 읽을 수 있는 JSON 파일 경로
+- 우선순위:
+  1. `APP_FIREBASE_CREDENTIALS_JSON_BASE64`
+  2. `APP_FIREBASE_CREDENTIALS_PATH`
+  3. `src/main/resources/firebase-service-account.json`
+
+예시:
+```bash
+base64 -w 0 firebase-service-account.json
+```
+
+EC2 env 예시:
+```env
+APP_FIREBASE_ENABLED=true
+APP_FIREBASE_CREDENTIALS_JSON_BASE64=<base64-encoded-json>
+```
 
 ---
 
@@ -114,9 +136,10 @@ Failed to initialize Firebase: firebase-service-account.json
 ```
 
 **해결 방법:**
-1. `src/main/resources/firebase-service-account.json` 파일 존재 확인
-2. JSON 파일 형식이 올바른지 확인
-3. 파일 권한 확인 (읽기 가능)
+1. 로컬 개발이면 `src/main/resources/firebase-service-account.json` 파일 존재 확인
+2. 운영 환경이면 `APP_FIREBASE_CREDENTIALS_JSON_BASE64` 또는 `APP_FIREBASE_CREDENTIALS_PATH` 설정 확인
+3. JSON 파일 형식이 올바른지 확인
+4. 파일 경로 사용 시 컨테이너에서 읽을 수 있는 권한인지 확인
 
 ### FCM 발송 실패
 ```
