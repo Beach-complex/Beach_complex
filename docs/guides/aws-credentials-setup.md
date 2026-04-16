@@ -10,7 +10,7 @@
 
 | 우선순위 | 환경 | 전략 | 설정 |
 |:---:|------|------|------|
-| 1 | 로컬 (SSO) | `ProcessCredentialsProvider` | `AWS_PROFILE` 환경변수 지정 |
+| 1 | 로컬 (SSO / 정적 키) | `ProfileCredentialsProvider` | `app.aws.profile` 지정 |
 | 2 | 로컬 (비SSO) / 운영 | `DefaultCredentialsProvider` | 아래 순서로 자동 탐색 |
 
 `DefaultCredentialsProvider` 탐색 순서:
@@ -20,8 +20,7 @@
 3. `~/.aws/credentials` (AWS CLI 로컬 프로파일)
 4. EC2 인스턴스 프로파일 (운영 서버 IAM Role 자동 인식)
 
-`AWS_PROFILE`이 비어있으면 항상 `DefaultCredentialsProvider`로 fallback한다.
-이 전략은 이번 이슈 대응용 임시 방편이 아니라, 로컬 SSO 개발 환경의 표준 자격증명 전략이다.
+`app.aws.profile`이 비어있으면 항상 `DefaultCredentialsProvider`로 fallback한다.
 
 ---
 
@@ -36,14 +35,18 @@ AWS IAM Identity Center(SSO)를 사용하는 경우.
 aws sso login --profile <프로파일명>
 ```
 
-**2. 환경변수 설정**
-```bash
-export AWS_PROFILE=<프로파일명>
+**2. 프로파일 설정**
+
+`application-local.yml` 또는 환경변수로 지정:
+```yaml
+app:
+  aws:
+    profile: <프로파일명>
 ```
 
 또는 `.env.local`에 추가:
 ```
-AWS_PROFILE=<프로파일명>
+APP_AWS_PROFILE=<프로파일명>
 ```
 
 > SSO 자격증명 로드 실패 시 → [`docs/troubleshooting/aws-sso-credentials-spring.md`](../troubleshooting/aws-sso-credentials-spring.md)
