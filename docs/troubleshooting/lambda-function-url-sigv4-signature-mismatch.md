@@ -10,7 +10,7 @@
 - **컴포넌트:** infra (Lambda Function URL, SigV4, AWS SDK v2, Spring RestClient, Apache HttpClient 5)
 - **환경:** local
 - **관련 이슈/PR:** feat: PB-104 CongestionClient Lambda Function URL SigV4 인증 적용
-- **키워드:** SignatureDoesNotMatch, HttpClientErrorException$Forbidden, Lambda Function URL, AWS_IAM, SigV4, Content-Length, Apache HttpClient 5, ProcessCredentialsProvider
+- **키워드:** SignatureDoesNotMatch, HttpClientErrorException$Forbidden, Lambda Function URL, AWS_IAM, SigV4, Content-Length, Apache HttpClient 5, ProfileCredentialsProvider
 
 ---
 
@@ -89,7 +89,6 @@ org.springframework.web.client.HttpClientErrorException$Forbidden: 403 Forbidden
 - **환경변수/설정:**
   - `AWS_PROFILE=gunwoo`
   - `AWS_REGION=us-east-1`
-  - `AWS_CLI_COMMAND=C:\Program Files\Amazon\AWSCLIV2\aws.exe`
   - `CONGESTION_BASE_URL=https://vfhbaio7buzpf7frsaqcwvtyd40lzfso.lambda-url.us-east-1.on.aws`
   - 프록시/Fiddler 설정은 실제 재현 확인 시 제거해야 한다
 
@@ -124,7 +123,7 @@ GET https://vfhbaio7buzpf7frsaqcwvtyd40lzfso.lambda-url.us-east-1.on.aws/congest
 | 2: signing scope 오류 | `region`/`service` 값이 다르면 scope 오류 | `20260402/us-east-1/lambda/aws4_request` 로그 확인 |
 | 3: session token 누락 | SSO temporary credentials는 session token 필수 | `X-Amz-Security-Token` 로그 존재, 테스트 통과 |
 | 4: 서명 시점이 너무 이르다 | 서명 후 헤더/URI가 바뀌면 canonical request 깨짐 | 시점 문제 아님. 실제 원인은 가설 5 |
-| 6: `DefaultCredentialsProvider` 오염 | 환경변수/프로파일 우선순위로 의도와 다른 credentials 선택 가능 | `ProcessCredentialsProvider`로 강제 후에도 403 유지 |
+| 6: `DefaultCredentialsProvider` 오염 | 환경변수/프로파일 우선순위로 의도와 다른 credentials 선택 가능 | `AWS_PROFILE=gunwoo`로 `ProfileCredentialsProvider` 사용을 고정해도 403 유지 |
 | 7: profile이 root/IAM/SSO 혼재 | `root`와 SSO 설정이 같은 profile에 섞일 가능성 | `beach-ai`(root)와 `gunwoo`(SSO)가 별도 profile로 분리 확인 |
 | 8: CLI와 Java SDK가 다른 credentials 사용 | CLI는 정상인데 SDK 서명만 계속 실패 | credentials 통일 후에도 403 유지. 원인은 canonical request 불일치 |
 | 9: Fiddler/프록시가 직접 원인 | 디버깅 중 TLS 오류 다수 발생 | 프록시 해제 후에도 403 재현. 디버깅 환경 오염 문제 |
@@ -178,7 +177,7 @@ GET https://vfhbaio7buzpf7frsaqcwvtyd40lzfso.lambda-url.us-east-1.on.aws/congest
     - `contentStreamProvider`는 AWS SDK가 요청 body를 읽기 위해 사용하는 스트림 공급자다. 빈 스트림이라도 붙이면 SDK가 `Content-Length: 0`을 canonical request에 자동 삽입하고, 이를 `SignedHeaders`에 포함시킨다. 그러나 Spring `HttpComponentsClientHttpRequest`는 실제 전송 직전 `Content-Length`를 제거하므로 서명 시점과 전송 시점의 canonical request가 달라져 `SignatureDoesNotMatch`가 발생한다. body가 없는 safe method에서 스트림 자체를 붙이지 않으면 SDK가 `Content-Length`를 서명에 포함하지 않아 이 문제를 방지할 수 있다.
 - `AwsSigV4InterceptorTest`
   - 빈 GET 요청에서 `Authorization`의 `SignedHeaders`에 `content-length`가 포함되지 않는 테스트 추가
-- 기존 `AwsConfig`의 `ProcessCredentialsProvider` 경로는 그대로 유지
+- `AwsConfig`는 `app.aws.profile` 지정 시 `ProfileCredentialsProvider`, 미지정 시 `DefaultCredentialsProvider`를 사용하도록 정리
 
 #### 진단용 (이후 제거 예정)
 > 원인을 레이어별로 특정하기 위해 추가한 임시 도구. 디버깅 완료 후 제거한다.
@@ -224,7 +223,7 @@ aws sts get-caller-identity --profile gunwoo --region us-east-1 --no-verify-ssl
 ### 방지 조치 체크리스트
 - [x] **테스트 추가**: 빈 GET 요청이 `content-length`를 SigV4 `SignedHeaders`에 포함하지 않는 단위 테스트 추가
 - [x] **검증 로직 추가**: `signed -> spring -> apache` 비교 로그 추가 (진단용, 이후 제거 예정)
-- [ ] **가드레일**: `app.aws.profile` 가 설정됐는데 `app.aws.cli-command` 실행이 불가능하면 즉시 fail-fast
+- [ ] **가드레일**: `app.aws.profile` 이 설정됐는데 프로파일이 없거나 SSO 세션이 만료된 경우를 시작 시점에 더 빨리 감지할지 결정
 - [x] **로깅 개선**: SigV4 핵심 진단 헤더/스코프 로그 추가
 - [x] **문서화**: 본 문서 갱신
 - [ ] **알림/모니터링**(배포 후): DEV 이슈이므로 현재 해당 없음
@@ -232,15 +231,13 @@ aws sts get-caller-identity --profile gunwoo --region us-east-1 --no-verify-ssl
 ### 남은 작업(Action Items)
 - [ ] Lambda 쪽 `beach_id` 매핑 확인 (`SONGJEONG`, `ILGWANG` 등)
 - [ ] 진단용 `SigV4Diagnostics` 로그를 상시 유지할지, 문제 해결 후 축소할지 결정
-- [ ] `AWS_CLI_COMMAND` 기본값(`aws`) fallback을 유지할지 fail-fast로 바꿀지 결정
+- [ ] `app.aws.profile` 미지정 시 `DefaultCredentialsProvider` fallback을 유지할지, 로컬에서 프로파일 지정을 더 강제할지 결정
 
 ---
 
 ## 9) 참고 자료 (References)
 
 - AWS IAM User Guide: [AWS API 요청에 대한 Signature Version 4 서명 문제 해결](https://docs.aws.amazon.com/ko_kr/IAM/latest/UserGuide/reference_sigv-troubleshooting.html)
-- AWS CLI Command Reference: [aws configure export-credentials](https://docs.aws.amazon.com/cli/latest/reference/configure/export-credentials.html)
-- AWS SDKs and Tools Reference Guide: [Process credential provider](https://docs.aws.amazon.com/sdkref/latest/guide/feature-process-credentials.html)
 - AWS SDKs and Tools Reference Guide: [IAM Identity Center credential provider](https://docs.aws.amazon.com/sdkref/latest/guide/feature-sso-credentials.html)
 - RFC 9112 §6 Message Body: [https://www.rfc-editor.org/rfc/rfc9112#section-6](https://www.rfc-editor.org/rfc/rfc9112#section-6) — `Content-Length`·`Transfer-Encoding`이 메시지 프레이밍 헤더임을 정의. "Request message framing is independent of method semantics"
 - Apache HttpCore5 `RequestContent.java`: `overwrite=false`(기본값) 시 `Content-Length` 헤더가 이미 존재하면 `ProtocolException`을 throw하고, `overwrite=true` 시 기존 헤더를 제거 후 entity 크기로 재계산한다. `HttpClientBuilder`는 `new RequestContent()`(overwrite=false)로 등록 — Spring이 Content-Length를 헤더가 아닌 entity로만 전달하는 이유.
