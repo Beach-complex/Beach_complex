@@ -1,4 +1,4 @@
-# docs/troubleshooting/docs-README.md
+﻿# docs/troubleshooting/docs-README.md
 
 이 폴더는 프로젝트 개발/운영 중에 생긴 이슈를 **재현 가능하게 기록**하고, **원인/해결/검증/재발 방지**까지 남겨 팀의 문제 해결 비용을 줄이기 위한 문서 모음입니다.
 
@@ -91,10 +91,20 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 ### 최신 케이스(Recent)
 
 <!-- INDEX:RECENT:START -->
+- [2026-04-03] [Spring Lambda Function URL 호출 시 SignatureDoesNotMatch](./lambda-function-url-sigv4-signature-mismatch.md)
+- [2026-03-30] [Spring + AWS SDK v2 SSO 자격증명 로드 실패](./aws-sso-credentials-spring.md)
+- [2026-03-28] [Lambda + Secrets Manager 연동 실패 (Mangum 이벤트 형식 오류 / 리전 불일치)](./troubleshooting-lambda-secrets.md)
+- [2026-03-04] [OutboxPublisher 통합 테스트: REQUIRES_NEW 미커밋 데이터 + FOR UPDATE 데드락 + readOnly 충돌 연쇄](./outbox-integration-requires-new-lock-readOnly-deadlock.md)
+- [2026-03-04] [OutboxPublisher 통합 테스트: REQUIRES_NEW 미커밋 데이터 가시성 문제 초기 분석 (deleteAll + CASCADE 가설 배제)](./outbox-integration-test-uncommitted-data-investigation.md)
+- [2026-02-24] [Troubleshooting: Mock 호출 횟수 누적으로 인한 테스트 실패](./troubleshooting-mock-invocation-accumulation-test.md)
+- [2026-02-20] [Troubleshooting: Firebase Bean Dependency in Integration Tests](./troubleshooting-firebase-bean-dependency-integration-test.md)
+- [2026-02-06] [Testcontainers: Docker Desktop 29.x에서 `Could not find a valid Docker environment` (Status 400) 해결](./troubleshooting-testcontainers-docker-api-version-400.md)
+- [2026-02-05] [2026-02-05 CI 실패: Auth refresh 단위테스트 예외 타입 불일치 (400 정책)](./troubleshooting-ci-auth-refresh-unit-test-exception-mismatch.md)
 - [2026-01-26] [Windows Testcontainers 통합테스트 실패 (InvalidPathException / DockerClientProviderStrategy)](./testcontainers-windows-path-docker.md)
 - [2026-01-26] [라인엔딩 변경으로 파일이 수정된 것처럼 보이는 문제](./line-endings-autocrlf.md)
 - [2026-01-26] [예약 동시성 중복 예약이 400으로 내려오는 문제](./reservation-concurrency-duplicate-409.md)
 - [2026-01-26] [통합 테스트 401 계약 불일치 + ProblemDetail 검증 기준 정리](./integration-test-401-problemdetail-contract.md)
+- [2026-01-21] [Firebase Service Worker 환경변수 로딩 이슈 트러블슈팅](./firebase-service-worker-env-loading.md)
 - [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./git-hooks-gitleaks-windows.md)
 - [2026-01-16] [\[Troubleshooting\] toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./cache-evict-not-applied-internal-call.md)
 - [2026-01-16] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./concurrent-favorite-dataintegrity-exception.md)
@@ -106,6 +116,9 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 - [2025-12-30] [트러블슈팅: 찜 목록이 프론트엔드에 표시되지 않는 문제](./favorite-not-showing.md)
 - [2025-12-30] [트러블슈팅: 찜하기 동시성 문제 (Race Condition)](./favorite-concurrency.md)
 - [2024-12-29] [Git Merge Conflict 트러블슈팅 가이드 - PB-42 Favorite 기능](./merge-conflict-PB-42.md)
+- [bug: toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./bug-cache-evict-toggle-favorite.md)
+- [트러블슈팅: FCM 토큰 저장 실패 (localStorage 키 불일치)](./fcm-token-save-failure.md)
+- [트러블슈팅: Firebase Service Worker 중복 등록](./firebase-service-worker-duplicate-registration.md)
 <!-- INDEX:RECENT:END -->
 
 ### 컴포넌트별(선택)
@@ -122,11 +135,13 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 #### Auth
 <!-- INDEX:AUTH:START -->
-- (없음)
+- [2026-02-05] [2026-02-05 CI 실패: Auth refresh 단위테스트 예외 타입 불일치 (400 정책)](./troubleshooting-ci-auth-refresh-unit-test-exception-mismatch.md)
 <!-- INDEX:AUTH:END -->
 
 #### DB / Migration
 <!-- INDEX:DB_MIGRATION:START -->
+- [2026-03-04] [OutboxPublisher 통합 테스트: REQUIRES_NEW 미커밋 데이터 + FOR UPDATE 데드락 + readOnly 충돌 연쇄](./outbox-integration-requires-new-lock-readOnly-deadlock.md)
+- [2026-03-04] [OutboxPublisher 통합 테스트: REQUIRES_NEW 미커밋 데이터 가시성 문제 초기 분석 (deleteAll + CASCADE 가설 배제)](./outbox-integration-test-uncommitted-data-investigation.md)
 - [2026-01-16] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./concurrent-favorite-dataintegrity-exception.md)
 - [2026-01-16] [통합 테스트 UNIQUE 제약 충돌 해결](./integration-test-unique-constraint-conflict.md)
 - [2026-01-12] [통합 테스트 동시성 검증 실패 트러블슈팅 (PB-64)](./integration-test-transaction-isolation.md)
@@ -134,11 +149,15 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 #### Infra / DevX (Docker, CI, tooling)
 <!-- INDEX:INFRA_DEVX:START -->
-- [2026-02-05] [Testcontainers: Docker Desktop 29.x 환경에서 Docker API 버전 불일치로 통합테스트 실패(400) 해결](./troubleshooting-testcontainers-docker-api-version-400.md)
-- [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./troubleshooting-git-hooks-gitleaks-windows.md)
-- [2026-01-15] [GitHub Actions CI 통합테스트 실패 완전 해결 가이드](./troubleshooting-ci-emailsender-context-failure-complete.md)
-- [2026-01-06] [트러블슈팅: UTF-8 with BOM로 인한 충돌/오류 대응 기록](./troubleshooting-incoding.md)
-- [2024-12-29] [Git Merge Conflict 트러블슈팅 가이드 - PB-42 Favorite 기능](./troubleshooting-merge-conflict-PB-42.md)
+- [2026-04-03] [Spring Lambda Function URL 호출 시 SignatureDoesNotMatch](./lambda-function-url-sigv4-signature-mismatch.md)
+- [2026-03-30] [Spring + AWS SDK v2 SSO 자격증명 로드 실패](./aws-sso-credentials-spring.md)
+- [2026-03-28] [Lambda + Secrets Manager 연동 실패 (Mangum 이벤트 형식 오류 / 리전 불일치)](./troubleshooting-lambda-secrets.md)
+- [2026-02-06] [Testcontainers: Docker Desktop 29.x에서 `Could not find a valid Docker environment` (Status 400) 해결](./troubleshooting-testcontainers-docker-api-version-400.md)
+- [2026-02-05] [2026-02-05 CI 실패: Auth refresh 단위테스트 예외 타입 불일치 (400 정책)](./troubleshooting-ci-auth-refresh-unit-test-exception-mismatch.md)
+- [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./git-hooks-gitleaks-windows.md)
+- [2026-01-15] [GitHub Actions CI 통합테스트 실패 완전 해결 가이드](./ci-emailsender-context-failure-complete.md)
+- [2026-01-08] [트러블슈팅: UTF-8 with BOM로 인한 충돌/오류 대응 기록](./incoding.md)
+- [2024-12-29] [Git Merge Conflict 트러블슈팅 가이드 - PB-42 Favorite 기능](./merge-conflict-PB-42.md)
 <!-- INDEX:INFRA_DEVX:END -->
 
 ---
@@ -158,6 +177,10 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 - 템플릿 수정은 신중하게: 템플릿은 “작성 부담”이 늘면 바로 안 쓰게 됩니다.
 - 케이스 문서는 삭제하지 않기: 오래된 케이스도 검색 가치가 있습니다.
 - 케이스가 많아지면(예: 30개 이상) 컴포넌트별 인덱스를 “필수”로 운영합니다.
+
+
+
+
 
 
 

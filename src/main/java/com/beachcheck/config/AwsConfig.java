@@ -2,32 +2,44 @@ package com.beachcheck.config;
 
 import com.beachcheck.client.AwsSigV4Interceptor;
 import com.beachcheck.client.CongestionInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 
 @Configuration
 public class AwsConfig {
+  private static final Logger log = LoggerFactory.getLogger(AwsConfig.class);
 
   /**
    * Why: SigV4 서명에 필요한 AWS 자격증명을 주입 가능한 Bean으로 관리하기 위해.
    *
-   * <p>Policy: DefaultCredentialsProvider는 아래 순서로 자격증명을 조회하며, 먼저 찾은 곳에서 멈춘다.
+   * <p>Policy:
    *
    * <ul>
-   *   <li>환경변수: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (로컬 개발, CI)
-   *   <li>Java 시스템 프로퍼티: aws.accessKeyId, aws.secretAccessKey
-   *   <li>~/.aws/credentials: AWS CLI로 설정한 로컬 프로파일
-   *   <li>EC2/ECS 인스턴스 프로파일: 서버에 붙은 IAM Role (운영 환경, 키 없이 자동 인증)
+   *   <li>app.aws.profile이 지정되면 ProfileCredentialsProvider로 해당 프로파일을 읽는다. sso + ssooidc 모듈이 포함되어
+   *       있으므로 SSO 프로파일도 정상 로드된다.
+   *   <li>프로파일이 없으면 DefaultCredentialsProvider로 fallback한다. (환경변수 → 시스템 프로퍼티 → ~/.aws/credentials →
+   *       EC2 IAM Role 순으로 탐색)
    * </ul>
    *
    * <p>Contract(Output): AwsCredentialsProvider 구현체 반환. 자격증명 없으면 호출 시점에 SdkClientException 발생.
    */
   @Bean
-  public AwsCredentialsProvider awsCredentialsProvider() {
-    return DefaultCredentialsProvider.create();
+  public AwsCredentialsProvider awsCredentialsProvider(
+      @Value("${app.aws.profile:}") String profile) {
+    if (StringUtils.hasText(profile)) {
+      log.info("AWS ProfileCredentialsProvider 사용 (profile={})", profile);
+      return ProfileCredentialsProvider.create(profile);
+    }
+
+    log.info("AWS 자격증명: DefaultCredentialsProvider 사용");
+    return DefaultCredentialsProvider.builder().build();
   }
 
   /**

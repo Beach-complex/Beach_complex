@@ -73,6 +73,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
     com.beachcheck: DEBUG
+    org.springframework.web.client: DEBUG
+    
 
 
 springdoc:
@@ -111,6 +113,7 @@ app:
     sigv4-enabled: ${CONGESTION_SIGV4_ENABLED:true}  # false로 설정 시 SigV4 서명 비활성화 (자격증명 없는 로컬 개발용)
   aws:
     region: ${AWS_REGION:us-east-1}
+    profile: ${AWS_PROFILE:}
   email-verification:
     base-url: ${APP_EMAIL_VERIFICATION_BASE_URL:http://localhost:8080/api/auth/verify-email}
     token-expiration-minutes: 30
