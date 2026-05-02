@@ -91,6 +91,7 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 ### 최신 케이스(Recent)
 
 <!-- INDEX:RECENT:START -->
+- [2026-04-16] [Backend CD 장애 연쇄 분석: YAML 주석, EC2 SSH 인바운드, Firebase 빈 의존성, 헬스체크 오탐](./troubleshooting-backend-cd-ec2-ssh-firebase-healthcheck.md)
 - [2026-04-03] [Spring Lambda Function URL 호출 시 SignatureDoesNotMatch](./lambda-function-url-sigv4-signature-mismatch.md)
 - [2026-03-30] [Spring + AWS SDK v2 SSO 자격증명 로드 실패](./aws-sso-credentials-spring.md)
 - [2026-03-28] [Lambda + Secrets Manager 연동 실패 (Mangum 이벤트 형식 오류 / 리전 불일치)](./troubleshooting-lambda-secrets.md)
@@ -104,7 +105,6 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 - [2026-01-26] [라인엔딩 변경으로 파일이 수정된 것처럼 보이는 문제](./line-endings-autocrlf.md)
 - [2026-01-26] [예약 동시성 중복 예약이 400으로 내려오는 문제](./reservation-concurrency-duplicate-409.md)
 - [2026-01-26] [통합 테스트 401 계약 불일치 + ProblemDetail 검증 기준 정리](./integration-test-401-problemdetail-contract.md)
-- [2026-01-21] [Firebase Service Worker 환경변수 로딩 이슈 트러블슈팅](./firebase-service-worker-env-loading.md)
 - [2026-01-20] [Windows Git Hooks + gitleaks 설치/실행 트러블슈팅](./git-hooks-gitleaks-windows.md)
 - [2026-01-16] [\[Troubleshooting\] toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./cache-evict-not-applied-internal-call.md)
 - [2026-01-16] [동시 찜 추가 요청 시 DataIntegrityViolationException 발생 문제](./concurrent-favorite-dataintegrity-exception.md)
@@ -116,9 +116,6 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 - [2025-12-30] [트러블슈팅: 찜 목록이 프론트엔드에 표시되지 않는 문제](./favorite-not-showing.md)
 - [2025-12-30] [트러블슈팅: 찜하기 동시성 문제 (Race Condition)](./favorite-concurrency.md)
 - [2024-12-29] [Git Merge Conflict 트러블슈팅 가이드 - PB-42 Favorite 기능](./merge-conflict-PB-42.md)
-- [bug: toggleFavorite 내부 호출 시 @CacheEvict 미적용으로 캐시 stale 발생](./bug-cache-evict-toggle-favorite.md)
-- [트러블슈팅: FCM 토큰 저장 실패 (localStorage 키 불일치)](./fcm-token-save-failure.md)
-- [트러블슈팅: Firebase Service Worker 중복 등록](./firebase-service-worker-duplicate-registration.md)
 <!-- INDEX:RECENT:END -->
 
 ### 컴포넌트별(선택)
@@ -149,6 +146,7 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 
 #### Infra / DevX (Docker, CI, tooling)
 <!-- INDEX:INFRA_DEVX:START -->
+- [2026-04-16] [Backend CD 장애 연쇄 분석: YAML 주석, EC2 SSH 인바운드, Firebase 빈 의존성, 헬스체크 오탐](./troubleshooting-backend-cd-ec2-ssh-firebase-healthcheck.md)
 - [2026-04-03] [Spring Lambda Function URL 호출 시 SignatureDoesNotMatch](./lambda-function-url-sigv4-signature-mismatch.md)
 - [2026-03-30] [Spring + AWS SDK v2 SSO 자격증명 로드 실패](./aws-sso-credentials-spring.md)
 - [2026-03-28] [Lambda + Secrets Manager 연동 실패 (Mangum 이벤트 형식 오류 / 리전 불일치)](./troubleshooting-lambda-secrets.md)
@@ -177,10 +175,3 @@ GitHub 검색창에서 아래처럼 검색하면 빨리 찾을 수 있습니다.
 - 템플릿 수정은 신중하게: 템플릿은 “작성 부담”이 늘면 바로 안 쓰게 됩니다.
 - 케이스 문서는 삭제하지 않기: 오래된 케이스도 검색 가치가 있습니다.
 - 케이스가 많아지면(예: 30개 이상) 컴포넌트별 인덱스를 “필수”로 운영합니다.
-
-
-
-
-
-
-

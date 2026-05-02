@@ -12,7 +12,7 @@
 - **작성자:** 박재홍(@PHJ2000), Codex 정리
 - **해결 날짜(선택):** 2026-04-16 1차 안정화, 2026-04-22 문서화
 - **작성일(필수):** 2026-04-22
-- **컴포넌트:** 배포 인프라, GitHub Actions, EC2, Spring Boot, Firebase
+- **컴포넌트:** infra, 배포 인프라, GitHub Actions, EC2, Spring Boot, Firebase
 - **환경:** 운영 (GitHub Actions -> EC2)
 - **관련 이슈/PR:**
   - Issue #213 / PR #214: PB-110 Backend CD 이미지 태그 파싱 실패 수정
