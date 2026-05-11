@@ -3,8 +3,7 @@
 Beach Complex 프로젝트 문서의 SSOT는 별도 문서 레포인
 [Beach-complex/docs](https://github.com/Beach-complex/docs)입니다.
 
-이 백엔드/프론트엔드 통합 레포에는 문서 원본을 중복 보관하지 않고,
-문서 진입점만 남깁니다.
+이 백엔드 레포에는 문서 원본을 중복 보관하지 않고, 문서 진입점만 남깁니다.
 
 ## 주요 문서
 
