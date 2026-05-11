@@ -1,23 +1,17 @@
-# 프로젝트 위키 Home
+# Beach Complex 문서
 
-## 1. 이 문서의 목적
-- 이 레포와 관련된 개발/운영 정보를 모아두는 공간입니다.
-- 새로 온 사람이 여기부터 보면 대략적인 구조를 파악할 수 있도록 합니다.
+Beach Complex 프로젝트 문서의 SSOT는 별도 문서 레포인
+[Beach-complex/docs](https://github.com/Beach-complex/docs)입니다.
 
-## 2. 문서 분류
-- 협업 / 규칙
-- 기술 결정 기록
-- 개발 환경
-- 배포 / 운영
-- 기능별 설명
-- 문제 해결(Troubleshooting)
+이 백엔드/프론트엔드 통합 레포에는 문서 원본을 중복 보관하지 않고,
+문서 진입점만 남깁니다.
 
-## 3. 핵심 문서
-- **[프로젝트 SSOT (Single Source of Truth)](./ssot.md)** ⭐ 가장 먼저 읽어야 할 문서
-  - 8주 로드맵 및 마일스톤
-  - 협업 규칙 및 DoD (Definition of Done)
-  - 온보딩 가이드
-- [협업 규칙 상세](./process/collaboration-rules.md)
-- [기술 결정 기록 (ADR)](./adr/README.md)
-- [문서 작성 가이드](./guides/writing-guide.md)
-- [이슈 템플릿 가이드](./issue-template-guide.md)
+## 주요 문서
+
+- [문서 홈](https://github.com/Beach-complex/docs)
+- [SSOT](https://github.com/Beach-complex/docs/blob/main/ssot.md)
+- [ADR](https://github.com/Beach-complex/docs/tree/main/adr)
+- [가이드](https://github.com/Beach-complex/docs/tree/main/guides)
+- [트러블슈팅 인덱스](https://github.com/Beach-complex/docs/blob/main/troubleshooting/docs-README.md)
+
+문서 수정은 `Beach-complex/docs` 레포에서 진행합니다.
