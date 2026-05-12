@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
-@EntityScan(basePackages = "com.beachcheck.domain")
-@EnableJpaRepositories(basePackages = "com.beachcheck.repository")
+@EntityScan(basePackages = "com.beachcheck")
+@EnableJpaRepositories(basePackages = "com.beachcheck")
 public class BeachComplexApplication {
   public static void main(String[] args) {
 
