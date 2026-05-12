@@ -69,23 +69,24 @@
 ```text
 Beach_complex/
 ├── src/main/java/com/beachcheck/
-│   ├── client/        # 외부 API 클라이언트
-│   ├── config/        # 보안, 캐시, 애플리케이션 설정
-│   ├── controller/    # REST API 엔드포인트
-│   ├── db/            # DB 설정
-│   ├── domain/        # 엔티티
-│   ├── dto/           # 요청/응답 DTO
-│   ├── exception/     # 예외 처리
-│   ├── repository/    # 데이터 접근 계층
-│   ├── scheduler/     # 스케줄링 작업
-│   ├── security/      # 인증/인가
-│   ├── service/       # 비즈니스 로직
-│   └── util/          # 공용 유틸
+│   ├── auth/          # 인증, 토큰, 이메일 인증
+│   ├── beach/         # 해수욕장, 시설, 상태 정보
+│   ├── external/      # 외부 API 연동
+│   ├── global/        # 공통 설정, 예외, 보안, 유틸
+│   ├── notification/  # 알림
+│   ├── outbox/        # Outbox 이벤트 발행/전송
+│   ├── reservation/   # 예약
+│   └── user/          # 사용자, 즐겨찾기
 ├── src/test/java/com/beachcheck/
-│   ├── integration/   # 통합 테스트
-│   ├── service/       # 서비스 테스트
-│   ├── client/        # 외부 연동 테스트
-│   └── ...            # 도메인/DTO/유틸 테스트
+│   ├── auth/
+│   ├── beach/
+│   ├── external/
+│   ├── global/
+│   ├── notification/
+│   ├── outbox/
+│   ├── reservation/
+│   ├── support/       # 테스트 공통 설정/fixture
+│   └── user/
 ├── src/main/resources/
 │   ├── application.yml
 │   ├── db/migration/
