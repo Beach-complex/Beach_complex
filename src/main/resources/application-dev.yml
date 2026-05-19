@@ -1,0 +1,11 @@
+# dev 프로파일 — 로컬 개발용 (ADR-009)
+# 활성화 방법:
+#   SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
+#   또는 ./gradlew bootRun --args='--spring.profiles.active=dev'
+#
+# 로깅 정책은 src/main/resources/logback-spring.xml 의 <springProfile name="dev | local | default"> 블록 참조.
+# 본 파일은 골격만 유지하고, dev 전용 오버라이드가 필요해질 때 키를 추가한다.
+spring:
+  config:
+    activate:
+      on-profile: dev
