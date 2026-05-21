@@ -67,15 +67,9 @@ management:
     mail:
       enabled: true  # 운영 환경에서 메일 서버 상태 확인 활성화
 
-logging:
-  level:
-    org.springframework.security: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
-    com.beachcheck: DEBUG
-    org.springframework.web.client: DEBUG
-    
-
+# 로깅 레벨/포맷은 logback-spring.xml로 일원화 (ADR-009)
+# - dev/local/default: 평문, com.beachcheck=DEBUG, Hibernate SQL/bind 노출
+# - prod: NDJSON, com.beachcheck=INFO, Hibernate SQL/bind=OFF
 
 springdoc:
   api-docs:

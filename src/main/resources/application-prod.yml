@@ -1,0 +1,14 @@
+# prod 프로파일 — 운영 배포용 (ADR-009)
+# 활성화 방법:
+#   SPRING_PROFILES_ACTIVE=prod (백엔드 CD에서 환경변수 주입)
+#
+# 로깅 정책은 src/main/resources/logback-spring.xml 의 <springProfile name="prod"> 블록 참조.
+# - NDJSON 한 줄 출력
+# - com.beachcheck=INFO, Hibernate SQL/bind=OFF
+# - 스택트레이스 30프레임 / 4096자 제한
+#
+# 본 파일은 골격만 유지하고, prod 전용 오버라이드가 필요해질 때 키를 추가한다.
+spring:
+  config:
+    activate:
+      on-profile: prod

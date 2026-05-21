@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ADR-009: 로깅 표준
+  - dev/local/default: 사람이 읽기 좋은 평문
+  - prod: NDJSON (logstash-logback-encoder)
+  - MDC 키 노출: traceId, spanId, userId, requestId
+-->
+<configuration>
+
+    <!-- 공통: MDC 키 노출 목록 (참조용) -->
+    <property name="MDC_KEYS" value="traceId,spanId,userId,requestId"/>
+
+    <!-- ─────────── dev / local / default: 평문 ─────────── -->
+    <springProfile name="dev | local | default">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>
+                    %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{userId:-}] %logger{36} - %msg%n
+                </pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <logger name="com.beachcheck" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.springframework.web.client" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ─────────── prod: NDJSON ─────────── -->
+    <springProfile name="prod">
+        <appender name="STDOUT_JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>spanId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <includeMdcKeyName>requestId</includeMdcKeyName>
+                <fieldNames>
+                    <timestamp>@timestamp</timestamp>
+                    <thread>thread</thread>
+                    <logger>logger</logger>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+                <!-- 스택트레이스 길이 제한 (운영 비용 절감) -->
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>4096</maxLength>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="STDOUT_JSON"/>
+        </root>
+
+        <logger name="com.beachcheck" level="INFO"/>
+        <logger name="org.hibernate.SQL" level="OFF"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="OFF"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.springframework.web.client" level="INFO"/>
+    </springProfile>
+
+</configuration>
