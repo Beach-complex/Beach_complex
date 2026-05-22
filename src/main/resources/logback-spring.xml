@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ADR-009: 로깅 표준
+  로깅 표준
   - dev/local/default: 사람이 읽기 좋은 평문
   - prod: NDJSON (logstash-logback-encoder)
   - MDC 키 노출: traceId, spanId, userId, requestId

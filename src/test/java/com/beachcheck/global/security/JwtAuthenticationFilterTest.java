@@ -28,7 +28,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("JwtAuthenticationFilter 단위 테스트 — ADR-009 userId MDC 주입/정리")
+@DisplayName("JwtAuthenticationFilter 단위 테스트 — userId MDC 주입/정리")
 class JwtAuthenticationFilterTest {
 
   private static final String VALID_JWT = "valid.jwt.token";

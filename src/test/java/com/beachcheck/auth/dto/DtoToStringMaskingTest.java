@@ -14,7 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("인증 record DTO toString PII 마스킹 — ADR-009")
+@DisplayName("인증 record DTO toString PII 마스킹")
 class DtoToStringMaskingTest {
 
   // 테스트 더미 자격증명 — toString 결과에 이 값들이 노출되지 않는지 검증하는 데 쓴다.

@@ -1,4 +1,4 @@
-# dev 프로파일 — 로컬 개발용 (ADR-009)
+# dev 프로파일 — 로컬 개발용
 # 활성화 방법:
 #   SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 #   또는 ./gradlew bootRun --args='--spring.profiles.active=dev'

@@ -15,7 +15,7 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-@DisplayName("MdcRequestFilter 단위 테스트 — ADR-009 requestId MDC 주입/정리")
+@DisplayName("MdcRequestFilter 단위 테스트 — requestId MDC 주입/정리")
 class MdcRequestFilterTest {
 
   private static final String MDC_KEY = "requestId";

@@ -14,7 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Why: ADR-009 로깅 표준 — 요청 단위 상관관계 ID(requestId)를 MDC에 주입해, 로그 한 줄만 보고도 동일 요청 흐름을 추적할 수 있게 한다.
+ * Why: 로깅 표준 — 요청 단위 상관관계 ID(requestId)를 MDC에 주입해, 로그 한 줄만 보고도 동일 요청 흐름을 추적할 수 있게 한다.
  *
  * <p>Policy:
  *
@@ -30,7 +30,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p>Contract(Output): 응답 헤더 {@code X-Request-Id} 항상 세팅. MDC 키 {@code requestId} 가 요청 처리 도중에만 유효하고,
  * 요청 종료 후에는 반드시 제거됨.
  *
- * <p>TODO: traceId/spanId는 트레이싱 SDK(ADR-011)가 자동 주입할 예정이므로 본 필터에서는 다루지 않는다. userId는 인증 직후 {@link
+ * <p>TODO: traceId/spanId는 트레이싱 SDK가 자동 주입할 예정이므로 본 필터에서는 다루지 않는다. userId는 인증 직후 {@link
  * com.beachcheck.global.security.JwtAuthenticationFilter}에서 주입한다.
  */
 @Component

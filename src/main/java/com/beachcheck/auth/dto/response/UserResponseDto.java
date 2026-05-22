@@ -17,7 +17,7 @@ public record UserResponseDto(
   }
 
   /**
-   * Why: ADR-009 PII 마스킹 — record 기본 toString이 email/name 평문을 노출하는 것을 차단.
+   * Why: PII 마스킹 — record 기본 toString이 email/name 평문을 노출하는 것을 차단.
    *
    * <p>Contract(Output): email/name은 가리되 추적에 유용한 id/role/createdAt/lastLoginAt은 유지.
    */

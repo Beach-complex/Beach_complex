@@ -36,8 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Why: ADR-009 로깅 표준 — 인증 성공 시 {@code userId}를 MDC에 주입해, 이후 로그 라인에 사용자 식별자가 따라붙도록 한다. 스레드풀 재사용
-   * 환경에서 누수가 일어나지 않도록 try-finally로 정리한다.
+   * Why: 로깅 표준 — 인증 성공 시 {@code userId}를 MDC에 주입해, 이후 로그 라인에 사용자 식별자가 따라붙도록 한다. 스레드풀 재사용 환경에서 누수가
+   * 일어나지 않도록 try-finally로 정리한다.
    *
    * <p>Policy:
    *
