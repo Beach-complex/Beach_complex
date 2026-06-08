@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   로깅 표준
-  - dev/local/default: 사람이 읽기 좋은 평문
+  - dev/local/test/default: 사람이 읽기 좋은 평문
   - prod: NDJSON (logstash-logback-encoder)
   - MDC 키 노출: traceId, spanId, userId, requestId
 -->
@@ -10,12 +10,12 @@
     <!-- 공통: MDC 키 노출 목록 (참조용) -->
     <property name="MDC_KEYS" value="traceId,spanId,userId,requestId"/>
 
-    <!-- ─────────── dev / local / default: 평문 ─────────── -->
-    <springProfile name="dev | local | default">
+    <!-- ─────────── dev / local / test / default: 평문 ─────────── -->
+    <springProfile name="dev | local | test | default">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <pattern>
-                    %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{userId:-}] %logger{36} - %msg%n
+                    %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [traceId=%X{traceId:-},requestId=%X{requestId:-},userId=%X{userId:-}] %logger{36} - %msg%n
                 </pattern>
             </encoder>
         </appender>
