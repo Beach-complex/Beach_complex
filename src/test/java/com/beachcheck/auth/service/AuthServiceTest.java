@@ -393,7 +393,7 @@ class AuthServiceTest {
     return new RefreshTokenBuilder();
   }
 
-  private static class UserBuilder {
+  private static final class UserBuilder {
     private UUID id = UUID.randomUUID();
     private String email = EMAIL;
     private String password = RAW_PASS;
@@ -428,7 +428,7 @@ class AuthServiceTest {
     }
   }
 
-  private static class RefreshTokenBuilder {
+  private static final class RefreshTokenBuilder {
     private UUID id = UUID.randomUUID();
     private User user;
     private String tokenValue = REFRESH_TOKEN;
