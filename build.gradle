@@ -48,6 +48,10 @@ dependencies {
     implementation 'org.springframework.retry:spring-retry'        // 스프링 재시도 라이브러리
     implementation 'org.springframework.boot:spring-boot-starter-aop'   // 스프링 AOP 스타터(의존성 명시를 위해 추가)
 
+    // 로깅 — prod 프로파일에서 NDJSON 출력
+    // 7.4: Logback 1.5.x(Spring Boot 3.3 동봉)와 호환되는 안정 버전
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
     // AWS SDK v2 — Lambda Function URL SigV4 인증
     implementation platform('software.amazon.awssdk:bom:2.42.23')
     implementation 'software.amazon.awssdk:auth'

@@ -1,5 +1,6 @@
 package com.beachcheck.auth.dto.response;
 
+import com.beachcheck.global.util.MaskingUtils;
 import com.beachcheck.user.domain.User;
 import java.time.Instant;
 import java.util.UUID;
@@ -14,5 +15,27 @@ public record UserResponseDto(
         user.getRole().name(),
         user.getCreatedAt(),
         user.getLastLoginAt());
+  }
+
+  /**
+   * Why: PII 마스킹 — record 기본 toString이 email/name 평문을 노출하는 것을 차단.
+   *
+   * <p>Contract(Output): email/name은 가리되 추적에 유용한 id/role/createdAt/lastLoginAt은 유지.
+   */
+  @Override
+  public String toString() {
+    return "UserResponseDto[id="
+        + id
+        + ", "
+        + MaskingUtils.maskedField("email")
+        + ", "
+        + MaskingUtils.maskedField("name")
+        + ", role="
+        + role
+        + ", createdAt="
+        + createdAt
+        + ", lastLoginAt="
+        + lastLoginAt
+        + "]";
   }
 }
