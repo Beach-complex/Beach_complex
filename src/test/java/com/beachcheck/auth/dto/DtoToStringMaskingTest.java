@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beachcheck.auth.dto.request.LogInRequestDto;
 import com.beachcheck.auth.dto.request.RefreshTokenRequestDto;
+import com.beachcheck.auth.dto.request.ResendVerificationRequestDto;
 import com.beachcheck.auth.dto.request.SignUpRequestDto;
 import com.beachcheck.auth.dto.response.AuthResponseDto;
 import com.beachcheck.auth.dto.response.TokenResponseDto;
@@ -40,7 +41,7 @@ class DtoToStringMaskingTest {
 
       // then
       assertThat(result).doesNotContain(SAMPLE_EMAIL).doesNotContain(SAMPLE_PASSWORD);
-      assertThat(result).contains("LogInRequestDto").contains("masked");
+      assertThat(result).contains("LogInRequestDto").contains("****");
     }
 
     @Test
@@ -57,7 +58,7 @@ class DtoToStringMaskingTest {
           .doesNotContain(SAMPLE_EMAIL)
           .doesNotContain(SAMPLE_PASSWORD)
           .doesNotContain(SAMPLE_NAME);
-      assertThat(result).contains("SignUpRequestDto").contains("masked");
+      assertThat(result).contains("SignUpRequestDto").contains("****");
     }
 
     @Test
@@ -71,7 +72,21 @@ class DtoToStringMaskingTest {
 
       // then
       assertThat(result).doesNotContain(SAMPLE_REFRESH_TOKEN);
-      assertThat(result).contains("RefreshTokenRequestDto").contains("masked");
+      assertThat(result).contains("RefreshTokenRequestDto").contains("****");
+    }
+
+    @Test
+    @DisplayName("ResendVerificationRequestDto.toString은 email을 노출하지 않는다")
+    void resendVerificationRequest_doesNotLeakEmail() {
+      // given
+      ResendVerificationRequestDto dto = new ResendVerificationRequestDto(SAMPLE_EMAIL);
+
+      // when
+      String result = dto.toString();
+
+      // then
+      assertThat(result).doesNotContain(SAMPLE_EMAIL);
+      assertThat(result).contains("ResendVerificationRequestDto").contains("****");
     }
   }
 

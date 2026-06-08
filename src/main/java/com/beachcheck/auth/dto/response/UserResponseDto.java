@@ -1,5 +1,6 @@
 package com.beachcheck.auth.dto.response;
 
+import com.beachcheck.global.util.MaskingUtils;
 import com.beachcheck.user.domain.User;
 import java.time.Instant;
 import java.util.UUID;
@@ -25,7 +26,11 @@ public record UserResponseDto(
   public String toString() {
     return "UserResponseDto[id="
         + id
-        + ", email=***masked***, name=***masked***, role="
+        + ", "
+        + MaskingUtils.maskedField("email")
+        + ", "
+        + MaskingUtils.maskedField("name")
+        + ", role="
         + role
         + ", createdAt="
         + createdAt

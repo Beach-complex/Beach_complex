@@ -1,5 +1,6 @@
 package com.beachcheck.auth.dto.request;
 
+import com.beachcheck.global.util.MaskingUtils;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -15,6 +16,6 @@ public record LogInRequestDto(
    */
   @Override
   public String toString() {
-    return "LogInRequestDto[***masked***]";
+    return MaskingUtils.maskedRecord(getClass().getSimpleName());
   }
 }

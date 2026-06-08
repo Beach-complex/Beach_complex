@@ -1,5 +1,6 @@
 package com.beachcheck.auth.dto.request;
 
+import com.beachcheck.global.util.MaskingUtils;
 import jakarta.validation.constraints.NotBlank;
 
 public record RefreshTokenRequestDto(
@@ -12,6 +13,6 @@ public record RefreshTokenRequestDto(
    */
   @Override
   public String toString() {
-    return "RefreshTokenRequestDto[***masked***]";
+    return MaskingUtils.maskedRecord(getClass().getSimpleName());
   }
 }

@@ -1,5 +1,7 @@
 package com.beachcheck.auth.dto.response;
 
+import com.beachcheck.global.util.MaskingUtils;
+
 public record TokenResponseDto(String accessToken, String tokenType, long expiresIn) {
   public static TokenResponseDto of(String accessToken, long expiresIn) {
     return new TokenResponseDto(accessToken, "Bearer", expiresIn);
@@ -12,7 +14,9 @@ public record TokenResponseDto(String accessToken, String tokenType, long expire
    */
   @Override
   public String toString() {
-    return "TokenResponseDto[accessToken=***masked***, tokenType="
+    return "TokenResponseDto["
+        + MaskingUtils.maskedField("accessToken")
+        + ", tokenType="
         + tokenType
         + ", expiresIn="
         + expiresIn
