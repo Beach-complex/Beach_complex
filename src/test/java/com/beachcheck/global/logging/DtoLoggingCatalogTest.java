@@ -79,7 +79,9 @@ class DtoLoggingCatalogTest {
     // then
     writeReport("dto-catalog-dev.log", output);
     assertThat(output)
-        .contains("[trace-catalog,user-catalog]")
+        .contains("traceId=trace-catalog")
+        .contains("requestId=request-catalog")
+        .contains("userId=user-catalog")
         .contains("LogInRequestDto[****]")
         .contains("BeachSearchRequestDto")
         .doesNotContain(SAMPLE_EMAIL)
