@@ -1,7 +1,8 @@
-package com.beachcheck.global.config;
+package com.beachcheck.global.logging.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.beachcheck.global.config.AsyncConfig;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -13,7 +14,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @DisplayName("AsyncConfig 통합 테스트 — emailTaskExecutor MDC 전파 설정 검증")
-class AsyncConfigTest {
+class AsyncConfigIntegrationTest {
 
   private static final String REQUEST_ID = "requestId";
   private static final String USER_ID = "userId";
@@ -32,7 +33,7 @@ class AsyncConfigTest {
   void givenCallerMdc_whenSubmittedToExecutor_thenPropagatedToWorkerAndCallerPreserved() {
     contextRunner.run(
         context -> {
-          // given — 실제 등록된 emailTaskExecutor 빈을 꺼내고 제출 스레드에 MDC를 세팅
+          // given: 실제 등록된 emailTaskExecutor 빈을 꺼내고 제출 스레드에 MDC를 세팅
           ThreadPoolTaskExecutor executor =
               context.getBean("emailTaskExecutor", ThreadPoolTaskExecutor.class);
           MDC.put(REQUEST_ID, "req-async");
@@ -42,7 +43,7 @@ class AsyncConfigTest {
           AtomicReference<String> userIdInWorker = new AtomicReference<>();
           AtomicReference<String> workerThreadName = new AtomicReference<>();
 
-          // when — executor로 작업을 제출하고 완료를 기다린다
+          // when: executor로 작업을 제출하고 완료를 기다린다
           Future<?> future =
               executor.submit(
                   () -> {
@@ -52,12 +53,12 @@ class AsyncConfigTest {
                   });
           future.get(2, TimeUnit.SECONDS);
 
-          // then — 별도 worker thread에서 실행되었고 부모 MDC가 전파됨
+          // then: 별도 worker thread에서 실행되었고 부모 MDC가 전파됨
           assertThat(workerThreadName.get()).startsWith("email-");
           assertThat(requestIdInWorker.get()).isEqualTo("req-async");
           assertThat(userIdInWorker.get()).isEqualTo("user-async");
 
-          // then — 제출 스레드의 MDC는 작업 제출/완료 후에도 그대로 유지됨
+          // then: 제출 스레드의 MDC는 작업 제출/완료 후에도 그대로 유지됨
           assertThat(MDC.get(REQUEST_ID)).isEqualTo("req-async");
           assertThat(MDC.get(USER_ID)).isEqualTo("user-async");
         });
