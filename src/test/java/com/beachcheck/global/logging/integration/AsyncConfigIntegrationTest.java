@@ -3,6 +3,7 @@ package com.beachcheck.global.logging.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beachcheck.global.config.AsyncConfig;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -10,7 +11,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @DisplayName("AsyncConfig 통합 테스트 — emailTaskExecutor MDC 전파 설정 검증")
@@ -20,7 +24,8 @@ class AsyncConfigIntegrationTest {
   private static final String USER_ID = "userId";
 
   private final ApplicationContextRunner contextRunner =
-      new ApplicationContextRunner().withUserConfiguration(AsyncConfig.class);
+      new ApplicationContextRunner()
+          .withUserConfiguration(AsyncConfig.class, TestAsyncBeanConfig.class);
 
   @AfterEach
   void clearMdc() {
@@ -63,4 +68,45 @@ class AsyncConfigIntegrationTest {
           assertThat(MDC.get(USER_ID)).isEqualTo("user-async");
         });
   }
+
+  @Test
+  @DisplayName("@Async(\"emailTaskExecutor\") Bean 메서드 호출 시 부모 MDC가 worker thread로 전파된다")
+  void givenCallerMdc_whenAsyncBeanMethodCalled_thenMdcPropagatedThroughSpringAsyncProxy() {
+    contextRunner.run(
+        context -> {
+          AsyncProbe asyncProbe = context.getBean(AsyncProbe.class);
+          MDC.put(REQUEST_ID, "req-async-proxy");
+          MDC.put(USER_ID, "user-async-proxy");
+
+          ObservedMdc observed = asyncProbe.captureMdc().get(2, TimeUnit.SECONDS);
+
+          assertThat(observed.threadName()).startsWith("email-");
+          assertThat(observed.requestId()).isEqualTo("req-async-proxy");
+          assertThat(observed.userId()).isEqualTo("user-async-proxy");
+          assertThat(MDC.get(REQUEST_ID)).isEqualTo("req-async-proxy");
+          assertThat(MDC.get(USER_ID)).isEqualTo("user-async-proxy");
+        });
+  }
+
+  // 테스트용 @Async Bean과 관련 DTO (사이즈가 작아서 별도 파일로 분리하지 않음)
+
+  @TestConfiguration
+  static class TestAsyncBeanConfig {
+
+    @Bean
+    AsyncProbe asyncProbe() {
+      return new AsyncProbe();
+    }
+  }
+
+  static class AsyncProbe {
+
+    @Async("emailTaskExecutor")
+    public CompletableFuture<ObservedMdc> captureMdc() {
+      return CompletableFuture.completedFuture(
+          new ObservedMdc(MDC.get(REQUEST_ID), MDC.get(USER_ID), Thread.currentThread().getName()));
+    }
+  }
+
+  record ObservedMdc(String requestId, String userId, String threadName) {}
 }
