@@ -99,6 +99,7 @@ class AsyncConfigIntegrationTest {
     }
   }
 
+  // 호출 클래스와 클래스를 분리하여 실제 @Async 프록시가 적용된 상태로 테스트
   static class AsyncProbe {
 
     @Async("emailTaskExecutor")
