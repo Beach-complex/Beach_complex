@@ -1,5 +1,6 @@
 package com.beachcheck.global.config;
 
+import com.beachcheck.global.logging.MdcTaskDecorator;
 import java.util.concurrent.Executor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,10 +19,11 @@ public class AsyncConfig {
    * <p>Policy:
    *
    * <ul>
-   *   <li>Core Pool Size: 5 (기본 유지 스레드 개수, 항상 살아있음)
-   *   <li>Max Pool Size: 10 (최대 스레드 개수, 부하 시 5→10까지 증가)
-   *   <li>Queue Capacity: 100 (대기 큐 크기, 스레드 풀이 가득 찰 때 대기)
-   *   <li>Thread Name Prefix: "notification-" (로그 추적 용이성)
+   *   <li>Core Pool Size: 3 (기본 유지 스레드 개수, 항상 살아있음)
+   *   <li>Max Pool Size: 6 (최대 스레드 개수, 부하 시 3→6까지 증가)
+   *   <li>Queue Capacity: 50 (대기 큐 크기, 스레드 풀이 가득 찰 때 대기)
+   *   <li>Thread Name Prefix: "email-" (로그 추적 용이성)
+   *   <li>Task Decorator: MdcTaskDecorator (부모 요청 스레드의 MDC를 worker thread로 전파)
    * </ul>
    *
    * <p>Contract(Output): TaskExecutor 인스턴스 반환
@@ -35,6 +37,7 @@ public class AsyncConfig {
     executor.setMaxPoolSize(6);
     executor.setQueueCapacity(50);
     executor.setThreadNamePrefix("email-");
+    executor.setTaskDecorator(new MdcTaskDecorator());
     executor.initialize();
     return executor;
   }
