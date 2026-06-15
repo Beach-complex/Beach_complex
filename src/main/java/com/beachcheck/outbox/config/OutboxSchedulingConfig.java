@@ -1,6 +1,8 @@
 package com.beachcheck.outbox.config;
 
 import com.beachcheck.outbox.service.OutboxPublisher;
+import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
@@ -35,10 +37,19 @@ public class OutboxSchedulingConfig {
   /**
    * Why: PENDING/FAILED_RETRIABLE 상태의 OutboxEvent를 주기적으로 폴링하여 FCM 전송
    *
-   * <p>Policy: fixedDelay 방식으로 이전 실행 완료 후 delay만큼 대기 (동시 실행 방지)
+   * <p>Policy:
+   *
+   * <ul>
+   *   <li>fixedDelay 방식으로 이전 실행 완료 후 delay만큼 대기 (동시 실행 방지)
+   *   <li>스케줄러 실행 구간에 schedulerName/jobId MDC를 짧은 scope로 주입 (HTTP requestId/userId 미주입)
+   * </ul>
    */
   @Scheduled(fixedDelayString = "${app.outbox.polling.fixed-delay:1000}")
   public void scheduleOutboxPolling() {
-    outboxPublisher.processPendingOutboxEvents();
+    String jobId = UUID.randomUUID().toString();
+    try (MDC.MDCCloseable schedulerName = MDC.putCloseable("schedulerName", "outboxPolling");
+        MDC.MDCCloseable job = MDC.putCloseable("jobId", jobId)) {
+      outboxPublisher.processPendingOutboxEvents();
+    }
   }
 }

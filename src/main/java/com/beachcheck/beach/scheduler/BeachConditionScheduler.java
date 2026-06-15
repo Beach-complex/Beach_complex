@@ -9,8 +9,10 @@ import com.beachcheck.external.congestion.CongestionCurrentResponse;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -41,13 +43,25 @@ public class BeachConditionScheduler {
 
   @Scheduled(cron = "0 0/30 * * * *")
   public void refreshConditions() {
-    log.info("Scheduled condition refresh triggered");
+
+    // MDC.clear()는 모든 키를 삭제하기 때문에, 아래와 같은 방식으로 필요한 키만 제거하도록 구현
+    // schedulerName과 job은 직접 쓰지는 않지만, 리소스 생명주기를 try-with-resources에 맡기기 위해 선언한 변수
+    String jobId = UUID.randomUUID().toString();
+    try (MDC.MDCCloseable schedulerName =
+            MDC.putCloseable("schedulerName", "beachConditionRefresh");
+        MDC.MDCCloseable job = MDC.putCloseable("jobId", jobId)) {
+      refreshConditionsInScope();
+    }
+  }
+
+  private void refreshConditionsInScope() {
+    log.info("예약된 해변 조건 새로고침 시작");
 
     List<Beach> beaches = beachRepository.findAll();
     for (Beach beach : beaches) {
       String code = beach.getCode();
       if (code == null || code.isBlank()) {
-        log.warn("Skip beach with missing code. beachId={}", beach.getId());
+        log.warn("코드가 없는 해변을 건너뜁니다. beachId={}", beach.getId());
         continue;
       }
 

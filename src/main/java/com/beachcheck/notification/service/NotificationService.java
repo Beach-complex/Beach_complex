@@ -1,5 +1,7 @@
 package com.beachcheck.notification.service;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 import com.beachcheck.notification.domain.Notification;
 import com.beachcheck.notification.repository.NotificationRepository;
 import com.beachcheck.outbox.domain.OutboxEvent;
@@ -41,5 +43,12 @@ public class NotificationService {
     OutboxEvent event =
         OutboxEvent.createPending(notification.getId(), OutboxEventType.PUSH_NOTIFICATION, null);
     outboxEventRepository.save(event);
+
+    log.info(
+        "Notification 생성 및 Outbox 이벤트 등록 완료",
+        kv("notificationId", notification.getId()),
+        kv("outboxEventId", event.getId()),
+        kv("userId", userId),
+        kv("notificationType", type));
   }
 }
