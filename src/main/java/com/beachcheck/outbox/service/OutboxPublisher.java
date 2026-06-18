@@ -44,6 +44,11 @@ public class OutboxPublisher {
     List<OutboxEvent> pendingEvents =
         outboxEventRepository.findPendingEvents(now, PageRequest.of(0, batchSize));
 
+    if (pendingEvents.isEmpty()) {
+      log.debug("Outbox 폴링 대상 이벤트 없음");
+      return;
+    }
+
     log.info("Outbox 폴링 대상 이벤트 조회 완료", kv("outboxEventCount", pendingEvents.size()));
 
     for (OutboxEvent event : pendingEvents) {
