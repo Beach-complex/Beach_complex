@@ -1,9 +1,13 @@
 package com.beachcheck.outbox.service;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 import com.beachcheck.outbox.domain.OutboxEvent;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
 import java.time.Instant;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 문자열 키 오타/경로 불일치를 컴파일 타임에 차단 - @Min 등으로 batchSize > 0 제약을 애플리케이션 시작 시점에 fail-fast 검증
  */
 public class OutboxPublisher {
+
+  private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
   private final OutboxEventRepository outboxEventRepository;
   private final OutboxEventDispatcher outboxEventDispatcher;
@@ -37,6 +43,13 @@ public class OutboxPublisher {
     Instant now = Instant.now();
     List<OutboxEvent> pendingEvents =
         outboxEventRepository.findPendingEvents(now, PageRequest.of(0, batchSize));
+
+    if (pendingEvents.isEmpty()) {
+      log.debug("Outbox 폴링 대상 이벤트 없음");
+      return;
+    }
+
+    log.info("Outbox 폴링 대상 이벤트 조회 완료", kv("outboxEventCount", pendingEvents.size()));
 
     for (OutboxEvent event : pendingEvents) {
       outboxEventDispatcher.dispatch(event);

@@ -1,5 +1,7 @@
 package com.beachcheck.outbox.service;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 import com.beachcheck.notification.domain.Notification;
 import com.beachcheck.notification.domain.Notification.NotificationStatus;
 import com.beachcheck.notification.repository.NotificationRepository;
@@ -11,6 +13,8 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import java.time.Duration;
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 스프린트에서 성능 병목 측정 후 비동기 도입 검토
  */
 public class OutboxEventDispatcher {
+
+  private static final Logger log = LoggerFactory.getLogger(OutboxEventDispatcher.class);
 
   private final OutboxEventRepository outboxEventRepository;
   private final NotificationRepository notificationRepository;
@@ -52,6 +58,11 @@ public class OutboxEventDispatcher {
     if (notification.getStatus() == NotificationStatus.SENT) {
       event.markAsSent();
       outboxEventRepository.save(event);
+      log.info(
+          "Outbox 이벤트 멱등 스킵 (이미 발송됨)",
+          kv("outboxEventId", event.getId()),
+          kv("notificationId", event.getNotificationId()),
+          kv("outboxEventType", event.getEventType()));
       return;
     }
 
@@ -68,6 +79,13 @@ public class OutboxEventDispatcher {
       // 5. OutboxEvent 상태 업데이트
       event.markAsSent();
       outboxEventRepository.save(event);
+
+      log.info(
+          "Outbox 이벤트 발송 성공",
+          kv("outboxEventId", event.getId()),
+          kv("notificationId", event.getNotificationId()),
+          kv("outboxEventType", event.getEventType()),
+          kv("retryCount", event.getRetryCount()));
     } catch (FirebaseMessagingException e) {
       // Exponential Backoff 재시도 로직
       if (isPermanentFcmError(e)) {
@@ -75,6 +93,11 @@ public class OutboxEventDispatcher {
         notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
         notificationRepository.save(notification);
         outboxEventRepository.save(event);
+        log.warn(
+            "Outbox 이벤트 발송 영구 실패",
+            kv("outboxEventId", event.getId()),
+            kv("notificationId", event.getNotificationId()),
+            kv("messagingErrorCode", e.getMessagingErrorCode()));
         return;
       }
       Duration backoff = Duration.ofSeconds(1L << event.getRetryCount()); // 1s, 2s, 4s
@@ -84,9 +107,21 @@ public class OutboxEventDispatcher {
         notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
         notificationRepository.save(notification);
         outboxEventRepository.save(event);
+        log.warn(
+            "Outbox 이벤트 발송 영구 실패 (최대 재시도 초과)",
+            kv("outboxEventId", event.getId()),
+            kv("notificationId", event.getNotificationId()),
+            kv("retryCount", event.getRetryCount()),
+            kv("messagingErrorCode", e.getMessagingErrorCode()));
       } else {
         event.markAsFailedRetriable(backoff);
         outboxEventRepository.save(event);
+        log.warn(
+            "Outbox 이벤트 발송 실패 (재시도 예정)",
+            kv("outboxEventId", event.getId()),
+            kv("notificationId", event.getNotificationId()),
+            kv("retryCount", event.getRetryCount()),
+            kv("messagingErrorCode", e.getMessagingErrorCode()));
       }
     }
   }

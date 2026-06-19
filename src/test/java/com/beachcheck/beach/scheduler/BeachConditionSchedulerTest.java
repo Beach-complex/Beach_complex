@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.locationtech.jts.geom.Point;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.MDC;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BeachConditionScheduler 분기 테스트")
@@ -37,6 +39,31 @@ class BeachConditionSchedulerTest {
   @Mock private BeachRepository beachRepository;
   @Mock private BeachConditionRepository beachConditionRepository;
   @Mock private CongestionClient congestionClient;
+
+  @AfterEach
+  void clearMdc() {
+    MDC.clear();
+  }
+
+  @Nested
+  @DisplayName("스케줄러 MDC scope")
+  class SchedulerMdcScope {
+
+    @Test
+    @DisplayName("TC-SCH-MDC-01: refreshConditions 종료 후 schedulerName/jobId MDC가 남지 않는다")
+    void tcSchMdc01_clearsSchedulerMdcAfterExecution() {
+      // Given
+      BeachConditionScheduler scheduler = schedulerWithMode("ai");
+      given(beachRepository.findAll()).willReturn(List.of());
+
+      // When
+      scheduler.refreshConditions();
+
+      // Then
+      assertThat(MDC.get("schedulerName")).isNull();
+      assertThat(MDC.get("jobId")).isNull();
+    }
+  }
 
   @Nested
   @DisplayName("refreshConditions 메서드")

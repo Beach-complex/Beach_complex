@@ -1,5 +1,6 @@
 package com.beachcheck.global.logging;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beachcheck.auth.dto.request.LogInRequestDto;
@@ -82,6 +83,8 @@ class DtoLoggingCatalogTest {
         .contains("traceId=trace-catalog")
         .contains("requestId=request-catalog")
         .contains("userId=user-catalog")
+        .contains("schedulerName=scheduler-catalog")
+        .contains("jobId=job-catalog")
         .contains("LogInRequestDto[****]")
         .contains("BeachSearchRequestDto")
         .doesNotContain(SAMPLE_EMAIL)
@@ -108,6 +111,9 @@ class DtoLoggingCatalogTest {
         .contains("\"spanId\":\"span-catalog\"")
         .contains("\"userId\":\"user-catalog\"")
         .contains("\"requestId\":\"request-catalog\"")
+        .contains("\"schedulerName\":\"scheduler-catalog\"")
+        .contains("\"jobId\":\"job-catalog\"")
+        .contains("\"notificationId\":\"" + SAMPLE_ID + "\"")
         .contains("LogInRequestDto[****]")
         .contains("BeachSearchRequestDto")
         .doesNotContain(SAMPLE_EMAIL)
@@ -132,6 +138,8 @@ class DtoLoggingCatalogTest {
     for (Map.Entry<String, Object> dto : sampleDtos()) {
       log.info("dtoName={}, dto={}", dto.getKey(), dto.getValue());
     }
+    log.info(
+        "구조화 로그 카탈로그 샘플", kv("notificationId", SAMPLE_ID), kv("outboxEventId", SAMPLE_BEACH_ID));
   }
 
   private void putCatalogMdc() {
@@ -139,6 +147,8 @@ class DtoLoggingCatalogTest {
     MDC.put("spanId", "span-catalog");
     MDC.put("userId", "user-catalog");
     MDC.put("requestId", "request-catalog");
+    MDC.put("schedulerName", "scheduler-catalog");
+    MDC.put("jobId", "job-catalog");
   }
 
   private List<Map.Entry<String, Object>> sampleDtos() {
