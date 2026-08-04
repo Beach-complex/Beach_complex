@@ -1,0 +1,14 @@
+aws_region        = "us-east-1"
+vpc_id            = "vpc-0123456789abcdef0"
+allowed_admin_cidr = "203.0.113.10/32"
+
+instances = {
+  node-01 = {
+    subnet_id                   = "subnet-0123456789abcdef0"
+    ami_id                      = "ami-0123456789abcdef0"
+    instance_type               = "t3.small"
+    key_name                    = "beach-complex-dev"
+    volume_size_gb              = 30
+    associate_public_ip_address = true
+  }
+}
