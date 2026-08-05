@@ -15,7 +15,7 @@ locals {
 resource "aws_security_group" "this" {
   name_prefix = "${local.resource_name}-"
   description = "Network access for ${local.resource_name}"
-  vpc_id      = var.vpc_id
+  vpc_id      = data.aws_subnet.selected.vpc_id
 
   tags = local.tags
 

@@ -1,5 +1,4 @@
 aws_region        = "us-east-1"
-vpc_id            = "vpc-0123456789abcdef0"
 allowed_admin_cidr = "203.0.113.10/32"
 
 instances = {

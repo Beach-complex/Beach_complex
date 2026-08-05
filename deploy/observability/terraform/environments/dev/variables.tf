@@ -20,16 +20,6 @@ variable "env" {
   }
 }
 
-variable "vpc_id" {
-  description = "VPC ID for observability resources."
-  type        = string
-
-  validation {
-    condition     = can(regex("^vpc-[0-9a-f]+$", var.vpc_id))
-    error_message = "vpc_id must be a valid VPC ID."
-  }
-}
-
 variable "allowed_admin_cidr" {
   description = "IPv4 CIDR allowed to access SSH and Grafana."
   type        = string

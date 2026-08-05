@@ -13,11 +13,6 @@ variable "env" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "VPC ID for the instance security group."
-  type        = string
-}
-
 variable "allowed_admin_cidr" {
   description = "IPv4 CIDR allowed to access SSH and Grafana."
   type        = string
