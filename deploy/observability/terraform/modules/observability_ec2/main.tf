@@ -42,6 +42,51 @@ resource "aws_vpc_security_group_ingress_rule" "grafana" {
   to_port           = 3000
 }
 
+resource "aws_vpc_security_group_ingress_rule" "prometheus" {
+  security_group_id = aws_security_group.this.id
+  description       = "Prometheus from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
+  from_port         = 9090
+  ip_protocol       = "tcp"
+  to_port           = 9090
+}
+
+resource "aws_vpc_security_group_ingress_rule" "loki" {
+  security_group_id = aws_security_group.this.id
+  description       = "Loki from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
+  from_port         = 3100
+  ip_protocol       = "tcp"
+  to_port           = 3100
+}
+
+resource "aws_vpc_security_group_ingress_rule" "node_exporter" {
+  security_group_id = aws_security_group.this.id
+  description       = "Node Exporter from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
+  from_port         = 9100
+  ip_protocol       = "tcp"
+  to_port           = 9100
+}
+
+resource "aws_vpc_security_group_ingress_rule" "otlp_grpc" {
+  security_group_id = aws_security_group.this.id
+  description       = "OTLP gRPC from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
+  from_port         = 4317
+  ip_protocol       = "tcp"
+  to_port           = 4317
+}
+
+resource "aws_vpc_security_group_ingress_rule" "otlp_http" {
+  security_group_id = aws_security_group.this.id
+  description       = "OTLP HTTP from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
+  from_port         = 4318
+  ip_protocol       = "tcp"
+  to_port           = 4318
+}
+
 resource "aws_vpc_security_group_egress_rule" "all" {
   security_group_id = aws_security_group.this.id
   description       = "Outbound access for package installation and service communication"
