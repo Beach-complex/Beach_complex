@@ -20,13 +20,13 @@ variable "env" {
   }
 }
 
-variable "allowed_admin_cidr" {
-  description = "IPv4 CIDR allowed to access SSH and Grafana."
+variable "allowed_vpc_cidr" {
+  description = "VPC CIDR allowed to access SSH and Grafana."
   type        = string
 
   validation {
-    condition     = can(cidrnetmask(var.allowed_admin_cidr))
-    error_message = "allowed_admin_cidr must be a valid IPv4 CIDR."
+    condition     = var.allowed_vpc_cidr == "10.0.0.0/16"
+    error_message = "allowed_vpc_cidr must be 10.0.0.0/16."
   }
 }
 

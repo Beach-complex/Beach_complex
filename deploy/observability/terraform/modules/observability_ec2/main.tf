@@ -26,8 +26,8 @@ resource "aws_security_group" "this" {
 
 resource "aws_vpc_security_group_ingress_rule" "ssh" {
   security_group_id = aws_security_group.this.id
-  description       = "SSH from the administrator CIDR"
-  cidr_ipv4         = var.allowed_admin_cidr
+  description       = "SSH from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
   from_port         = 22
   ip_protocol       = "tcp"
   to_port           = 22
@@ -35,8 +35,8 @@ resource "aws_vpc_security_group_ingress_rule" "ssh" {
 
 resource "aws_vpc_security_group_ingress_rule" "grafana" {
   security_group_id = aws_security_group.this.id
-  description       = "Grafana from the administrator CIDR"
-  cidr_ipv4         = var.allowed_admin_cidr
+  description       = "Grafana from the VPC CIDR"
+  cidr_ipv4         = var.allowed_vpc_cidr
   from_port         = 3000
   ip_protocol       = "tcp"
   to_port           = 3000

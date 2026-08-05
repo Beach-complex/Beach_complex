@@ -13,8 +13,8 @@ variable "env" {
   type        = string
 }
 
-variable "allowed_admin_cidr" {
-  description = "IPv4 CIDR allowed to access SSH and Grafana."
+variable "allowed_vpc_cidr" {
+  description = "VPC CIDR allowed to access SSH and Grafana."
   type        = string
 }
 
