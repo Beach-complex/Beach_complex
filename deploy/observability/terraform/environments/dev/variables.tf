@@ -21,12 +21,22 @@ variable "env" {
 }
 
 variable "allowed_vpc_cidr" {
-  description = "VPC CIDR allowed to access SSH and Grafana."
+  description = "VPC CIDR allowed to access observability service ports."
   type        = string
 
   validation {
     condition     = var.allowed_vpc_cidr == "10.0.0.0/16"
     error_message = "allowed_vpc_cidr must be 10.0.0.0/16."
+  }
+}
+
+variable "app_server_security_group_id" {
+  description = "Application server Security Group ID allowed to access SSH."
+  type        = string
+
+  validation {
+    condition     = can(regex("^sg-[0-9a-f]+$", var.app_server_security_group_id))
+    error_message = "app_server_security_group_id must be a valid Security Group ID."
   }
 }
 

@@ -1,5 +1,6 @@
-aws_region       = "us-east-1"
-allowed_vpc_cidr = "10.0.0.0/16"
+aws_region                   = "us-east-1"
+allowed_vpc_cidr             = "10.0.0.0/16"
+app_server_security_group_id = "sg-0123456789abcdef0"
 
 instances = {
   node-01 = {

@@ -14,7 +14,12 @@ variable "env" {
 }
 
 variable "allowed_vpc_cidr" {
-  description = "VPC CIDR allowed to access SSH and Grafana."
+  description = "VPC CIDR allowed to access observability service ports."
+  type        = string
+}
+
+variable "app_server_security_group_id" {
+  description = "Application server Security Group ID allowed to access SSH."
   type        = string
 }
 

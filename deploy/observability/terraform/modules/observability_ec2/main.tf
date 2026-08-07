@@ -25,12 +25,12 @@ resource "aws_security_group" "this" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ssh" {
-  security_group_id = aws_security_group.this.id
-  description       = "SSH from the VPC CIDR"
-  cidr_ipv4         = var.allowed_vpc_cidr
-  from_port         = 22
-  ip_protocol       = "tcp"
-  to_port           = 22
+  security_group_id            = aws_security_group.this.id
+  referenced_security_group_id = var.app_server_security_group_id
+  description                  = "SSH from the application server"
+  from_port                    = 22
+  ip_protocol                  = "tcp"
+  to_port                      = 22
 }
 
 resource "aws_vpc_security_group_ingress_rule" "grafana" {
