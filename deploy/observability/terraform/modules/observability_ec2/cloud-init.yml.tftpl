@@ -1,0 +1,139 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+packages:
+  - docker.io
+  - docker-compose-v2
+  - e2fsprogs
+  - python3-minimal
+  - util-linux
+
+write_files:
+  - path: /etc/docker/daemon.json
+    owner: root:root
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "50m",
+          "max-file": "5"
+        }
+      }
+
+  - path: /usr/local/sbin/bootstrap-beach-observability
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -Eeuo pipefail
+
+      readonly expected_volume_id="$1"
+      readonly attachment_device="$2"
+      readonly mount_point="$3"
+      readonly device_wait_seconds=120
+
+      log() {
+        printf '[beach-observability] %s\n' "$*"
+      }
+
+      fail() {
+        log "ERROR: $*"
+        exit 1
+      }
+
+      discover_devices() {
+        local normalized_volume_id="$1"
+        local candidate
+
+        lsblk -dn -o PATH,SERIAL,TYPE | awk -v expected="$normalized_volume_id" '$2 == expected && $3 == "disk" { print $1 }'
+
+        for candidate in "$attachment_device" /dev/xvdf; do
+          if [[ -b "$candidate" ]]; then
+            readlink -f "$candidate"
+          fi
+        done
+      }
+
+      normalized_volume_id="$(printf '%s' "$expected_volume_id" | tr -d '-')"
+      [[ "$normalized_volume_id" == vol* ]] || fail "Invalid EBS volume ID: $expected_volume_id"
+
+      device=""
+      for ((attempt = 1; attempt <= device_wait_seconds; attempt++)); do
+        mapfile -t candidates < <(discover_devices "$normalized_volume_id" | sort -u)
+
+        if (( $${#candidates[@]} == 1 )); then
+          device="$${candidates[0]}"
+          break
+        fi
+
+        if (( $${#candidates[@]} > 1 )); then
+          fail "Multiple candidate data devices found: $${candidates[*]}"
+        fi
+
+        sleep 1
+      done
+
+      [[ -n "$device" ]] || fail "Expected EBS volume was not found within $device_wait_seconds seconds"
+      [[ -b "$device" ]] || fail "Resolved EBS device is not a block device: $device"
+      [[ "$(lsblk -dn -o TYPE "$device")" == "disk" ]] || fail "Resolved EBS device is not a whole disk: $device"
+
+      if lsblk -nrpo TYPE "$device" | grep -Fxq part; then
+        fail "Partitions were found on the data device: $device"
+      fi
+
+      if lsblk -nrpo MOUNTPOINT "$device" | grep -Fxq /; then
+        fail "Refusing to use the root filesystem device: $device"
+      fi
+
+      existing_mount="$(findmnt -rn -S "$device" -o TARGET || true)"
+      if [[ -n "$existing_mount" && "$existing_mount" != "$mount_point" ]]; then
+        fail "Data device is already mounted at an unexpected path: $existing_mount"
+      fi
+
+      filesystem_type="$(blkid -s TYPE -o value "$device" || true)"
+      if [[ -z "$filesystem_type" ]]; then
+        log "Creating ext4 filesystem on $device"
+        mkfs.ext4 -F "$device"
+      elif [[ "$filesystem_type" != "ext4" ]]; then
+        fail "Unexpected filesystem type on $device: $filesystem_type"
+      else
+        log "Preserving existing ext4 filesystem on $device"
+      fi
+
+      filesystem_uuid="$(blkid -s UUID -o value "$device")"
+      [[ -n "$filesystem_uuid" ]] || fail "Unable to read filesystem UUID from $device"
+
+      install -d -m 0755 "$mount_point"
+      fstab_candidate="$(mktemp /run/beach-observability-fstab.XXXXXX)"
+      awk -v target="$mount_point" 'NF < 2 || $2 != target { print }' /etc/fstab > "$fstab_candidate"
+      printf 'UUID=%s %s ext4 defaults,nofail 0 2\n' "$filesystem_uuid" "$mount_point" >> "$fstab_candidate"
+      install -m 0644 "$fstab_candidate" /etc/fstab
+      rm -f "$fstab_candidate"
+
+      findmnt --verify --tab-file /etc/fstab
+      if ! mountpoint -q "$mount_point"; then
+        mount "$mount_point"
+      fi
+
+      mountpoint -q "$mount_point" || fail "Mount point verification failed: $mount_point"
+      mounted_uuid="$(findmnt -n -o UUID --target "$mount_point")"
+      [[ "$mounted_uuid" == "$filesystem_uuid" ]] || fail "Mounted filesystem UUID does not match the expected EBS UUID"
+
+      python3 -m json.tool /etc/docker/daemon.json >/dev/null
+      systemctl enable docker
+      systemctl restart docker
+      systemctl is-enabled --quiet docker || fail "Docker service is not enabled"
+      systemctl is-active --quiet docker || fail "Docker service is not active"
+      docker version
+      docker compose version
+
+      if id ubuntu >/dev/null 2>&1; then
+        usermod -aG docker ubuntu
+      fi
+
+      log "Bootstrap completed successfully"
+
+runcmd:
+  - ["/usr/local/sbin/bootstrap-beach-observability", "${observability_volume_id}", "${attachment_device}", "${mount_point}"]

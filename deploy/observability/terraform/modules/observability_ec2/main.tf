@@ -5,6 +5,12 @@ data "aws_subnet" "selected" {
 locals {
   resource_name = "${var.project_name}-${var.env}-observability-${var.instance_name}"
 
+  cloud_init_rendered = templatefile("${path.module}/cloud-init.yml.tftpl", {
+    observability_volume_id = aws_ebs_volume.data.id
+    attachment_device       = "/dev/sdf"
+    mount_point             = "/opt/beach-observability"
+  })
+
   tags = {
     Name      = local.resource_name
     Component = "observability"
@@ -109,7 +115,8 @@ resource "aws_instance" "this" {
   instance_type               = var.instance_type
   key_name                    = var.key_name
   subnet_id                   = var.subnet_id
-  user_data                   = var.user_data
+  user_data                   = local.cloud_init_rendered
+  user_data_replace_on_change = true
   vpc_security_group_ids      = [aws_security_group.this.id]
 
   metadata_options {
@@ -120,6 +127,13 @@ resource "aws_instance" "this" {
   root_block_device {
     encrypted   = true
     volume_type = "gp3"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.cloud_init_rendered) <= 16384
+      error_message = "Rendered EC2 user data must not exceed 16 KiB."
+    }
   }
 
   tags = local.tags

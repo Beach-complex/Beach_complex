@@ -50,10 +50,3 @@ variable "associate_public_ip_address" {
   type        = bool
   default     = false
 }
-
-variable "user_data" {
-  description = "Optional cloud-init user data added in a later PR."
-  type        = string
-  default     = null
-  nullable    = true
-}
