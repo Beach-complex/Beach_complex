@@ -5,11 +5,34 @@ data "aws_subnet" "selected" {
 locals {
   resource_name = "${var.project_name}-${var.env}-observability-${var.instance_name}"
 
+  # 데이터 볼륨 연결 설정의 단일 기준이다. EBS 연결 리소스와 cloud-init,
+  # 마운트 경로를 사용하는 모든 곳에서 같은 값을 사용해야 한다.
+  attachment_device = "/dev/sdf"
+  mount_point       = "/opt/beach-observability"
+
   cloud_init_rendered = templatefile("${path.module}/cloud-init.yml.tftpl", {
     observability_volume_id = aws_ebs_volume.data.id
-    attachment_device       = "/dev/sdf"
-    mount_point             = "/opt/beach-observability"
+    attachment_device       = local.attachment_device
+    mount_point             = local.mount_point
   })
+
+  # 최초 plan에서는 실제 Volume ID가 unknown이므로 같은 길이의 placeholder로
+  # 렌더링해 plan 단계의 크기 검증값을 확정한다.
+  cloud_init_plan_probe = templatefile("${path.module}/cloud-init.yml.tftpl", {
+    observability_volume_id = "vol-00000000000000000"
+    attachment_device       = local.attachment_device
+    mount_point             = local.mount_point
+  })
+
+  # Terraform length()는 유니코드 문자 수를 세지만 EC2는 원본 UTF-8 바이트를 제한한다.
+  # Base64 결과에서 "=" padding을 제거한 뒤 3/4를 곱해 원본 바이트 수를 계산한다.
+  # 이 인코딩 값은 EC2에 전달하지 않고 크기 검증에만 사용한다.
+  cloud_init_plan_probe_bytes = floor(
+    length(replace(base64encode(local.cloud_init_plan_probe), "=", "")) * 3 / 4
+  )
+  cloud_init_rendered_bytes = floor(
+    length(replace(base64encode(local.cloud_init_rendered), "=", "")) * 3 / 4
+  )
 
   tags = {
     Name      = local.resource_name
@@ -131,8 +154,13 @@ resource "aws_instance" "this" {
 
   lifecycle {
     precondition {
-      condition     = length(local.cloud_init_rendered) <= 16384
-      error_message = "Rendered EC2 user data must not exceed 16 KiB."
+      condition     = local.cloud_init_plan_probe_bytes <= 16384
+      error_message = "Plan-time EC2 user data size probe must not exceed 16 KiB."
+    }
+
+    precondition {
+      condition     = local.cloud_init_rendered_bytes <= 16384
+      error_message = "Actual rendered EC2 user data must not exceed 16 KiB."
     }
   }
 
@@ -140,7 +168,7 @@ resource "aws_instance" "this" {
 }
 
 resource "aws_volume_attachment" "data" {
-  device_name                    = "/dev/sdf"
+  device_name                    = local.attachment_device
   instance_id                    = aws_instance.this.id
   stop_instance_before_detaching = true
   volume_id                      = aws_ebs_volume.data.id
