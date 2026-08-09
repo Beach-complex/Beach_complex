@@ -4,6 +4,7 @@ app_server_security_group_id = "sg-0123456789abcdef0"
 instances = {
   node-01 = {
     subnet_id                   = "subnet-0123456789abcdef0"
+    # cloud-init 패키지 구성은 Ubuntu Server 24.04 LTS를 기준으로 한다.
     ami_id                      = "ami-0123456789abcdef0"
     instance_type               = "t3.small"
     key_name                    = "beach-complex-dev"

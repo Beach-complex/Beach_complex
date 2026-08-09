@@ -24,7 +24,7 @@ variable "subnet_id" {
 }
 
 variable "ami_id" {
-  description = "AMI ID for the EC2 instance."
+  description = "Ubuntu Server 24.04 LTS AMI ID for the EC2 instance."
   type        = string
 }
 
