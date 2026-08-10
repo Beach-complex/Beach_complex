@@ -22,6 +22,12 @@ write_files:
         }
       }
 
+  - path: /usr/local/sbin/verify-observability-mount
+    owner: root:root
+    permissions: "0755"
+    encoding: b64
+    content: ${mount_verifier_base64}
+
   - path: /etc/systemd/system/docker.service.d/observability-mount.conf
     owner: root:root
     permissions: "0644"
@@ -30,7 +36,7 @@ write_files:
       RequiresMountsFor=${mount_point}
 
       [Service]
-      ExecStartPre=/usr/bin/mountpoint -q ${mount_point}
+      ExecStartPre=/usr/local/sbin/verify-observability-mount pre-docker
 
   - path: /usr/local/sbin/bootstrap-beach-observability
     owner: root:root
@@ -42,8 +48,13 @@ write_files:
       readonly expected_volume_id="$1"
       readonly requested_attachment_device="$2"
       readonly mount_point="$3"
-      readonly device_wait_seconds=120
+      # The external EBS attachment can complete after cloud-init starts.
+      # Match the AWS Provider's default five-minute attachment create timeout.
+      readonly device_wait_seconds=300
       readonly virtualization_type="$(systemd-detect-virt --vm 2>/dev/null || true)"
+      # Xen guests expose the /dev/sdX attachment as /dev/xvdX, so derive the
+      # alias instead of hardcoding it separately from the attachment device.
+      readonly xen_attachment_device="/dev/xvd$${requested_attachment_device#/dev/sd}"
 
       log() {
         printf '[beach-observability] %s\n' "$*"
@@ -61,7 +72,7 @@ write_files:
         lsblk -dn -o PATH,SERIAL,TYPE | awk -v expected="$normalized_volume_id" '$2 == expected && $3 == "disk" { print $1 }'
 
         if [[ "$virtualization_type" == "xen" ]]; then
-          for candidate in "$requested_attachment_device" /dev/xvdf; do
+          for candidate in "$requested_attachment_device" "$xen_attachment_device"; do
             if [[ -b "$candidate" ]]; then
               readlink -f "$candidate"
             fi
@@ -142,6 +153,7 @@ write_files:
       systemctl is-active --quiet docker || fail "Docker service is not active"
       docker version
       docker compose version
+      /usr/local/sbin/verify-observability-mount healthy
 
       if id ubuntu >/dev/null 2>&1; then
         usermod -aG docker ubuntu

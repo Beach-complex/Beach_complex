@@ -9,21 +9,26 @@ locals {
   # 마운트 경로를 사용하는 모든 곳에서 같은 값을 사용해야 한다.
   requested_attachment_device = "/dev/sdf"
   mount_point                 = "/opt/beach-observability"
+  mount_verifier_base64       = base64encode(
+    file("${path.module}/../../../scripts/verify-mount-runtime.sh")
+  )
 
   # EBS 연결과 마운트에 필요한 값을 cloud-init 템플릿에 주입해
   # EC2 user data로 전달할 최종 설정을 생성한다.
   cloud_init_rendered = templatefile("${path.module}/cloud-init.yml.tftpl", {
-    observability_volume_id      = aws_ebs_volume.data.id
+    observability_volume_id     = aws_ebs_volume.data.id
     requested_attachment_device = local.requested_attachment_device
-    mount_point                  = local.mount_point
+    mount_point                 = local.mount_point
+    mount_verifier_base64       = local.mount_verifier_base64
   })
 
   # 최초 plan에서는 실제 Volume ID가 unknown이므로 같은 길이의 placeholder로
   # 렌더링해 plan 단계의 크기 검증값을 확정한다.
   cloud_init_plan_probe = templatefile("${path.module}/cloud-init.yml.tftpl", {
-    observability_volume_id      = "vol-00000000000000000"
+    observability_volume_id     = "vol-00000000000000000"
     requested_attachment_device = local.requested_attachment_device
-    mount_point                  = local.mount_point
+    mount_point                 = local.mount_point
+    mount_verifier_base64       = local.mount_verifier_base64
   })
 
   # Terraform length()는 유니코드 문자 수를 세지만 EC2는 원본 UTF-8 바이트를 제한한다.
