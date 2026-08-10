@@ -7,21 +7,23 @@ locals {
 
   # 데이터 볼륨 연결 설정의 단일 기준이다. EBS 연결 리소스와 cloud-init,
   # 마운트 경로를 사용하는 모든 곳에서 같은 값을 사용해야 한다.
-  attachment_device = "/dev/sdf"
-  mount_point       = "/opt/beach-observability"
+  requested_attachment_device = "/dev/sdf"
+  mount_point                 = "/opt/beach-observability"
 
+  # EBS 연결과 마운트에 필요한 값을 cloud-init 템플릿에 주입해
+  # EC2 user data로 전달할 최종 설정을 생성한다.
   cloud_init_rendered = templatefile("${path.module}/cloud-init.yml.tftpl", {
-    observability_volume_id = aws_ebs_volume.data.id
-    attachment_device       = local.attachment_device
-    mount_point             = local.mount_point
+    observability_volume_id      = aws_ebs_volume.data.id
+    requested_attachment_device = local.requested_attachment_device
+    mount_point                  = local.mount_point
   })
 
   # 최초 plan에서는 실제 Volume ID가 unknown이므로 같은 길이의 placeholder로
   # 렌더링해 plan 단계의 크기 검증값을 확정한다.
   cloud_init_plan_probe = templatefile("${path.module}/cloud-init.yml.tftpl", {
-    observability_volume_id = "vol-00000000000000000"
-    attachment_device       = local.attachment_device
-    mount_point             = local.mount_point
+    observability_volume_id      = "vol-00000000000000000"
+    requested_attachment_device = local.requested_attachment_device
+    mount_point                  = local.mount_point
   })
 
   # Terraform length()는 유니코드 문자 수를 세지만 EC2는 원본 UTF-8 바이트를 제한한다.
@@ -168,7 +170,7 @@ resource "aws_instance" "this" {
 }
 
 resource "aws_volume_attachment" "data" {
-  device_name                    = local.attachment_device
+  device_name                    = local.requested_attachment_device
   instance_id                    = aws_instance.this.id
   stop_instance_before_detaching = true
   volume_id                      = aws_ebs_volume.data.id

@@ -40,7 +40,7 @@ write_files:
       set -Eeuo pipefail
 
       readonly expected_volume_id="$1"
-      readonly attachment_device="$2"
+      readonly requested_attachment_device="$2"
       readonly mount_point="$3"
       readonly device_wait_seconds=120
       readonly virtualization_type="$(systemd-detect-virt --vm 2>/dev/null || true)"
@@ -61,7 +61,7 @@ write_files:
         lsblk -dn -o PATH,SERIAL,TYPE | awk -v expected="$normalized_volume_id" '$2 == expected && $3 == "disk" { print $1 }'
 
         if [[ "$virtualization_type" == "xen" ]]; then
-          for candidate in "$attachment_device" /dev/xvdf; do
+          for candidate in "$requested_attachment_device" /dev/xvdf; do
             if [[ -b "$candidate" ]]; then
               readlink -f "$candidate"
             fi
@@ -150,4 +150,4 @@ write_files:
       log "Bootstrap completed successfully"
 
 runcmd:
-  - ["/usr/local/sbin/bootstrap-beach-observability", "${observability_volume_id}", "${attachment_device}", "${mount_point}"]
+  - ["/usr/local/sbin/bootstrap-beach-observability", "${observability_volume_id}", "${requested_attachment_device}", "${mount_point}"]
