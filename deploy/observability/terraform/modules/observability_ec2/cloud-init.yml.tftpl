@@ -22,6 +22,16 @@ write_files:
         }
       }
 
+  - path: /etc/systemd/system/docker.service.d/observability-mount.conf
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      RequiresMountsFor=${mount_point}
+
+      [Service]
+      ExecStartPre=/usr/bin/mountpoint -q ${mount_point}
+
   - path: /usr/local/sbin/bootstrap-beach-observability
     owner: root:root
     permissions: "0755"
@@ -125,6 +135,7 @@ write_files:
       [[ "$mounted_uuid" == "$filesystem_uuid" ]] || fail "Mounted filesystem UUID does not match the expected EBS UUID"
 
       python3 -m json.tool /etc/docker/daemon.json >/dev/null
+      systemctl daemon-reload
       systemctl enable docker
       systemctl restart docker
       systemctl is-enabled --quiet docker || fail "Docker service is not enabled"
