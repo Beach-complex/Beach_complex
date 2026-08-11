@@ -9,7 +9,7 @@ locals {
   # 마운트 경로를 사용하는 모든 곳에서 같은 값을 사용해야 한다.
   requested_attachment_device = "/dev/sdf"
   mount_point                 = "/opt/beach-observability"
-  mount_verifier_base64       = base64encode(
+  mount_verifier_base64 = base64encode(
     file("${path.module}/../../../scripts/verify-mount-runtime.sh")
   )
 
@@ -148,7 +148,7 @@ resource "aws_instance" "this" {
   user_data                   = local.cloud_init_rendered
   user_data_replace_on_change = true
   vpc_security_group_ids      = [aws_security_group.this.id]
-  volume_tags                  = merge(local.tags, {
+  volume_tags = merge(local.tags, {
     Name = "${local.resource_name}-root"
   })
 
