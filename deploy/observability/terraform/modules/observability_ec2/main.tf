@@ -148,6 +148,9 @@ resource "aws_instance" "this" {
   user_data                   = local.cloud_init_rendered
   user_data_replace_on_change = true
   vpc_security_group_ids      = [aws_security_group.this.id]
+  volume_tags                  = merge(local.tags, {
+    Name = "${local.resource_name}-root"
+  })
 
   metadata_options {
     http_endpoint = "enabled"
