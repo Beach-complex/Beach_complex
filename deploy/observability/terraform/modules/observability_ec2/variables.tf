@@ -24,7 +24,7 @@ variable "subnet_id" {
 }
 
 variable "ami_id" {
-  description = "AMI ID for the EC2 instance."
+  description = "Ubuntu Server 24.04 LTS AMI ID for the EC2 instance."
   type        = string
 }
 
@@ -49,11 +49,4 @@ variable "associate_public_ip_address" {
   description = "Whether to associate a public IPv4 address with the instance."
   type        = bool
   default     = false
-}
-
-variable "user_data" {
-  description = "Optional cloud-init user data added in a later PR."
-  type        = string
-  default     = null
-  nullable    = true
 }
