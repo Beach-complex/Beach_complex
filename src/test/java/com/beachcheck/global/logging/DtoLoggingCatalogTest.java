@@ -81,6 +81,7 @@ class DtoLoggingCatalogTest {
     writeReport("dto-catalog-dev.log", output);
     assertThat(output)
         .contains("traceId=trace-catalog")
+        .contains("spanId=span-catalog")
         .contains("requestId=request-catalog")
         .contains("userId=user-catalog")
         .contains("schedulerName=scheduler-catalog")

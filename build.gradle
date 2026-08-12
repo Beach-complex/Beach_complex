@@ -33,6 +33,8 @@ dependencies {
     // TODO(OAuth): OAuth 로그인 도입 시 spring-boot-starter-oauth2-client(및 provider 설정) 추가 검토.
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
@@ -73,7 +75,6 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 }
 
