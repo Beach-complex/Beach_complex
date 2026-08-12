@@ -12,7 +12,8 @@ import org.springframework.core.task.TaskDecorator;
  * <p>Policy:
  *
  * <ul>
- *   <li>작업 제출 시점(부모 스레드)의 MDC를 복사해 worker thread 실행 직전 주입
+ *   <li>작업 제출 시점(부모 스레드)의 상관관계 MDC를 복사해 worker thread 실행 직전 주입
+ *   <li>{@code traceId}/{@code spanId}는 실제 Trace Context 없이 문자열만 복사하지 않음
  *   <li>부모 MDC가 비어 있으면 worker thread MDC를 {@code clear} (이전 작업 컨텍스트 누수 차단)
  *   <li>실행 후 {@code finally}에서 worker thread의 원래 MDC를 복원 — 스레드풀 재사용 시 다음 작업에 누수 방지
  *   <li>새 로그 키는 만들지 않는다. MDC1에서 정한 표준 키만 그대로 전파한다.
@@ -28,9 +29,16 @@ import org.springframework.core.task.TaskDecorator;
  */
 public class MdcTaskDecorator implements TaskDecorator {
 
+  private static final String TRACE_ID = "traceId";
+  private static final String SPAN_ID = "spanId";
+
   @Override
   public Runnable decorate(Runnable runnable) {
     Map<String, String> callerContext = MDC.getCopyOfContextMap();
+    if (callerContext != null) {
+      callerContext.remove(TRACE_ID);
+      callerContext.remove(SPAN_ID);
+    }
 
     return () -> {
       Map<String, String> previousContext = MDC.getCopyOfContextMap();
