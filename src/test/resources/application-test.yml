@@ -79,10 +79,3 @@ logging:
     org.testcontainers: INFO
     com.github.dockerjava: WARN
     com.beachcheck: DEBUG
-
-# Spring Boot는 @SpringBootTest에서 reporting component를 자동 구성하지 않는다. 테스트는 외부 수집기에
-# 의존하지 않고, 공통 Trace auto-configuration은 별도 focused test에서 검증한다.
-management:
-  tracing:
-    sampling:
-      probability: 1.0
