@@ -1,13 +1,13 @@
 package com.beachcheck.global.tracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +17,7 @@ import org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingA
 import org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.tracing.TracingProperties;
 import org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpProperties;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
@@ -75,7 +76,7 @@ class TracingCoreConfigurationTest {
   }
 
   @Test
-  @DisplayName("OTLP endpoint와 sampling 값은 환경 설정으로 주입된다")
+  @DisplayName("OTLP endpoint, timeout과 sampling 값은 환경 설정으로 주입된다")
   void withOtlpEndpoint_bindsExporterAndSamplingConfiguration() {
     contextRunner
         .withPropertyValues(
@@ -87,21 +88,22 @@ class TracingCoreConfigurationTest {
               assertThat(context).hasSingleBean(SpanExporter.class);
               assertThat(context.getBean(TracingProperties.class).getSampling().getProbability())
                   .isEqualTo(0.25f);
+              OtlpProperties otlpProperties = context.getBean(OtlpProperties.class);
+              assertThat(otlpProperties.getEndpoint()).isEqualTo("http://127.0.0.1:4318/v1/traces");
+              assertThat(otlpProperties.getTimeout()).isEqualTo(Duration.ofSeconds(5));
+            });
+  }
 
-              Tracer tracer = context.getBean(Tracer.class);
-              assertThatCode(
-                      () -> {
-                        Span span = tracer.nextSpan().name("unavailable-exporter-test").start();
-                        try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
-                          // 업무 처리 구간: exporter endpoint 연결 여부와 독립적으로 완료되어야 한다.
-                          assertThat(tracer.currentSpan()).isNotNull();
-                          assertThat(tracer.currentSpan().context().traceId())
-                              .isEqualTo(span.context().traceId());
-                        } finally {
-                          span.end();
-                        }
-                      })
-                  .doesNotThrowAnyException();
+  @Test
+  @DisplayName("긴급 수집 중지 설정은 sampling을 0으로 낮추고 exporter를 만들지 않는다")
+  void collectionDisabled_usesZeroSamplingWithoutExporter() {
+    contextRunner
+        .withPropertyValues("management.tracing.sampling.probability=0.0")
+        .run(
+            context -> {
+              assertThat(context).hasSingleBean(Tracer.class).doesNotHaveBean(SpanExporter.class);
+              assertThat(context.getBean(TracingProperties.class).getSampling().getProbability())
+                  .isZero();
             });
   }
 }

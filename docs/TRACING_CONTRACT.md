@@ -13,7 +13,6 @@
 
 | 환경변수 | 기본값 | 설명 |
 | --- | --- | --- |
-| `MANAGEMENT_TRACING_ENABLED` | `true` | Trace 생성 활성화 여부 |
 | `MANAGEMENT_TRACING_SAMPLING_PROBABILITY` | `0.1` | root Trace sampling 비율 (`0.0`~`1.0`) |
 | `MANAGEMENT_OTLP_TRACING_ENDPOINT` | 미설정 | OTLP/HTTP endpoint. 예: `http://observability:4318/v1/traces` |
 | `MANAGEMENT_OTLP_TRACING_TIMEOUT` | `5s` | exporter 요청 제한 시간 |
@@ -42,4 +41,5 @@ dev에서 수집 경로를 검증할 때 endpoint와 sampling `1.0`을 명시하
 
 - OTLP endpoint 미설정 또는 수집기 장애가 API·메일·Scheduler의 업무 실패로 전파되어서는 안 된다.
 - 긴 exporter 대기 대신 제한 시간 내 실패하고 업무 처리는 계속한다.
-- 긴급 중지는 `MANAGEMENT_TRACING_ENABLED=false`, 완화는 sampling 비율 하향 또는 endpoint 제거로 수행한다.
+- 긴급 수집 중지는 OTLP endpoint를 제거하고 `MANAGEMENT_TRACING_SAMPLING_PROBABILITY=0.0`으로 설정한다.
+- 이 설정에서도 애플리케이션의 `Tracer` API는 유지되지만 새 root span은 sampling/export되지 않는다.
