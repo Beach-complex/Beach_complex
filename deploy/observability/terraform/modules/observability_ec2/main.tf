@@ -103,6 +103,15 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   ip_protocol       = "-1"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "app_metrics" {
+  security_group_id            = var.app_server_security_group_id
+  referenced_security_group_id = aws_security_group.this.id
+  description                  = "Spring Boot Actuator metrics from the observability server"
+  from_port                    = 8081
+  ip_protocol                  = "tcp"
+  to_port                      = 8081
+}
+
 resource "aws_iam_role" "this" {
   name = "${local.resource_name}-role"
 

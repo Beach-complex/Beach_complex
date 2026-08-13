@@ -7,6 +7,7 @@ module "observability_ec2" {
   project_name                 = var.project_name
   env                          = var.env
   app_server_security_group_id = var.app_server_security_group_id
+  app_server_private_ip        = var.app_server_private_ip
   subnet_id                    = each.value.subnet_id
   ami_id                       = each.value.ami_id
   instance_type                = each.value.instance_type

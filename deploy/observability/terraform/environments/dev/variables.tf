@@ -21,12 +21,22 @@ variable "env" {
 }
 
 variable "app_server_security_group_id" {
-  description = "Application server Security Group ID allowed to access SSH."
+  description = "Application server Security Group ID used for traffic between the application and observability servers."
   type        = string
 
   validation {
     condition     = can(regex("^sg-[0-9a-f]+$", var.app_server_security_group_id))
     error_message = "app_server_security_group_id must be a valid Security Group ID."
+  }
+}
+
+variable "app_server_private_ip" {
+  description = "Private IPv4 address of the application server scraped by Prometheus."
+  type        = string
+
+  validation {
+    condition     = can(cidrnetmask("${var.app_server_private_ip}/32"))
+    error_message = "app_server_private_ip must be a valid IPv4 address."
   }
 }
 
