@@ -28,6 +28,30 @@ write_files:
     encoding: b64
     content: ${mount_verifier_base64}
 
+  - path: /run/beach-observability/docker-compose.yml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${compose_base64gzip}
+
+  - path: /run/beach-observability/prometheus.yml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${prometheus_config_base64gzip}
+
+  - path: /run/beach-observability/loki.yaml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${loki_config_base64gzip}
+
+  - path: /run/beach-observability/grafana-datasources.yml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${grafana_datasources_base64gzip}
+
   - path: /etc/systemd/system/docker.service.d/observability-mount.conf
     owner: root:root
     permissions: "0644"
@@ -37,6 +61,28 @@ write_files:
 
       [Service]
       ExecStartPre=/usr/local/sbin/verify-observability-mount pre-docker
+
+  - path: /etc/systemd/system/beach-observability.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Beach observability Compose services
+      Requires=docker.service
+      After=docker.service
+      RequiresMountsFor=${mount_point}
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=${mount_point}/compose
+      ExecStartPre=/usr/local/sbin/verify-observability-mount healthy
+      ExecStart=/usr/bin/docker compose up -d
+      ExecStop=/usr/bin/docker compose down
+      TimeoutStartSec=0
+
+      [Install]
+      WantedBy=multi-user.target
 
   - path: /usr/local/sbin/bootstrap-beach-observability
     owner: root:root
@@ -63,6 +109,16 @@ write_files:
       fail() {
         log "ERROR: $*"
         exit 1
+      }
+
+      install_asset() {
+        local source_path="$1"
+        local destination_path="$2"
+        local temporary_path
+
+        temporary_path="$(mktemp "$${destination_path}.XXXXXX")"
+        install -m 0644 "$source_path" "$temporary_path"
+        mv -f "$temporary_path" "$destination_path"
       }
 
       discover_devices() {
@@ -154,6 +210,28 @@ write_files:
       docker version
       docker compose version
       /usr/local/sbin/verify-observability-mount healthy
+
+      readonly staging_directory="/run/beach-observability"
+      readonly compose_directory="$mount_point/compose"
+      readonly data_directory="$mount_point/data"
+
+      install -d -m 0755 \
+        "$compose_directory/prometheus" \
+        "$compose_directory/loki" \
+        "$compose_directory/grafana/provisioning/datasources"
+      install -d -m 0755 -o 65534 -g 65534 "$data_directory/prometheus"
+      install -d -m 0755 -o 10001 -g 10001 "$data_directory/loki"
+      install -d -m 0755 -o 472 -g 0 "$data_directory/grafana"
+
+      install_asset "$staging_directory/docker-compose.yml" "$compose_directory/docker-compose.yml"
+      install_asset "$staging_directory/prometheus.yml" "$compose_directory/prometheus/prometheus.yml"
+      install_asset "$staging_directory/loki.yaml" "$compose_directory/loki/local-config.yaml"
+      install_asset "$staging_directory/grafana-datasources.yml" "$compose_directory/grafana/provisioning/datasources/datasources.yml"
+
+      docker compose --project-directory "$compose_directory" config --quiet
+      systemctl daemon-reload
+      systemctl enable --now beach-observability.service
+      systemctl is-active --quiet beach-observability.service || fail "Observability service is not active"
 
       if id ubuntu >/dev/null 2>&1; then
         usermod -aG docker ubuntu
