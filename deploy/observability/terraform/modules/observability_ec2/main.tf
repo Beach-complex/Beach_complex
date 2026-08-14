@@ -97,15 +97,6 @@ resource "aws_vpc_security_group_ingress_rule" "ssh" {
   to_port                      = 22
 }
 
-resource "aws_vpc_security_group_ingress_rule" "loki" {
-  security_group_id            = aws_security_group.this.id
-  referenced_security_group_id = var.app_server_security_group_id
-  description                  = "Loki from the application server"
-  from_port                    = 3100
-  ip_protocol                  = "tcp"
-  to_port                      = 3100
-}
-
 resource "aws_vpc_security_group_ingress_rule" "otlp_grpc" {
   security_group_id            = aws_security_group.this.id
   referenced_security_group_id = var.app_server_security_group_id
