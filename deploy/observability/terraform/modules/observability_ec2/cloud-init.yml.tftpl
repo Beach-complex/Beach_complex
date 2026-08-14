@@ -40,11 +40,11 @@ write_files:
     encoding: gzip+base64
     content: ${prometheus_config_base64gzip}
 
-  - path: /run/beach-observability/loki.yaml
+  - path: /run/beach-observability/tempo.yaml
     owner: root:root
     permissions: "0644"
     encoding: gzip+base64
-    content: ${loki_config_base64gzip}
+    content: ${tempo_config_base64gzip}
 
   - path: /run/beach-observability/grafana-datasources.yml
     owner: root:root
@@ -217,15 +217,15 @@ write_files:
 
       install -d -m 0755 \
         "$compose_directory/prometheus" \
-        "$compose_directory/loki" \
+        "$compose_directory/tempo" \
         "$compose_directory/grafana/provisioning/datasources"
       install -d -m 0755 -o 65534 -g 65534 "$data_directory/prometheus"
-      install -d -m 0755 -o 10001 -g 10001 "$data_directory/loki"
+      install -d -m 0755 -o 10001 -g 10001 "$data_directory/tempo"
       install -d -m 0755 -o 472 -g 0 "$data_directory/grafana"
 
       install_asset "$staging_directory/docker-compose.yml" "$compose_directory/docker-compose.yml"
       install_asset "$staging_directory/prometheus.yml" "$compose_directory/prometheus/prometheus.yml"
-      install_asset "$staging_directory/loki.yaml" "$compose_directory/loki/local-config.yaml"
+      install_asset "$staging_directory/tempo.yaml" "$compose_directory/tempo/tempo.yaml"
       install_asset "$staging_directory/grafana-datasources.yml" "$compose_directory/grafana/provisioning/datasources/datasources.yml"
 
       docker compose --project-directory "$compose_directory" config --quiet

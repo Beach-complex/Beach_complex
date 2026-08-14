@@ -13,17 +13,19 @@ services:
     ports:
       - 127.0.0.1:9090:9090
 
-  loki:
-    image: grafana/loki:3.7.4
-    container_name: beach-loki
+  tempo:
+    image: grafana/tempo:3.0.2
+    container_name: beach-tempo
     restart: unless-stopped
     command:
-      - -config.file=/etc/loki/local-config.yaml
+      - -config.file=/etc/tempo.yaml
     volumes:
-      - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
-      - ../data/loki:/loki
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - ../data/tempo:/var/tempo
     ports:
-      - 3100:3100
+      - 127.0.0.1:3200:3200
+      - 4317:4317
+      - 4318:4318
 
   node-exporter:
     image: quay.io/prometheus/node-exporter:v1.12.1
@@ -42,8 +44,8 @@ services:
     container_name: beach-grafana
     restart: unless-stopped
     depends_on:
-      - loki
       - prometheus
+      - tempo
     environment:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:

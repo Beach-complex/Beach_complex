@@ -22,8 +22,8 @@ locals {
     file("${path.module}/../../../compose/docker-compose.yml")
   )
   prometheus_config_base64gzip = base64gzip(local.prometheus_config_rendered)
-  loki_config_base64gzip = base64gzip(
-    file("${path.module}/../../../compose/loki/local-config.yaml")
+  tempo_config_base64gzip = base64gzip(
+    file("${path.module}/../../../compose/tempo/tempo.yaml")
   )
   grafana_datasources_base64gzip = base64gzip(
     file("${path.module}/../../../compose/grafana/provisioning/datasources/datasources.yml")
@@ -38,7 +38,7 @@ locals {
     mount_verifier_base64          = local.mount_verifier_base64
     compose_base64gzip             = local.compose_base64gzip
     prometheus_config_base64gzip   = local.prometheus_config_base64gzip
-    loki_config_base64gzip         = local.loki_config_base64gzip
+    tempo_config_base64gzip        = local.tempo_config_base64gzip
     grafana_datasources_base64gzip = local.grafana_datasources_base64gzip
   })
 
@@ -51,7 +51,7 @@ locals {
     mount_verifier_base64          = local.mount_verifier_base64
     compose_base64gzip             = local.compose_base64gzip
     prometheus_config_base64gzip   = local.prometheus_config_base64gzip
-    loki_config_base64gzip         = local.loki_config_base64gzip
+    tempo_config_base64gzip        = local.tempo_config_base64gzip
     grafana_datasources_base64gzip = local.grafana_datasources_base64gzip
   })
 
