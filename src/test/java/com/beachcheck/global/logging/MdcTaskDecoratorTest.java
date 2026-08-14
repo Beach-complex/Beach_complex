@@ -15,6 +15,8 @@ class MdcTaskDecoratorTest {
 
   private static final String REQUEST_ID = "requestId";
   private static final String USER_ID = "userId";
+  private static final String TRACE_ID = "traceId";
+  private static final String SPAN_ID = "spanId";
 
   private final MdcTaskDecorator decorator = new MdcTaskDecorator();
 
@@ -52,6 +54,34 @@ class MdcTaskDecoratorTest {
       assertThat(userIdDuringRun.get()).isEqualTo("user-1");
       assertThat(MDC.get(REQUEST_ID)).isNull();
       assertThat(MDC.get(USER_ID)).isNull();
+    }
+
+    @Test
+    @DisplayName("실제 Trace Context 없이 traceId와 spanId 문자열만 worker thread로 복사하지 않는다")
+    void givenCallerTraceMdc_whenRun_thenTraceKeysAreNotPropagated() {
+      // given — 부모 span에서 Micrometer가 MDC에 넣은 값을 모사
+      MDC.put(REQUEST_ID, "req-1");
+      MDC.put(TRACE_ID, "parent-trace");
+      MDC.put(SPAN_ID, "parent-span");
+      AtomicReference<String> requestIdDuringRun = new AtomicReference<>();
+      AtomicReference<String> traceIdDuringRun = new AtomicReference<>();
+      AtomicReference<String> spanIdDuringRun = new AtomicReference<>();
+      Runnable decorated =
+          decorator.decorate(
+              () -> {
+                requestIdDuringRun.set(MDC.get(REQUEST_ID));
+                traceIdDuringRun.set(MDC.get(TRACE_ID));
+                spanIdDuringRun.set(MDC.get(SPAN_ID));
+              });
+
+      // when — OTel Context가 전파되지 않은 worker thread에서 실행
+      MDC.clear();
+      decorated.run();
+
+      // then — 기존 requestId만 유지하고, 가짜 Trace 상관관계는 만들지 않음
+      assertThat(requestIdDuringRun.get()).isEqualTo("req-1");
+      assertThat(traceIdDuringRun.get()).isNull();
+      assertThat(spanIdDuringRun.get()).isNull();
     }
 
     @Test

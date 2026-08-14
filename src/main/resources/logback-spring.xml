@@ -15,7 +15,7 @@
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <pattern>
-                    %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [traceId=%X{traceId:-},requestId=%X{requestId:-},userId=%X{userId:-},schedulerName=%X{schedulerName:-},jobId=%X{jobId:-}] %logger{36} - %msg%n
+                    %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [traceId=%X{traceId:-},spanId=%X{spanId:-},requestId=%X{requestId:-},userId=%X{userId:-},schedulerName=%X{schedulerName:-},jobId=%X{jobId:-}] %logger{36} - %msg%n
                 </pattern>
             </encoder>
         </appender>

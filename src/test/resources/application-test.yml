@@ -79,4 +79,3 @@ logging:
     org.testcontainers: INFO
     com.github.dockerjava: WARN
     com.beachcheck: DEBUG
-

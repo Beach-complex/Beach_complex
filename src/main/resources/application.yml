@@ -52,6 +52,20 @@ server:
   port: ${SERVER_PORT:8080}
 
 management:
+  opentelemetry:
+    resource-attributes:
+      deployment.environment.name: ${APP_ENVIRONMENT:local}
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:0.1}
+    propagation:
+      type: W3C
+  # Spring Boot 3.3은 endpoint 값이 있을 때만 OTLP exporter를 구성한다.
+  # endpoint 키는 의도적으로 선언하지 않는다. 수집기가 준비된 환경에서만 Spring Boot의
+  # relaxed binding을 통해 MANAGEMENT_OTLP_TRACING_ENDPOINT를 주입한다.
+  otlp:
+    tracing:
+      timeout: ${MANAGEMENT_OTLP_TRACING_TIMEOUT:5s}
   endpoints:
     web:
       exposure:
