@@ -3,8 +3,6 @@ package_update: true
 package_upgrade: false
 
 packages:
-  - docker.io
-  - docker-compose-v2
   - e2fsprogs
   - python3-minimal
   - util-linux
@@ -202,9 +200,10 @@ write_files:
       [[ "$mounted_uuid" == "$filesystem_uuid" ]] || fail "Mounted filesystem UUID does not match the expected EBS UUID"
 
       python3 -m json.tool /etc/docker/daemon.json >/dev/null
+      # Install Docker only after the EBS mount is verified so package auto-start passes the mount guard.
+      apt-get install --yes docker.io docker-compose-v2
       systemctl daemon-reload
-      systemctl enable docker
-      systemctl restart docker
+      systemctl enable --now docker
       systemctl is-enabled --quiet docker || fail "Docker service is not enabled"
       systemctl is-active --quiet docker || fail "Docker service is not active"
       docker version
