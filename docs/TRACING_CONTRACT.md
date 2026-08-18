@@ -23,11 +23,21 @@ dev에서 수집 경로를 검증할 때 endpoint와 sampling `1.0`을 명시하
 
 ## 전파와 속성 정책
 
-- 전파 형식은 W3C Trace Context(`traceparent`)로 통일한다.
+- 전파 형식은 W3C Trace Context(`traceparent`, `tracestate`)로 통일한다.
+- baggage 전파는 비활성화하고 W3C Trace Context 필드만 소비·생성한다.
 - HTTP method, 정규화된 route, HTTP status와 고정된 결과 값처럼 낮은 cardinality 값만 사용한다.
 - `service.name`은 `spring.application.name`의 `beach-complex`, 배포 환경은 `APP_ENVIRONMENT` 값으로 기록한다.
 - URL query string, SQL parameter와 모든 private method를 span/attribute로 수집하지 않는다.
 - `requestId`, `userId`, `notificationId`, `outboxEventId` 같은 고유값을 span attribute나 Loki label로 승격하지 않는다.
+
+## HTTP ingress 계약
+
+- Spring MVC의 `http.server.requests` 자동 observation을 HTTP server span으로 사용한다. 애플리케이션 필터에서 중복 server span을 만들지 않는다.
+- 유효한 `traceparent`가 들어오면 같은 trace의 자식 server span을 만들고, 없거나 유효하지 않으면 새 trace를 시작한다.
+- `MdcRequestFilter`는 HTTP observation filter 안쪽에서 실행해 요청 처리 동안 기존 `requestId`와 실제 `traceId`/`spanId`를 함께 유지한다.
+- 성공, 인증 실패, 클라이언트 오류와 서버 오류는 응답 status와 `outcome`으로 구분한다.
+- route는 템플릿 경로를 우선 사용한다. Security filter에서 handler mapping 전에 종료된 요청처럼 route를 알 수 없는 경우에는 `UNKNOWN`을 허용한다.
+- handler에서 처리되어 응답으로 변환된 예외는 status와 `outcome`을 최소 보장한다. exception attribute나 event는 예외가 observation까지 전달된 경우에만 기록한다.
 
 ## 수집 금지 정보
 

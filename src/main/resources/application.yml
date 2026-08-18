@@ -56,6 +56,8 @@ management:
     resource-attributes:
       deployment.environment.name: ${APP_ENVIRONMENT:local}
   tracing:
+    baggage:
+      enabled: false
     sampling:
       probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:0.1}
     propagation:
