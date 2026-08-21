@@ -30,11 +30,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p>Contract(Output): 응답 헤더 {@code X-Request-Id} 항상 세팅. MDC 키 {@code requestId} 가 요청 처리 도중에만 유효하고,
  * 요청 종료 후에는 반드시 제거됨.
  *
- * <p>TODO: traceId/spanId는 트레이싱 SDK가 자동 주입할 예정이므로 본 필터에서는 다루지 않는다. userId는 인증 직후 {@link
- * com.beachcheck.global.security.JwtAuthenticationFilter}에서 주입한다.
+ * <p>traceId/spanId는 앞단의 HTTP observation filter가 자동 주입하므로 본 필터에서는 직접 생성하거나 복사하지 않는다. userId는 인증 직후
+ * {@link com.beachcheck.global.security.JwtAuthenticationFilter}에서 주입한다.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+// Spring Boot의 ServerHttpObservationFilter(HIGHEST_PRECEDENCE + 1) 안쪽에서 실행되어
+// requestId와 실제 traceId/spanId가 요청 처리 및 필터 종료 시점까지 함께 유지되게 한다.
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class MdcRequestFilter extends OncePerRequestFilter {
 
   private static final String MDC_REQUEST_ID = "requestId";
