@@ -12,33 +12,61 @@ locals {
   mount_verifier_base64 = base64encode(
     file("${path.module}/../../../scripts/verify-mount-runtime.sh")
   )
+  prometheus_config_rendered = templatefile(
+    "${path.module}/../../../compose/prometheus/prometheus.yml.tftpl",
+    {
+      app_server_private_ip = var.app_server_private_ip
+    }
+  )
+  compose_base64gzip = base64gzip(
+    file("${path.module}/../../../compose/docker-compose.yml")
+  )
+  prometheus_config_base64gzip = base64gzip(local.prometheus_config_rendered)
+  tempo_config_base64gzip = base64gzip(
+    file("${path.module}/../../../compose/tempo/tempo.yaml")
+  )
+  grafana_datasources_base64gzip = base64gzip(
+    file("${path.module}/../../../compose/grafana/provisioning/datasources/datasources.yml")
+  )
 
   # EBS 연결과 마운트에 필요한 값을 cloud-init 템플릿에 주입해
   # EC2 user data로 전달할 최종 설정을 생성한다.
   cloud_init_rendered = templatefile("${path.module}/cloud-init.yml.tftpl", {
-    observability_volume_id     = aws_ebs_volume.data.id
-    requested_attachment_device = local.requested_attachment_device
-    mount_point                 = local.mount_point
-    mount_verifier_base64       = local.mount_verifier_base64
+    observability_volume_id        = aws_ebs_volume.data.id
+    requested_attachment_device    = local.requested_attachment_device
+    mount_point                    = local.mount_point
+    mount_verifier_base64          = local.mount_verifier_base64
+    compose_base64gzip             = local.compose_base64gzip
+    prometheus_config_base64gzip   = local.prometheus_config_base64gzip
+    tempo_config_base64gzip        = local.tempo_config_base64gzip
+    grafana_datasources_base64gzip = local.grafana_datasources_base64gzip
   })
 
   # 최초 plan에서는 실제 Volume ID가 unknown이므로 같은 길이의 placeholder로
   # 렌더링해 plan 단계의 크기 검증값을 확정한다.
   cloud_init_plan_probe = templatefile("${path.module}/cloud-init.yml.tftpl", {
-    observability_volume_id     = "vol-00000000000000000"
-    requested_attachment_device = local.requested_attachment_device
-    mount_point                 = local.mount_point
-    mount_verifier_base64       = local.mount_verifier_base64
+    observability_volume_id        = "vol-00000000000000000"
+    requested_attachment_device    = local.requested_attachment_device
+    mount_point                    = local.mount_point
+    mount_verifier_base64          = local.mount_verifier_base64
+    compose_base64gzip             = local.compose_base64gzip
+    prometheus_config_base64gzip   = local.prometheus_config_base64gzip
+    tempo_config_base64gzip        = local.tempo_config_base64gzip
+    grafana_datasources_base64gzip = local.grafana_datasources_base64gzip
   })
 
-  # Terraform length()는 유니코드 문자 수를 세지만 EC2는 원본 UTF-8 바이트를 제한한다.
-  # Base64 결과에서 "=" padding을 제거한 뒤 3/4를 곱해 원본 바이트 수를 계산한다.
-  # 이 인코딩 값은 EC2에 전달하지 않고 크기 검증에만 사용한다.
+  # cloud-init은 gzip user data를 자동 해제한다. EC2에 실제로 전달할 gzip payload를
+  # Base64로 만들고 같은 값을 user_data_base64와 크기 검증에서 함께 사용한다.
+  cloud_init_plan_probe_base64gzip = base64gzip(local.cloud_init_plan_probe)
+  cloud_init_rendered_base64gzip   = base64gzip(local.cloud_init_rendered)
+
+  # Base64 결과에서 "=" padding을 제거한 뒤 3/4를 곱해 EC2가 제한하는
+  # Base64 디코딩 후 gzip payload의 raw byte 수를 계산한다.
   cloud_init_plan_probe_bytes = floor(
-    length(replace(base64encode(local.cloud_init_plan_probe), "=", "")) * 3 / 4
+    length(replace(local.cloud_init_plan_probe_base64gzip, "=", "")) * 3 / 4
   )
   cloud_init_rendered_bytes = floor(
-    length(replace(base64encode(local.cloud_init_rendered), "=", "")) * 3 / 4
+    length(replace(local.cloud_init_rendered_base64gzip, "=", "")) * 3 / 4
   )
 
   tags = {
@@ -69,15 +97,6 @@ resource "aws_vpc_security_group_ingress_rule" "ssh" {
   to_port                      = 22
 }
 
-resource "aws_vpc_security_group_ingress_rule" "loki" {
-  security_group_id            = aws_security_group.this.id
-  referenced_security_group_id = var.app_server_security_group_id
-  description                  = "Loki from the application server"
-  from_port                    = 3100
-  ip_protocol                  = "tcp"
-  to_port                      = 3100
-}
-
 resource "aws_vpc_security_group_ingress_rule" "otlp_grpc" {
   security_group_id            = aws_security_group.this.id
   referenced_security_group_id = var.app_server_security_group_id
@@ -101,6 +120,15 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   description       = "Outbound access for package installation and service communication"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app_metrics" {
+  security_group_id            = var.app_server_security_group_id
+  referenced_security_group_id = aws_security_group.this.id
+  description                  = "Spring Boot Actuator metrics from the observability server"
+  from_port                    = 8081
+  ip_protocol                  = "tcp"
+  to_port                      = 8081
 }
 
 resource "aws_iam_role" "this" {
@@ -145,7 +173,7 @@ resource "aws_instance" "this" {
   instance_type               = var.instance_type
   key_name                    = var.key_name
   subnet_id                   = var.subnet_id
-  user_data                   = local.cloud_init_rendered
+  user_data_base64            = local.cloud_init_rendered_base64gzip
   user_data_replace_on_change = true
   vpc_security_group_ids      = [aws_security_group.this.id]
   volume_tags = merge(local.tags, {

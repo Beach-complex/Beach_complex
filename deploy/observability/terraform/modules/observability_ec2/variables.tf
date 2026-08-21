@@ -14,7 +14,12 @@ variable "env" {
 }
 
 variable "app_server_security_group_id" {
-  description = "Application server Security Group ID allowed to access SSH."
+  description = "Application server Security Group ID used for traffic between the application and observability servers."
+  type        = string
+}
+
+variable "app_server_private_ip" {
+  description = "Private IPv4 address of the application server scraped by Prometheus."
   type        = string
 }
 

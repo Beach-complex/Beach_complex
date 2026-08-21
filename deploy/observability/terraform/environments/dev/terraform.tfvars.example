@@ -1,5 +1,6 @@
 aws_region                   = "us-east-1"
 app_server_security_group_id = "sg-0123456789abcdef0"
+app_server_private_ip        = "10.0.1.200"
 
 instances = {
   node-01 = {

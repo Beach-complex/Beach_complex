@@ -20,6 +20,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  observability-iac-validation:
+    name: Observability IaC Validation
+    runs-on: ubuntu-latest
+    env:
+      AWS_EC2_METADATA_DISABLED: "true"
+      TF_IN_AUTOMATION: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+          terraform_wrapper: false
+
+      - name: Install cloud-init schema validator
+        run: sudo apt-get update && sudo apt-get install --yes cloud-init
+
+      - name: Validate observability IaC
+        run: bash deploy/observability/scripts/validate-iac.sh
+
   backend-build-test:
     name: Backend Build & Test (Unit + Integration)
     runs-on: ubuntu-latest

@@ -3,8 +3,6 @@ package_update: true
 package_upgrade: false
 
 packages:
-  - docker.io
-  - docker-compose-v2
   - e2fsprogs
   - python3-minimal
   - util-linux
@@ -28,6 +26,30 @@ write_files:
     encoding: b64
     content: ${mount_verifier_base64}
 
+  - path: /run/beach-observability/docker-compose.yml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${compose_base64gzip}
+
+  - path: /run/beach-observability/prometheus.yml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${prometheus_config_base64gzip}
+
+  - path: /run/beach-observability/tempo.yaml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${tempo_config_base64gzip}
+
+  - path: /run/beach-observability/grafana-datasources.yml
+    owner: root:root
+    permissions: "0644"
+    encoding: gzip+base64
+    content: ${grafana_datasources_base64gzip}
+
   - path: /etc/systemd/system/docker.service.d/observability-mount.conf
     owner: root:root
     permissions: "0644"
@@ -37,6 +59,28 @@ write_files:
 
       [Service]
       ExecStartPre=/usr/local/sbin/verify-observability-mount pre-docker
+
+  - path: /etc/systemd/system/beach-observability.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Beach observability Compose services
+      Requires=docker.service
+      After=docker.service
+      RequiresMountsFor=${mount_point}
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=${mount_point}/compose
+      ExecStartPre=/usr/local/sbin/verify-observability-mount healthy
+      ExecStart=/usr/bin/docker compose up -d
+      ExecStop=/usr/bin/docker compose down
+      TimeoutStartSec=0
+
+      [Install]
+      WantedBy=multi-user.target
 
   - path: /usr/local/sbin/bootstrap-beach-observability
     owner: root:root
@@ -63,6 +107,16 @@ write_files:
       fail() {
         log "ERROR: $*"
         exit 1
+      }
+
+      install_asset() {
+        local source_path="$1"
+        local destination_path="$2"
+        local temporary_path
+
+        temporary_path="$(mktemp "$${destination_path}.XXXXXX")"
+        install -m 0644 "$source_path" "$temporary_path"
+        mv -f "$temporary_path" "$destination_path"
       }
 
       discover_devices() {
@@ -132,7 +186,7 @@ write_files:
       install -d -m 0755 "$mount_point"
       fstab_candidate="$(mktemp /run/beach-observability-fstab.XXXXXX)"
       awk -v target="$mount_point" 'NF < 2 || $2 != target { print }' /etc/fstab > "$fstab_candidate"
-      printf 'UUID=%s %s ext4 defaults,nofail 0 2\n' "$filesystem_uuid" "$mount_point" >> "$fstab_candidate"
+      printf 'UUID=%s %s ext4 defaults,nofail,x-systemd.device-timeout=300s 0 2\n' "$filesystem_uuid" "$mount_point" >> "$fstab_candidate"
       findmnt --verify --tab-file "$fstab_candidate"
       install -m 0644 "$fstab_candidate" /etc/fstab
       rm -f "$fstab_candidate"
@@ -146,14 +200,37 @@ write_files:
       [[ "$mounted_uuid" == "$filesystem_uuid" ]] || fail "Mounted filesystem UUID does not match the expected EBS UUID"
 
       python3 -m json.tool /etc/docker/daemon.json >/dev/null
+      # Install Docker only after the EBS mount is verified so package auto-start passes the mount guard.
+      apt-get -o DPkg::Lock::Timeout=300 install --yes docker.io docker-compose-v2
       systemctl daemon-reload
-      systemctl enable docker
-      systemctl restart docker
+      systemctl enable --now docker
       systemctl is-enabled --quiet docker || fail "Docker service is not enabled"
       systemctl is-active --quiet docker || fail "Docker service is not active"
       docker version
       docker compose version
       /usr/local/sbin/verify-observability-mount healthy
+
+      readonly staging_directory="/run/beach-observability"
+      readonly compose_directory="$mount_point/compose"
+      readonly data_directory="$mount_point/data"
+
+      install -d -m 0755 \
+        "$compose_directory/prometheus" \
+        "$compose_directory/tempo" \
+        "$compose_directory/grafana/provisioning/datasources"
+      install -d -m 0755 -o 65534 -g 65534 "$data_directory/prometheus"
+      install -d -m 0755 -o 10001 -g 10001 "$data_directory/tempo"
+      install -d -m 0755 -o 472 -g 0 "$data_directory/grafana"
+
+      install_asset "$staging_directory/docker-compose.yml" "$compose_directory/docker-compose.yml"
+      install_asset "$staging_directory/prometheus.yml" "$compose_directory/prometheus/prometheus.yml"
+      install_asset "$staging_directory/tempo.yaml" "$compose_directory/tempo/tempo.yaml"
+      install_asset "$staging_directory/grafana-datasources.yml" "$compose_directory/grafana/provisioning/datasources/datasources.yml"
+
+      docker compose --project-directory "$compose_directory" config --quiet
+      systemctl daemon-reload
+      systemctl enable --now beach-observability.service
+      systemctl is-active --quiet beach-observability.service || fail "Observability service is not active"
 
       if id ubuntu >/dev/null 2>&1; then
         usermod -aG docker ubuntu
