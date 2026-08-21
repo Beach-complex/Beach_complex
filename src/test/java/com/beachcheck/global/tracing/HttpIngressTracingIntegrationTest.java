@@ -232,7 +232,7 @@ class HttpIngressTracingIntegrationTest {
 
     @GetMapping("/bad-request")
     void badRequest() {
-      throw new IllegalArgumentException("trace test bad request");
+      throw new IllegalArgumentException("Trace 테스트용 잘못된 요청입니다.");
     }
 
     @GetMapping("/failure")
