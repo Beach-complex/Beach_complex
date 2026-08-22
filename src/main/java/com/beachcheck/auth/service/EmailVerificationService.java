@@ -143,8 +143,8 @@ public class EmailVerificationService {
    *
    * <p>Contract(Output): 쿨다운 위반 시 IllegalStateException을 던진다.
    *
-   * <p>Note: 이 메서드는 {@link AsyncEmailService#sendVerificationEmailAsync}의 @Retryable 백오프와는 다른 목적을
-   * 가진다. enforceCooldown은 사용자 행동 제어(비즈니스 규칙), @Retryable은 SMTP 장애 복구(기술 계층)이다.
+   * <p>Note: 이 메서드는 {@link RetryingEmailDeliveryService}의 @Retryable 백오프와는 다른 목적을 가진다.
+   * enforceCooldown은 사용자 행동 제어(비즈니스 규칙), @Retryable은 SMTP 장애 복구(기술 계층)이다.
    */
   private void enforceCooldown(UUID userId) {
     tokenRepository

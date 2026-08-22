@@ -2,12 +2,12 @@ package com.beachcheck.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
 
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.MailSendException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("비동기 이메일 서비스 단위 테스트")
@@ -28,7 +27,7 @@ class AsyncEmailServiceTest {
   private static final String EXPIRATION_TEXT = "30분";
   private static final int EXPIRATION_MINUTES = 30;
 
-  @Mock private EmailSender emailSender;
+  @Mock private RetryingEmailDeliveryService emailDeliveryService;
   @Captor private ArgumentCaptor<String> fromCaptor;
   @Captor private ArgumentCaptor<String> toCaptor;
   @Captor private ArgumentCaptor<String> subjectCaptor;
@@ -41,9 +40,9 @@ class AsyncEmailServiceTest {
 
     service.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
 
-    then(emailSender)
+    then(emailDeliveryService)
         .should()
-        .send(
+        .sendVerificationEmail(
             fromCaptor.capture(),
             toCaptor.capture(),
             subjectCaptor.capture(),
@@ -56,29 +55,19 @@ class AsyncEmailServiceTest {
   }
 
   @Test
-  @DisplayName("전송 예외는 단위 테스트에서 그대로 전파")
-  void sendVerificationEmailAsync_mailSendException_propagates() {
+  @DisplayName("예상하지 못한 전송 예외는 호출자에게 그대로 전파")
+  void sendVerificationEmailAsync_unexpectedFailure_propagates() {
     AsyncEmailService service = newService();
-    doThrow(new MailSendException("smtp down"))
-        .when(emailSender)
-        .send(eq(FROM_EMAIL), eq(USER_EMAIL), eq(SUBJECT), anyString());
+    doThrow(new IllegalStateException("delivery failed"))
+        .when(emailDeliveryService)
+        .sendVerificationEmail(eq(FROM_EMAIL), eq(USER_EMAIL), eq(SUBJECT), anyString());
 
     assertThatThrownBy(() -> service.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK))
-        .isInstanceOf(MailSendException.class);
-  }
-
-  @Test
-  @DisplayName("recover 메서드는 예외 없이 종료")
-  void recoverFromEmailFailure_noThrow() {
-    AsyncEmailService service = newService();
-
-    assertDoesNotThrow(
-        () ->
-            service.recoverFromEmailFailure(
-                new MailSendException("final failure"), USER_EMAIL, VERIFICATION_LINK));
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("delivery failed");
   }
 
   private AsyncEmailService newService() {
-    return new AsyncEmailService(emailSender, FROM_EMAIL, EXPIRATION_MINUTES);
+    return new AsyncEmailService(emailDeliveryService, Tracer.NOOP, FROM_EMAIL, EXPIRATION_MINUTES);
   }
 }

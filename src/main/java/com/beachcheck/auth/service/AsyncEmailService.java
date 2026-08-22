@@ -1,12 +1,8 @@
 package com.beachcheck.auth.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailSendException;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -17,23 +13,26 @@ import org.springframework.stereotype.Service;
  *
  * <p>Contract(Input/Output): 이메일 발송 메서드를 제공한다.
  *
- * <p>Note: EmailVerificationService에서 분리한 이유는 @Async가 같은 클래스 내부 호출에서는 작동하지 않기 때문이다. Spring AOP 프록시를
- * 통해야 @Async/@Retryable이 작동하므로 별도 서비스로 분리했다.
+ * <p>Note: EmailVerificationService에서 분리한 이유는 @Async가 같은 클래스 내부 호출에서는 작동하지 않기 때문이다. 비동기 작업 span이
+ * SMTP 재시도 전체를 한 번만 감싸도록 재시도 경계는 {@link RetryingEmailDeliveryService}에 위임한다.
  */
 @Service
 public class AsyncEmailService {
 
-  private final Logger log = LoggerFactory.getLogger(AsyncEmailService.class);
+  private static final String EMAIL_OPERATION = "verification";
 
-  private final EmailSender emailSender;
+  private final RetryingEmailDeliveryService emailDeliveryService;
+  private final Tracer tracer;
   private final String fromAddress;
   private final long tokenExpirationMinutes;
 
   public AsyncEmailService(
-      EmailSender emailSender,
+      RetryingEmailDeliveryService emailDeliveryService,
+      Tracer tracer,
       @Value("${app.email-verification.from-address:}") String fromAddress,
       @Value("${app.email-verification.token-expiration-minutes:30}") long tokenExpirationMinutes) {
-    this.emailSender = emailSender;
+    this.emailDeliveryService = emailDeliveryService;
+    this.tracer = tracer;
     this.fromAddress = fromAddress;
     this.tokenExpirationMinutes = tokenExpirationMinutes;
   }
@@ -46,19 +45,12 @@ public class AsyncEmailService {
    *
    * <p>Contract(Input): to는 수신자 이메일 주소, verificationLink는 인증 링크 전체 URL이다.
    *
-   * <p>Contract(Output): 이메일 발송 성공 시 로그 기록. 3회 재시도 후 실패 시 {@link #recoverFromEmailFailure}가 호출된다.
+   * <p>Contract(Output): 이메일 작업 전체를 {@code email.verification.send} span 하나로 기록한다.
    *
    * @see org.springframework.scheduling.annotation.Async
-   * @see org.springframework.retry.annotation.Retryable
+   * @see RetryingEmailDeliveryService
    */
   @Async("emailTaskExecutor")
-  @Retryable(
-      retryFor = {MailSendException.class},
-      maxAttemptsExpression = "${app.email.retry.max-attempts:4}",
-      backoff =
-          @Backoff(
-              delayExpression = "${app.email.retry.delay-ms:5000}",
-              multiplierExpression = "${app.email.retry.multiplier:2}"))
   public void sendVerificationEmailAsync(String to, String verificationLink) {
 
     String subject = "이메일 인증";
@@ -72,15 +64,16 @@ public class AsyncEmailService {
         """
             .formatted(verificationLink, tokenExpirationMinutes);
 
-    log.info("[{}] 이메일 발송 시도 - to: {}", Thread.currentThread().getName(), to);
-    emailSender.send(fromAddress, to, subject, body);
-    log.info("[{}] 이메일 발송 성공 - to: {}", Thread.currentThread().getName(), to);
-  }
-
-  @Recover
-  public void recoverFromEmailFailure(MailSendException e, String to, String verificationLink) {
-    log.error("[{}] 이메일 발송 최종 실패 (3회 재시도 완료): to={}", Thread.currentThread().getName(), to, e);
-
-    // TODO: 향후 관리자 알림 또는 재발송 큐 추가 가능
+    Span emailSpan =
+        tracer
+            .nextSpan()
+            .name("email.verification.send")
+            .tag("email.operation", EMAIL_OPERATION)
+            .start();
+    try (Tracer.SpanInScope ignored = tracer.withSpan(emailSpan)) {
+      emailDeliveryService.sendVerificationEmail(fromAddress, to, subject, body);
+    } finally {
+      emailSpan.end();
+    }
   }
 }
