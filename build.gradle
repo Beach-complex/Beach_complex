@@ -35,6 +35,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
     implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    implementation platform('net.ttddyy.observation:datasource-micrometer-bom:1.4.1')
+    implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
+    implementation 'net.ttddyy.observation:datasource-micrometer-opentelemetry'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
