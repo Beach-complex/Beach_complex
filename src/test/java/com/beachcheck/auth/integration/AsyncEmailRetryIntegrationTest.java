@@ -2,7 +2,6 @@ package com.beachcheck.auth.integration;
 
 import static com.beachcheck.support.fixture.EmailVerificationTestFixtures.emailUser;
 import static com.beachcheck.support.fixture.UniqueTestFixtures.uniqueEmail;
-import static com.beachcheck.support.tracing.SpanTestSupport.awaitSpans;
 import static com.beachcheck.support.tracing.SpanTestSupport.flushSpans;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,7 +24,9 @@ import com.beachcheck.user.domain.User;
 import com.beachcheck.user.repository.UserRepository;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.net.URI;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -124,6 +126,13 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     // then
     assertRetriedSendCountTo(USER_EMAIL, retryMaxAttempts);
     assertRecoverNotCalled();
+    assertDeliverySpans(
+        awaitEmailSpans(FAIL_UNTIL_ATTEMPT + 1),
+        retryMaxAttempts,
+        "success",
+        "error",
+        "error",
+        "success");
   }
 
   @Test
@@ -140,7 +149,16 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertRecoverCalledOnceFor(USER_EMAIL, VERIFICATION_LINK);
     assertThat(output.getOut())
         .contains("이메일 발송 최종 실패")
-        .doesNotContain("이메일 발송 성공 - to: " + USER_EMAIL);
+        .doesNotContain(USER_EMAIL)
+        .doesNotContain(VERIFICATION_LINK)
+        .doesNotContain("이메일 인증");
+    assertDeliverySpans(
+        awaitEmailSpans(retryMaxAttempts),
+        retryMaxAttempts,
+        "retries_exhausted",
+        "error",
+        "error",
+        "error");
   }
 
   @Test
@@ -181,13 +199,13 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     }
 
     assertRetriedSendCountTo(user.getEmail(), 1);
-    List<SpanData> spans = awaitSpans(spanExporter, tracerProvider, 2);
+    List<SpanData> spans = awaitEmailSpans(1);
     SpanData parentSpan = onlySpanNamed(spans, "email.after-commit.parent");
     SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
 
     assertThat(workSpan.getTraceId()).isEqualTo(parentSpan.getTraceId());
     assertThat(workSpan.getParentSpanId()).isEqualTo(parentSpan.getSpanId());
-    assertThat(spans).noneMatch(span -> span.getName().equals("email.smtp.send"));
+    assertDeliverySpans(spans, 1, "success", "success");
   }
 
   @Test
@@ -214,12 +232,93 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertThat(response.statusCode()).isEqualTo(201);
     assertRetriedSendCountTo(email, 1);
 
-    List<SpanData> spans = awaitSpans(spanExporter, tracerProvider, 2);
+    List<SpanData> spans = awaitEmailSpans(1);
     SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
     SpanData serverSpan = httpServerAncestorOf(spans, workSpan);
 
     assertThat(workSpan.getTraceId()).isEqualTo(serverSpan.getTraceId());
-    assertThat(spans).noneMatch(span -> span.getName().equals("email.smtp.send"));
+    assertDeliverySpans(spans, 1, "success", "success");
+  }
+
+  private void assertDeliverySpans(
+      List<SpanData> spans, int expectedSmtpSpanCount, String workOutcome, String... smtpOutcomes) {
+    SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
+    List<SpanData> smtpSpans =
+        spans.stream()
+            .filter(span -> span.getName().equals("email.smtp.send"))
+            .sorted(
+                (left, right) ->
+                    Integer.compare(
+                        Integer.parseInt(attribute(left, "email.retry.attempt")),
+                        Integer.parseInt(attribute(right, "email.retry.attempt"))))
+            .toList();
+
+    assertThat(smtpSpans).hasSize(expectedSmtpSpanCount);
+    assertThat(attribute(workSpan, "email.operation")).isEqualTo("verification");
+    assertThat(attribute(workSpan, "email.delivery.outcome")).isEqualTo(workOutcome);
+    List<String> expectedAttempts =
+        IntStream.rangeClosed(1, expectedSmtpSpanCount).mapToObj(String::valueOf).toList();
+    assertThat(smtpSpans)
+        .extracting(span -> attribute(span, "email.retry.attempt"))
+        .containsExactlyElementsOf(expectedAttempts);
+    assertThat(smtpSpans)
+        .extracting(span -> attribute(span, "email.delivery.outcome"))
+        .containsExactly(smtpOutcomes);
+    assertThat(smtpSpans)
+        .allSatisfy(
+            span -> {
+              assertThat(span.getTraceId()).isEqualTo(workSpan.getTraceId());
+              assertThat(span.getParentSpanId()).isEqualTo(workSpan.getSpanId());
+              assertThat(attribute(span, "email.operation")).isEqualTo("verification");
+            });
+
+    List<SpanData> errorSpans =
+        smtpSpans.stream()
+            .filter(span -> attribute(span, "email.delivery.outcome").equals("error"))
+            .toList();
+    assertThat(errorSpans)
+        .allSatisfy(
+            span -> assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR));
+    assertNoSensitiveData(spans);
+  }
+
+  private void assertNoSensitiveData(List<SpanData> spans) {
+    String[] sensitiveValues = {USER_EMAIL, VERIFICATION_LINK, "이메일 인증", "request-id", "user-id"};
+    assertThat(spans)
+        .allSatisfy(
+            span -> {
+              String attributes = span.getAttributes().toString();
+              assertThat(span.getName()).doesNotContain(sensitiveValues);
+              assertThat(attributes).doesNotContain(sensitiveValues);
+              assertThat(span.getEvents())
+                  .allSatisfy(
+                      event -> {
+                        assertThat(event.getName()).doesNotContain(sensitiveValues);
+                        assertThat(event.getAttributes().toString())
+                            .doesNotContain(sensitiveValues);
+                      });
+            });
+  }
+
+  private List<SpanData> awaitEmailSpans(int expectedSmtpSpanCount) {
+    for (int attempt = 0; attempt < 100; attempt++) {
+      flushSpans(tracerProvider);
+      List<SpanData> spans = spanExporter.spans();
+      long smtpSpanCount =
+          spans.stream().filter(span -> span.getName().equals("email.smtp.send")).count();
+      boolean workSpanPresent =
+          spans.stream().anyMatch(span -> span.getName().equals("email.verification.send"));
+      if (workSpanPresent && smtpSpanCount >= expectedSmtpSpanCount) {
+        return spans;
+      }
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("이메일 Trace 대기가 중단되었습니다.", exception);
+      }
+    }
+    return spanExporter.spans();
   }
 
   private SpanData httpServerAncestorOf(List<SpanData> spans, SpanData descendant) {
@@ -323,6 +422,10 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     List<SpanData> matching = spans.stream().filter(span -> span.getName().equals(name)).toList();
     assertThat(matching).hasSize(1);
     return matching.getFirst();
+  }
+
+  private String attribute(SpanData span, String key) {
+    return span.getAttributes().get(AttributeKey.stringKey(key));
   }
 
   @TestConfiguration(proxyBeanMethods = false)

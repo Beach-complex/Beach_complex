@@ -17,6 +17,6 @@ public class NoopEmailSender implements EmailSender {
   @Override
   public void send(String from, String to, String subject, String body) {
 
-    log.warn("[NOOP] 이메일 전송 건너뜀 - to: {}, subject: {}", to, subject);
+    log.warn("[NOOP] 이메일 전송 건너뜀");
   }
 }

@@ -77,14 +77,20 @@ class AsyncEmailTracingIntegrationTest {
           }
 
           assertThat(emailSender.await()).isTrue();
-          List<SpanData> spans = awaitSpans(exporter, tracerProvider, 2);
+          List<SpanData> spans = awaitSpans(exporter, tracerProvider, 3);
           SpanData parentData = onlySpanNamed(spans, "http.parent.test");
           SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
+          SpanData smtpSpan = onlySpanNamed(spans, "email.smtp.send");
 
           assertThat(workSpan.getTraceId()).isEqualTo(parentData.getTraceId());
           assertThat(workSpan.getParentSpanId()).isEqualTo(parentData.getSpanId());
           assertThat(attribute(workSpan, "email.operation")).isEqualTo("verification");
-          assertThat(spans).noneMatch(span -> span.getName().equals("email.smtp.send"));
+          assertThat(attribute(workSpan, "email.delivery.outcome")).isEqualTo("success");
+          assertThat(smtpSpan.getTraceId()).isEqualTo(workSpan.getTraceId());
+          assertThat(smtpSpan.getParentSpanId()).isEqualTo(workSpan.getSpanId());
+          assertThat(attribute(smtpSpan, "email.operation")).isEqualTo("verification");
+          assertThat(attribute(smtpSpan, "email.retry.attempt")).isEqualTo("1");
+          assertThat(attribute(smtpSpan, "email.delivery.outcome")).isEqualTo("success");
         });
   }
 
@@ -102,10 +108,15 @@ class AsyncEmailTracingIntegrationTest {
           asyncEmailService.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
 
           assertThat(emailSender.await()).isTrue();
-          SpanData workSpan =
-              onlySpanNamed(awaitSpans(exporter, tracerProvider, 1), "email.verification.send");
+          List<SpanData> spans = awaitSpans(exporter, tracerProvider, 2);
+          SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
+          SpanData smtpSpan = onlySpanNamed(spans, "email.smtp.send");
 
           assertThat(workSpan.getParentSpanContext().isValid()).isFalse();
+          assertThat(attribute(workSpan, "email.delivery.outcome")).isEqualTo("success");
+          assertThat(smtpSpan.getParentSpanId()).isEqualTo(workSpan.getSpanId());
+          assertThat(attribute(smtpSpan, "email.retry.attempt")).isEqualTo("1");
+          assertThat(attribute(smtpSpan, "email.delivery.outcome")).isEqualTo("success");
         });
   }
 
@@ -253,8 +264,9 @@ class AsyncEmailTracingIntegrationTest {
     }
 
     @Bean
-    RetryingEmailDeliveryService retryingEmailDeliveryService(EmailSender emailSender) {
-      return new RetryingEmailDeliveryService(emailSender);
+    RetryingEmailDeliveryService retryingEmailDeliveryService(
+        EmailSender emailSender, Tracer tracer) {
+      return new RetryingEmailDeliveryService(emailSender, tracer);
     }
 
     @Bean

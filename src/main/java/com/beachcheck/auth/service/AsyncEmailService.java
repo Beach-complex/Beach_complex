@@ -71,7 +71,9 @@ public class AsyncEmailService {
             .tag("email.operation", EMAIL_OPERATION)
             .start();
     try (Tracer.SpanInScope ignored = tracer.withSpan(emailSpan)) {
-      emailDeliveryService.sendVerificationEmail(fromAddress, to, subject, body);
+      RetryingEmailDeliveryService.DeliveryOutcome outcome =
+          emailDeliveryService.sendVerificationEmail(fromAddress, to, subject, body);
+      emailSpan.tag("email.delivery.outcome", outcome.value());
     } finally {
       emailSpan.end();
     }
