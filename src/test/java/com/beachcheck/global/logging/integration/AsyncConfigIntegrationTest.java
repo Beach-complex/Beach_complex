@@ -3,6 +3,7 @@ package com.beachcheck.global.logging.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beachcheck.global.config.AsyncConfig;
+import io.micrometer.tracing.Tracer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -92,6 +93,11 @@ class AsyncConfigIntegrationTest {
 
   @TestConfiguration
   static class TestAsyncBeanConfig {
+
+    @Bean
+    Tracer tracer() {
+      return Tracer.NOOP;
+    }
 
     @Bean
     AsyncProbe asyncProbe() {

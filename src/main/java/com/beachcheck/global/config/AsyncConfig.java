@@ -1,6 +1,7 @@
 package com.beachcheck.global.config;
 
 import com.beachcheck.global.logging.MdcTaskDecorator;
+import io.micrometer.tracing.Tracer;
 import java.util.concurrent.Executor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,13 +32,13 @@ public class AsyncConfig {
    * @return 비동기 작업용 Executor
    */
   @Bean(name = "emailTaskExecutor")
-  public Executor emailTaskExecutor() {
+  public Executor emailTaskExecutor(Tracer tracer) {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setCorePoolSize(3);
     executor.setMaxPoolSize(6);
     executor.setQueueCapacity(50);
     executor.setThreadNamePrefix("email-");
-    executor.setTaskDecorator(new MdcTaskDecorator());
+    executor.setTaskDecorator(new MdcTaskDecorator(tracer));
     executor.initialize();
     return executor;
   }

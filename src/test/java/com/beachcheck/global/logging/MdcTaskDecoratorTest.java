@@ -3,6 +3,7 @@ package com.beachcheck.global.logging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import io.micrometer.tracing.Tracer;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,7 @@ class MdcTaskDecoratorTest {
   private static final String TRACE_ID = "traceId";
   private static final String SPAN_ID = "spanId";
 
-  private final MdcTaskDecorator decorator = new MdcTaskDecorator();
+  private final MdcTaskDecorator decorator = new MdcTaskDecorator(Tracer.NOOP);
 
   @AfterEach
   void clearMdc() {
