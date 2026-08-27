@@ -9,12 +9,14 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.beachcheck.global.tracing.QuerylessClientRequestObservationConvention;
+import com.beachcheck.global.tracing.ServerErrorClientRequestObservationHandler;
 import com.beachcheck.global.tracing.W3cTracePropagationConfig;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.List;
@@ -148,6 +150,7 @@ class CongestionClientTracingIntegrationTest {
               .isEqualTo("500");
           assertThat(clientSpan.getAttributes().get(AttributeKey.stringKey("outcome")))
               .isEqualTo("SERVER_ERROR");
+          assertThat(clientSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
           assertThat(clientSpan.getParentSpanId()).isEqualTo(parent.context().spanId());
           fixture.server().verify();
         });
@@ -174,7 +177,11 @@ class CongestionClientTracingIntegrationTest {
         FlywayAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class
       })
-  @Import({W3cTracePropagationConfig.class, QuerylessClientRequestObservationConvention.class})
+  @Import({
+    W3cTracePropagationConfig.class,
+    QuerylessClientRequestObservationConvention.class,
+    ServerErrorClientRequestObservationHandler.class
+  })
   static class TraceTestConfiguration {
 
     @Bean
