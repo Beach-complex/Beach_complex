@@ -93,8 +93,8 @@ class JdbcTracingIntegrationTest extends IntegrationTest {
 
     SpanData databaseSpan = onlyDatabaseClientSpan(awaitSpans(exporter, tracerProvider, 2));
     assertThat(databaseSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-    assertThat(databaseSpan.getAttributes().asMap().values().toString())
-        .doesNotContain(sensitiveValue);
+    assertThat(databaseSpan.getStatus().getDescription()).isEqualTo("JDBC query failed");
+    assertSpanDoesNotContain(databaseSpan, sensitiveValue);
   }
 
   private SpanData onlyDatabaseClientSpan(List<SpanData> spans) {
@@ -108,5 +108,19 @@ class JdbcTracingIntegrationTest extends IntegrationTest {
             .toList();
     assertThat(databaseSpans).hasSize(1);
     return databaseSpans.getFirst();
+  }
+
+  private void assertSpanDoesNotContain(SpanData span, String forbiddenValue) {
+    assertThat(span.getName()).doesNotContain(forbiddenValue);
+    assertThat(span.getStatus().getDescription()).doesNotContain(forbiddenValue);
+    assertThat(span.getAttributes().asMap().values().toString()).doesNotContain(forbiddenValue);
+    assertThat(span.getEvents())
+        .allSatisfy(
+            event -> {
+              assertThat(event.getName()).doesNotContain(forbiddenValue);
+              assertThat(event.getAttributes().asMap().values().toString())
+                  .doesNotContain(forbiddenValue);
+            });
+    assertThat(span.toString()).doesNotContain(forbiddenValue);
   }
 }

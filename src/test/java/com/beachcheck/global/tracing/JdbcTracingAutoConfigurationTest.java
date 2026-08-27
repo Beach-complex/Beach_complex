@@ -8,6 +8,7 @@ import javax.sql.DataSource;
 import net.ttddyy.observation.boot.autoconfigure.JdbcProperties;
 import net.ttddyy.observation.boot.autoconfigure.JdbcProperties.TraceType;
 import net.ttddyy.observation.boot.autoconfigure.opentelemetry.JdbcOpenTelemetryProperties;
+import net.ttddyy.observation.tracing.QueryTracingObservationHandler;
 import net.ttddyy.observation.tracing.opentelemetry.OpenTelemetryMeterObservationHandler;
 import net.ttddyy.observation.tracing.opentelemetry.OpenTelemetryQueryObservationConvention;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,11 @@ class JdbcTracingAutoConfigurationTest extends IntegrationTest {
     assertThat(analysis.getSanitize().isEnabled()).isTrue();
     assertThat(analysis.getSummary().isEnabled()).isTrue();
     assertThat(context.getBeansOfType(OpenTelemetryQueryObservationConvention.class)).hasSize(1);
+    assertThat(context.getBeansOfType(QueryTracingObservationHandler.class))
+        .hasSize(1)
+        .allSatisfy(
+            (name, handler) ->
+                assertThat(handler).isInstanceOf(SanitizingQueryTracingObservationHandler.class));
     assertThat(context.getBeansOfType(OpenTelemetryMeterObservationHandler.class)).isEmpty();
   }
 }
