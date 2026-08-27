@@ -93,7 +93,7 @@ class JdbcTracingIntegrationTest extends IntegrationTest {
 
     SpanData databaseSpan = onlyDatabaseClientSpan(awaitSpans(exporter, tracerProvider, 2));
     assertThat(databaseSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-    assertThat(databaseSpan.getStatus().getDescription()).isEqualTo("JDBC query failed");
+    assertThat(databaseSpan.getStatus().getDescription()).isEqualTo("JDBC 쿼리 실행 실패");
     assertSpanDoesNotContain(databaseSpan, sensitiveValue);
   }
 

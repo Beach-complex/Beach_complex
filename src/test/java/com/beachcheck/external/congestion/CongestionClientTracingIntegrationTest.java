@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.beachcheck.global.tracing.QuerylessClientRequestObservationConvention;
 import com.beachcheck.global.tracing.W3cTracePropagationConfig;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import io.micrometer.tracing.Span;
@@ -72,11 +73,11 @@ class CongestionClientTracingIntegrationTest {
               .andRespond(
                   withSuccess(
                       """
-                      {
-                        "beach_id": "GYEONGPO",
-                        "beach_name": "Gyeongpo Beach"
-                      }
-                      """,
+                                                    {
+                                                      "beach_id": "GYEONGPO",
+                                                      "beach_name": "Gyeongpo Beach"
+                                                    }
+                                                    """,
                       MediaType.APPLICATION_JSON));
           Span parent = tracer.nextSpan().name("congestion.parent.test").start();
 
@@ -98,13 +99,19 @@ class CongestionClientTracingIntegrationTest {
           assertThat(traceparent.get().split("-"))
               .containsExactly("00", clientSpan.getTraceId(), clientSpan.getSpanId(), "01");
           assertThat(signedHeaders(authorization.get())).contains("traceparent");
-          String attributeValues = clientSpan.getAttributes().asMap().values().toString();
-          assertThat(attributeValues)
-              .doesNotContain(BEACH_CODE)
-              .doesNotContain(authorization.get())
-              .doesNotContain("test-access-key")
-              .doesNotContain("test-secret-key")
-              .doesNotContain("Signature=");
+          assertThat(clientSpan.getAttributes().get(AttributeKey.stringKey("http.url")))
+              .isEqualTo(BASE_URL + "/congestion/current");
+          assertThat(clientSpan.getAttributes().asMap().values())
+              .map(Object::toString)
+              .allSatisfy(
+                  value ->
+                      assertThat(value)
+                          .doesNotContain(
+                              BEACH_CODE,
+                              authorization.get(),
+                              "test-access-key",
+                              "test-secret-key",
+                              "Signature="));
           fixture.server().verify();
         });
   }
@@ -167,7 +174,7 @@ class CongestionClientTracingIntegrationTest {
         FlywayAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class
       })
-  @Import(W3cTracePropagationConfig.class)
+  @Import({W3cTracePropagationConfig.class, QuerylessClientRequestObservationConvention.class})
   static class TraceTestConfiguration {
 
     @Bean
