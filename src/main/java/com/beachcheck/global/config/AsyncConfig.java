@@ -3,14 +3,20 @@ package com.beachcheck.global.config;
 import com.beachcheck.global.logging.MdcTaskDecorator;
 import io.micrometer.tracing.Tracer;
 import java.util.concurrent.Executor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 @EnableAsync
-public class AsyncConfig {
+public class AsyncConfig implements AsyncConfigurer {
+
+  private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);
 
   /**
    * 비동기 작업용 Thread Pool 설정
@@ -41,6 +47,23 @@ public class AsyncConfig {
     executor.setTaskDecorator(new MdcTaskDecorator(tracer));
     executor.initialize();
     return executor;
+  }
+
+  @Override
+  public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+    return (exception, method, ignoredParameters) ->
+        log.error(
+            "비동기 작업 처리 실패 - method={}, errorType={}", method.getName(), rootErrorType(exception));
+  }
+
+  private String rootErrorType(Throwable exception) {
+    Throwable current = exception;
+    for (int depth = 0;
+        depth < 16 && current.getCause() != null && current.getCause() != current;
+        depth++) {
+      current = current.getCause();
+    }
+    return current.getClass().getName();
   }
 
   // TODO: 성능 테스트 후 가상 스레드 사용 검토

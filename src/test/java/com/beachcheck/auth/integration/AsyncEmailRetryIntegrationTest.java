@@ -55,6 +55,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailSendException;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -162,8 +163,31 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  @DisplayName("TC4-03: 비재시도 메일 예외도 원문 민감정보 없이 안전하게 기록한다")
+  void sendVerificationEmailAsync_nonRetryableFailure_doesNotLeakSensitiveLog(
+      CapturedOutput output) {
+    String sensitiveExceptionMessage =
+        "recipient=" + USER_EMAIL + ", verificationLink=" + VERIFICATION_LINK;
+    doThrow(new MailAuthenticationException(sensitiveExceptionMessage))
+        .when(emailSender)
+        .send(anyString(), anyString(), anyString(), anyString());
+
+    asyncEmailService.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
+
+    assertRetriedSendCountTo(USER_EMAIL, 1);
+    assertRecoverNotCalled();
+    assertThat(output.getOut())
+        .contains("비동기 작업 처리 실패")
+        .contains("errorType=" + MailAuthenticationException.class.getName())
+        .doesNotContain(sensitiveExceptionMessage)
+        .doesNotContain(USER_EMAIL)
+        .doesNotContain(VERIFICATION_LINK);
+    assertNonRetryableFailureSpan(awaitEmailSpans(1));
+  }
+
+  @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  @DisplayName("TC4-03: AFTER_COMMIT 이벤트 리스너 경로에서도 재시도 후 성공한다")
+  @DisplayName("TC4-04: AFTER_COMMIT 이벤트 리스너 경로에서도 재시도 후 성공한다")
   void sendVerification_viaEventListener_retryThenSuccess() {
     // given
     User user = saveUser();
@@ -183,7 +207,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  @DisplayName("TC4-04: AFTER_COMMIT 부모 Trace가 비동기 이메일 작업 span으로 이어진다")
+  @DisplayName("TC4-05: AFTER_COMMIT 부모 Trace가 비동기 이메일 작업 span으로 이어진다")
   void sendVerification_afterCommit_continuesTraceIntoAsyncEmail() {
     User user = saveUser();
     Span parent = tracer.nextSpan().name("email.after-commit.parent").start();
@@ -210,7 +234,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  @DisplayName("TC4-05: 실제 회원가입 HTTP Trace가 AFTER_COMMIT 비동기 이메일 span으로 이어진다")
+  @DisplayName("TC4-06: 실제 회원가입 HTTP Trace가 AFTER_COMMIT 비동기 이메일 span으로 이어진다")
   void signUpHttpRequest_afterCommit_continuesTraceIntoAsyncEmail() throws Exception {
     String email = uniqueEmail("trace-http-signup");
     String requestBody =
@@ -279,6 +303,18 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertThat(errorSpans)
         .allSatisfy(
             span -> assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR));
+    assertNoSensitiveData(spans);
+  }
+
+  private void assertNonRetryableFailureSpan(List<SpanData> spans) {
+    SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
+    SpanData smtpSpan = onlySpanNamed(spans, "email.smtp.send");
+
+    assertThat(smtpSpan.getTraceId()).isEqualTo(workSpan.getTraceId());
+    assertThat(smtpSpan.getParentSpanId()).isEqualTo(workSpan.getSpanId());
+    assertThat(attribute(smtpSpan, "email.retry.attempt")).isEqualTo("1");
+    assertThat(attribute(smtpSpan, "email.delivery.outcome")).isEqualTo("error");
+    assertThat(smtpSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
     assertNoSensitiveData(spans);
   }
 
