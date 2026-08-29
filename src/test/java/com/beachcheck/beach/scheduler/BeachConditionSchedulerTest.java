@@ -13,6 +13,7 @@ import com.beachcheck.beach.repository.BeachConditionRepository;
 import com.beachcheck.beach.repository.BeachRepository;
 import com.beachcheck.external.congestion.CongestionClient;
 import com.beachcheck.external.congestion.CongestionCurrentResponse;
+import io.micrometer.tracing.Tracer;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -428,7 +429,12 @@ class BeachConditionSchedulerTest {
 
   private BeachConditionScheduler schedulerWithMode(String mode) {
     return new BeachConditionScheduler(
-        beachRepository, beachConditionRepository, congestionClient, FIXED_CLOCK, mode);
+        beachRepository,
+        beachConditionRepository,
+        congestionClient,
+        FIXED_CLOCK,
+        Tracer.NOOP,
+        mode);
   }
 
   private Beach beach(String code, String status, double longitude, double latitude) {
