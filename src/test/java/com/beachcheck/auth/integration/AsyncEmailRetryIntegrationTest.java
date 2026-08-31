@@ -18,6 +18,7 @@ import com.beachcheck.auth.service.AsyncEmailService;
 import com.beachcheck.auth.service.EmailSender;
 import com.beachcheck.auth.service.EmailVerificationService;
 import com.beachcheck.auth.service.RetryingEmailDeliveryService;
+import com.beachcheck.global.util.HashUtils;
 import com.beachcheck.support.base.IntegrationTest;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import com.beachcheck.user.domain.User;
@@ -117,7 +118,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName("TC4-01: 메일 전송이 일시 실패하면 재시도 후 성공한다")
-  void sendVerificationEmailAsync_retryThenSuccess() {
+  void sendVerificationEmailAsync_retryThenSuccess(CapturedOutput output) {
     // given
     givenEmailSenderFailsThenSucceeds();
 
@@ -134,6 +135,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
         "error",
         "error",
         "success");
+    assertRecipientLogSafe(output, USER_EMAIL);
   }
 
   @Test
@@ -149,10 +151,8 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertRetriedSendCountTo(USER_EMAIL, retryMaxAttempts);
     assertRecoverCalledOnceFor(USER_EMAIL, VERIFICATION_LINK);
     assertThat(output.getOut())
-        .contains("이메일 발송 최종 실패")
-        .doesNotContain(USER_EMAIL)
-        .doesNotContain(VERIFICATION_LINK)
-        .doesNotContain("이메일 인증");
+        .contains("이메일 발송 최종 실패 (재시도 한도 소진) - recipientHash=" + HashUtils.sha256Hex(USER_EMAIL));
+    assertRecipientLogSafe(output, USER_EMAIL);
     assertDeliverySpans(
         awaitEmailSpans(retryMaxAttempts),
         retryMaxAttempts,
@@ -179,9 +179,8 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertThat(output.getOut())
         .contains("비동기 작업 처리 실패")
         .contains("errorType=" + MailAuthenticationException.class.getName())
-        .doesNotContain(sensitiveExceptionMessage)
-        .doesNotContain(USER_EMAIL)
-        .doesNotContain(VERIFICATION_LINK);
+        .doesNotContain(sensitiveExceptionMessage);
+    assertRecipientLogSafe(output, USER_EMAIL);
     assertNonRetryableFailureSpan(awaitEmailSpans(1));
   }
 
@@ -235,7 +234,8 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   @DisplayName("TC4-06: 실제 회원가입 HTTP Trace가 AFTER_COMMIT 비동기 이메일 span으로 이어진다")
-  void signUpHttpRequest_afterCommit_continuesTraceIntoAsyncEmail() throws Exception {
+  void signUpHttpRequest_afterCommit_continuesTraceIntoAsyncEmail(CapturedOutput output)
+      throws Exception {
     String email = uniqueEmail("trace-http-signup");
     String requestBody =
         """
@@ -262,6 +262,16 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
     assertThat(workSpan.getTraceId()).isEqualTo(serverSpan.getTraceId());
     assertDeliverySpans(spans, 1, "success", "success");
+    assertRecipientLogSafe(output, email);
+  }
+
+  private void assertRecipientLogSafe(CapturedOutput output, String recipientEmail) {
+    assertThat(output.getOut())
+        .contains("recipientHash=" + HashUtils.sha256Hex(recipientEmail))
+        .doesNotContain(recipientEmail)
+        .doesNotContain(VERIFICATION_LINK)
+        .doesNotContain("?token=")
+        .doesNotContain("이메일 인증");
   }
 
   private void assertDeliverySpans(

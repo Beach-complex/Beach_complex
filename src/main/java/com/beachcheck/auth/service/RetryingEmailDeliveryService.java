@@ -1,5 +1,6 @@
 package com.beachcheck.auth.service;
 
+import com.beachcheck.global.util.HashUtils;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import org.slf4j.Logger;
@@ -39,6 +40,7 @@ public class RetryingEmailDeliveryService {
   public DeliveryOutcome sendVerificationEmail(
       String from, String to, String subject, String body) {
     int attempt = currentAttempt();
+    String recipientHash = HashUtils.sha256Hex(to);
     Span smtpSpan =
         tracer
             .nextSpan()
@@ -48,10 +50,12 @@ public class RetryingEmailDeliveryService {
             .start();
 
     try (Tracer.SpanInScope ignored = tracer.withSpan(smtpSpan)) {
-      log.info("[{}] 이메일 발송 시도", Thread.currentThread().getName());
+      log.info(
+          "[{}] 이메일 발송 시도 - recipientHash={}", Thread.currentThread().getName(), recipientHash);
       emailSender.send(from, to, subject, body);
       smtpSpan.tag("email.delivery.outcome", DeliveryOutcome.SUCCESS.value());
-      log.info("[{}] 이메일 발송 성공", Thread.currentThread().getName());
+      log.info(
+          "[{}] 이메일 발송 성공 - recipientHash={}", Thread.currentThread().getName(), recipientHash);
       return DeliveryOutcome.SUCCESS;
     } catch (RuntimeException exception) {
       smtpSpan.tag("email.delivery.outcome", "error");
@@ -67,7 +71,10 @@ public class RetryingEmailDeliveryService {
   @Recover
   public DeliveryOutcome recoverFromEmailFailure(
       MailSendException exception, String from, String to, String subject, String body) {
-    log.error("[{}] 이메일 발송 최종 실패 (재시도 한도 소진)", Thread.currentThread().getName());
+    log.error(
+        "[{}] 이메일 발송 최종 실패 (재시도 한도 소진) - recipientHash={}",
+        Thread.currentThread().getName(),
+        HashUtils.sha256Hex(to));
 
     // TODO: 향후 관리자 알림 또는 재발송 큐 추가 가능
     return DeliveryOutcome.RETRIES_EXHAUSTED;
