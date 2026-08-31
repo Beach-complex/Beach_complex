@@ -93,6 +93,24 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+jdbc:
+  includes: QUERY
+  datasource-proxy:
+    include-parameter-values: false
+    query:
+      enable-logging: false
+  opentelemetry:
+    enabled: true
+    spans:
+      enabled: true
+    metrics:
+      enabled: false
+    analysis:
+      sanitize:
+        enabled: true
+      summary:
+        enabled: true
+
 app:
   cache:
     ttl-minutes: 30
