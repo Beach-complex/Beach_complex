@@ -75,7 +75,8 @@ app:
 logging:
   level:
     org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # 바인딩 파라미터 출력
+    org.hibernate.orm.jdbc.bind: OFF
+    org.hibernate.type.descriptor.sql.BasicBinder: OFF
     org.testcontainers: INFO
     com.github.dockerjava: WARN
     com.beachcheck: DEBUG

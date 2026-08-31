@@ -2,7 +2,6 @@ package com.beachcheck.auth.integration;
 
 import static com.beachcheck.support.fixture.EmailVerificationTestFixtures.emailUser;
 import static com.beachcheck.support.fixture.UniqueTestFixtures.uniqueEmail;
-import static com.beachcheck.support.tracing.SpanTestSupport.awaitSpans;
 import static com.beachcheck.support.tracing.SpanTestSupport.flushSpans;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,13 +18,16 @@ import com.beachcheck.auth.service.AsyncEmailService;
 import com.beachcheck.auth.service.EmailSender;
 import com.beachcheck.auth.service.EmailVerificationService;
 import com.beachcheck.auth.service.RetryingEmailDeliveryService;
+import com.beachcheck.global.util.HashUtils;
 import com.beachcheck.support.base.IntegrationTest;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import com.beachcheck.user.domain.User;
 import com.beachcheck.user.repository.UserRepository;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.net.URI;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +56,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailSendException;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -114,7 +118,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName("TC4-01: 메일 전송이 일시 실패하면 재시도 후 성공한다")
-  void sendVerificationEmailAsync_retryThenSuccess() {
+  void sendVerificationEmailAsync_retryThenSuccess(CapturedOutput output) {
     // given
     givenEmailSenderFailsThenSucceeds();
 
@@ -124,6 +128,14 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     // then
     assertRetriedSendCountTo(USER_EMAIL, retryMaxAttempts);
     assertRecoverNotCalled();
+    assertDeliverySpans(
+        awaitEmailSpans(FAIL_UNTIL_ATTEMPT + 1),
+        retryMaxAttempts,
+        "success",
+        "error",
+        "error",
+        "success");
+    assertRecipientLogSafe(output, USER_EMAIL);
   }
 
   @Test
@@ -139,13 +151,42 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertRetriedSendCountTo(USER_EMAIL, retryMaxAttempts);
     assertRecoverCalledOnceFor(USER_EMAIL, VERIFICATION_LINK);
     assertThat(output.getOut())
-        .contains("이메일 발송 최종 실패")
-        .doesNotContain("이메일 발송 성공 - to: " + USER_EMAIL);
+        .contains("이메일 발송 최종 실패 (재시도 한도 소진) - recipientHash=" + HashUtils.sha256Hex(USER_EMAIL));
+    assertRecipientLogSafe(output, USER_EMAIL);
+    assertDeliverySpans(
+        awaitEmailSpans(retryMaxAttempts),
+        retryMaxAttempts,
+        "retries_exhausted",
+        "error",
+        "error",
+        "error");
+  }
+
+  @Test
+  @DisplayName("TC4-03: 비재시도 메일 예외도 원문 민감정보 없이 안전하게 기록한다")
+  void sendVerificationEmailAsync_nonRetryableFailure_doesNotLeakSensitiveLog(
+      CapturedOutput output) {
+    String sensitiveExceptionMessage =
+        "recipient=" + USER_EMAIL + ", verificationLink=" + VERIFICATION_LINK;
+    doThrow(new MailAuthenticationException(sensitiveExceptionMessage))
+        .when(emailSender)
+        .send(anyString(), anyString(), anyString(), anyString());
+
+    asyncEmailService.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
+
+    assertRetriedSendCountTo(USER_EMAIL, 1);
+    assertRecoverNotCalled();
+    assertThat(output.getOut())
+        .contains("비동기 작업 처리 실패")
+        .contains("errorType=" + MailAuthenticationException.class.getName())
+        .doesNotContain(sensitiveExceptionMessage);
+    assertRecipientLogSafe(output, USER_EMAIL);
+    assertNonRetryableFailureSpan(awaitEmailSpans(1));
   }
 
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  @DisplayName("TC4-03: AFTER_COMMIT 이벤트 리스너 경로에서도 재시도 후 성공한다")
+  @DisplayName("TC4-04: AFTER_COMMIT 이벤트 리스너 경로에서도 재시도 후 성공한다")
   void sendVerification_viaEventListener_retryThenSuccess() {
     // given
     User user = saveUser();
@@ -165,7 +206,7 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
 
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  @DisplayName("TC4-04: AFTER_COMMIT 부모 Trace가 비동기 이메일 작업 span으로 이어진다")
+  @DisplayName("TC4-05: AFTER_COMMIT 부모 Trace가 비동기 이메일 작업 span으로 이어진다")
   void sendVerification_afterCommit_continuesTraceIntoAsyncEmail() {
     User user = saveUser();
     Span parent = tracer.nextSpan().name("email.after-commit.parent").start();
@@ -181,19 +222,20 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     }
 
     assertRetriedSendCountTo(user.getEmail(), 1);
-    List<SpanData> spans = awaitSpans(spanExporter, tracerProvider, 2);
+    List<SpanData> spans = awaitEmailSpans(1);
     SpanData parentSpan = onlySpanNamed(spans, "email.after-commit.parent");
     SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
 
     assertThat(workSpan.getTraceId()).isEqualTo(parentSpan.getTraceId());
     assertThat(workSpan.getParentSpanId()).isEqualTo(parentSpan.getSpanId());
-    assertThat(spans).noneMatch(span -> span.getName().equals("email.smtp.send"));
+    assertDeliverySpans(spans, 1, "success", "success");
   }
 
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  @DisplayName("TC4-05: 실제 회원가입 HTTP Trace가 AFTER_COMMIT 비동기 이메일 span으로 이어진다")
-  void signUpHttpRequest_afterCommit_continuesTraceIntoAsyncEmail() throws Exception {
+  @DisplayName("TC4-06: 실제 회원가입 HTTP Trace가 AFTER_COMMIT 비동기 이메일 span으로 이어진다")
+  void signUpHttpRequest_afterCommit_continuesTraceIntoAsyncEmail(CapturedOutput output)
+      throws Exception {
     String email = uniqueEmail("trace-http-signup");
     String requestBody =
         """
@@ -214,12 +256,115 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     assertThat(response.statusCode()).isEqualTo(201);
     assertRetriedSendCountTo(email, 1);
 
-    List<SpanData> spans = awaitSpans(spanExporter, tracerProvider, 2);
+    List<SpanData> spans = awaitEmailSpans(1);
     SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
     SpanData serverSpan = httpServerAncestorOf(spans, workSpan);
 
     assertThat(workSpan.getTraceId()).isEqualTo(serverSpan.getTraceId());
-    assertThat(spans).noneMatch(span -> span.getName().equals("email.smtp.send"));
+    assertDeliverySpans(spans, 1, "success", "success");
+    assertRecipientLogSafe(output, email);
+  }
+
+  private void assertRecipientLogSafe(CapturedOutput output, String recipientEmail) {
+    assertThat(output.getOut())
+        .contains("recipientHash=" + HashUtils.sha256Hex(recipientEmail))
+        .doesNotContain(recipientEmail)
+        .doesNotContain(VERIFICATION_LINK)
+        .doesNotContain("?token=")
+        .doesNotContain("이메일 인증");
+  }
+
+  private void assertDeliverySpans(
+      List<SpanData> spans, int expectedSmtpSpanCount, String workOutcome, String... smtpOutcomes) {
+    SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
+    List<SpanData> smtpSpans =
+        spans.stream()
+            .filter(span -> span.getName().equals("email.smtp.send"))
+            .sorted(
+                (left, right) ->
+                    Integer.compare(
+                        Integer.parseInt(attribute(left, "email.retry.attempt")),
+                        Integer.parseInt(attribute(right, "email.retry.attempt"))))
+            .toList();
+
+    assertThat(smtpSpans).hasSize(expectedSmtpSpanCount);
+    assertThat(attribute(workSpan, "email.operation")).isEqualTo("verification");
+    assertThat(attribute(workSpan, "email.delivery.outcome")).isEqualTo(workOutcome);
+    List<String> expectedAttempts =
+        IntStream.rangeClosed(1, expectedSmtpSpanCount).mapToObj(String::valueOf).toList();
+    assertThat(smtpSpans)
+        .extracting(span -> attribute(span, "email.retry.attempt"))
+        .containsExactlyElementsOf(expectedAttempts);
+    assertThat(smtpSpans)
+        .extracting(span -> attribute(span, "email.delivery.outcome"))
+        .containsExactly(smtpOutcomes);
+    assertThat(smtpSpans)
+        .allSatisfy(
+            span -> {
+              assertThat(span.getTraceId()).isEqualTo(workSpan.getTraceId());
+              assertThat(span.getParentSpanId()).isEqualTo(workSpan.getSpanId());
+              assertThat(attribute(span, "email.operation")).isEqualTo("verification");
+            });
+
+    List<SpanData> errorSpans =
+        smtpSpans.stream()
+            .filter(span -> attribute(span, "email.delivery.outcome").equals("error"))
+            .toList();
+    assertThat(errorSpans)
+        .allSatisfy(
+            span -> assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR));
+    assertNoSensitiveData(spans);
+  }
+
+  private void assertNonRetryableFailureSpan(List<SpanData> spans) {
+    SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
+    SpanData smtpSpan = onlySpanNamed(spans, "email.smtp.send");
+
+    assertThat(smtpSpan.getTraceId()).isEqualTo(workSpan.getTraceId());
+    assertThat(smtpSpan.getParentSpanId()).isEqualTo(workSpan.getSpanId());
+    assertThat(attribute(smtpSpan, "email.retry.attempt")).isEqualTo("1");
+    assertThat(attribute(smtpSpan, "email.delivery.outcome")).isEqualTo("error");
+    assertThat(smtpSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+    assertNoSensitiveData(spans);
+  }
+
+  private void assertNoSensitiveData(List<SpanData> spans) {
+    String[] sensitiveValues = {USER_EMAIL, VERIFICATION_LINK, "이메일 인증", "request-id", "user-id"};
+    assertThat(spans)
+        .allSatisfy(
+            span -> {
+              String attributes = span.getAttributes().toString();
+              assertThat(span.getName()).doesNotContain(sensitiveValues);
+              assertThat(attributes).doesNotContain(sensitiveValues);
+              assertThat(span.getEvents())
+                  .allSatisfy(
+                      event -> {
+                        assertThat(event.getName()).doesNotContain(sensitiveValues);
+                        assertThat(event.getAttributes().toString())
+                            .doesNotContain(sensitiveValues);
+                      });
+            });
+  }
+
+  private List<SpanData> awaitEmailSpans(int expectedSmtpSpanCount) {
+    for (int attempt = 0; attempt < 100; attempt++) {
+      flushSpans(tracerProvider);
+      List<SpanData> spans = spanExporter.spans();
+      long smtpSpanCount =
+          spans.stream().filter(span -> span.getName().equals("email.smtp.send")).count();
+      boolean workSpanPresent =
+          spans.stream().anyMatch(span -> span.getName().equals("email.verification.send"));
+      if (workSpanPresent && smtpSpanCount >= expectedSmtpSpanCount) {
+        return spans;
+      }
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("이메일 Trace 대기가 중단되었습니다.", exception);
+      }
+    }
+    return spanExporter.spans();
   }
 
   private SpanData httpServerAncestorOf(List<SpanData> spans, SpanData descendant) {
@@ -323,6 +468,10 @@ class AsyncEmailRetryIntegrationTest extends IntegrationTest {
     List<SpanData> matching = spans.stream().filter(span -> span.getName().equals(name)).toList();
     assertThat(matching).hasSize(1);
     return matching.getFirst();
+  }
+
+  private String attribute(SpanData span, String key) {
+    return span.getAttributes().get(AttributeKey.stringKey(key));
   }
 
   @TestConfiguration(proxyBeanMethods = false)

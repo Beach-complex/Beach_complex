@@ -26,7 +26,8 @@
 
         <logger name="com.beachcheck" level="DEBUG"/>
         <logger name="org.hibernate.SQL" level="DEBUG"/>
-        <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+        <!-- SQL 구조만 남기고 이메일 등 바인딩 값은 로그에 출력하지 않는다. -->
+        <logger name="org.hibernate.orm.jdbc.bind" level="OFF"/>
         <logger name="org.springframework.security" level="INFO"/>
         <logger name="org.springframework.web.client" level="DEBUG"/>
     </springProfile>

@@ -1,10 +1,11 @@
 package com.beachcheck.auth.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
 
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,8 @@ class RetryingEmailDeliveryServiceTest {
   void sendVerificationEmail_delegatesToSender() {
     RetryingEmailDeliveryService service = newService();
 
-    service.sendVerificationEmail(FROM, TO, SUBJECT, BODY);
+    assertThat(service.sendVerificationEmail(FROM, TO, SUBJECT, BODY))
+        .isEqualTo(RetryingEmailDeliveryService.DeliveryOutcome.SUCCESS);
 
     then(emailSender).should().send(FROM, TO, SUBJECT, BODY);
   }
@@ -48,13 +50,13 @@ class RetryingEmailDeliveryServiceTest {
   void recoverFromEmailFailure_completesNormally() {
     RetryingEmailDeliveryService service = newService();
 
-    assertDoesNotThrow(
-        () ->
+    assertThat(
             service.recoverFromEmailFailure(
-                new MailSendException("smtp down"), FROM, TO, SUBJECT, BODY));
+                new MailSendException("smtp down"), FROM, TO, SUBJECT, BODY))
+        .isEqualTo(RetryingEmailDeliveryService.DeliveryOutcome.RETRIES_EXHAUSTED);
   }
 
   private RetryingEmailDeliveryService newService() {
-    return new RetryingEmailDeliveryService(emailSender);
+    return new RetryingEmailDeliveryService(emailSender, Tracer.NOOP);
   }
 }
