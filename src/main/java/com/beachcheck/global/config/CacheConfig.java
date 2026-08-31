@@ -1,11 +1,12 @@
 package com.beachcheck.global.config;
 
+import com.beachcheck.global.cache.ObservedCacheManager;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.micrometer.observation.ObservationRegistry;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,8 +15,8 @@ import org.springframework.context.annotation.Configuration;
 public class CacheConfig {
 
   @Bean
-  public CacheManager cacheManager() {
-    CaffeineCacheManager cacheManager = new CaffeineCacheManager();
+  public CacheManager cacheManager(ObservationRegistry observationRegistry) {
+    ObservedCacheManager cacheManager = new ObservedCacheManager(observationRegistry);
     cacheManager.setCacheNames(
         List.of("beachSummaries", "facilitySummaries", "conditionSnapshots"));
 
