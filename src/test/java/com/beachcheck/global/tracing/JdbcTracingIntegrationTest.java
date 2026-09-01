@@ -1,14 +1,23 @@
 package com.beachcheck.global.tracing;
 
+import static com.beachcheck.support.fixture.BeachTestFixtures.createBeachWithLocation;
+import static com.beachcheck.support.fixture.UniqueTestFixtures.uniqueBeachCode;
+import static com.beachcheck.support.fixture.UniqueTestFixtures.uniqueEmail;
+import static com.beachcheck.support.fixture.UserTestFixtures.createUser;
 import static com.beachcheck.support.tracing.SpanTestSupport.awaitSpans;
 import static com.beachcheck.support.tracing.SpanTestSupport.flushSpans;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
+import com.beachcheck.beach.dto.BeachDto;
 import com.beachcheck.beach.repository.BeachRepository;
+import com.beachcheck.beach.service.BeachService;
 import com.beachcheck.support.base.IntegrationTest;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import com.beachcheck.support.tracing.TracingTestConfiguration;
+import com.beachcheck.user.repository.UserRepository;
+import com.beachcheck.user.service.UserFavoriteService;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import io.opentelemetry.api.common.AttributeKey;
@@ -19,10 +28,12 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
@@ -31,13 +42,23 @@ import org.springframework.test.context.TestPropertySource;
 @DisplayName("JPA/JDBC Trace 통합 계약")
 class JdbcTracingIntegrationTest extends IntegrationTest {
 
+  private static final AttributeKey<String> CACHE_SYSTEM = AttributeKey.stringKey("cache.system");
+  private static final AttributeKey<String> CACHE_OPERATION =
+      AttributeKey.stringKey("cache.operation");
+  private static final AttributeKey<String> CACHE_RESULT = AttributeKey.stringKey("cache.result");
+
   @Autowired private BeachRepository beachRepository;
+  @Autowired private BeachService beachService;
+  @Autowired private UserRepository userRepository;
+  @Autowired private UserFavoriteService favoriteService;
+  @Autowired private CacheManager cacheManager;
   @Autowired private Tracer tracer;
   @Autowired private RecordingSpanExporter exporter;
   @Autowired private SdkTracerProvider tracerProvider;
 
   @BeforeEach
   void clearExportedSpans() {
+    cacheManager.getCache("beachSummaries").clear();
     flushSpans(tracerProvider);
     exporter.clear();
   }
@@ -95,6 +116,82 @@ class JdbcTracingIntegrationTest extends IntegrationTest {
     assertThat(databaseSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
     assertThat(databaseSpan.getStatus().getDescription()).isEqualTo("JDBC 쿼리 실행 실패");
     assertSpanDoesNotContain(databaseSpan, sensitiveValue);
+  }
+
+  @Test
+  void cacheMissThenHit_recordsCacheAndDatabaseRelationship() {
+    Span missParent = tracer.nextSpan().name("cache.miss").start();
+    List<BeachDto> missResult = inParent(missParent, () -> beachService.findAll(null));
+    List<SpanData> missSpans = awaitSpans(exporter, tracerProvider, 4);
+    List<SpanData> cacheSpans = cacheSpans(missSpans);
+
+    assertThat(missResult).isNotEmpty();
+    assertThat(cacheSpans)
+        .extracting(
+            span -> span.getAttributes().get(CACHE_OPERATION),
+            span -> span.getAttributes().get(CACHE_RESULT))
+        .containsExactly(tuple("get", "miss"), tuple("put", "success"));
+    SpanData databaseSpan = onlyDatabaseClientSpan(missSpans);
+    assertThat(cacheSpans.getFirst().getEndEpochNanos())
+        .isLessThanOrEqualTo(databaseSpan.getStartEpochNanos());
+    assertThat(databaseSpan.getEndEpochNanos())
+        .isLessThanOrEqualTo(cacheSpans.getLast().getStartEpochNanos());
+    assertThat(cacheSpans)
+        .allSatisfy(
+            span -> assertThat(span.getParentSpanId()).isEqualTo(missParent.context().spanId()))
+        .allSatisfy(span -> assertThat(span.toString()).doesNotContain("user:anonymous"));
+
+    exporter.clear();
+    inParent(tracer.nextSpan().name("cache.hit").start(), () -> beachService.findAll(null));
+    List<SpanData> hitSpans = awaitSpans(exporter, tracerProvider, 2);
+    assertThat(cacheSpans(hitSpans))
+        .singleElement()
+        .satisfies(span -> assertThat(span.getAttributes().get(CACHE_RESULT)).isEqualTo("hit"));
+    assertThat(hitSpans)
+        .noneMatch(
+            span ->
+                "postgresql"
+                    .equals(span.getAttributes().get(AttributeKey.stringKey("db.system.name"))));
+  }
+
+  @Test
+  void cacheEvict_recordsSanitizedSpan() {
+    var user = userRepository.save(createUser(uniqueEmail("trace-evict"), "Trace User"));
+    var beach =
+        beachRepository.save(
+            createBeachWithLocation(uniqueBeachCode(), "Trace Beach", 129.1603, 35.1587));
+    String key = "user:" + user.getId();
+    cacheManager.getCache("beachSummaries").put(key, "cached");
+    flushSpans(tracerProvider);
+    exporter.clear();
+
+    inParent(
+        tracer.nextSpan().name("cache.evict").start(),
+        () -> favoriteService.addFavorite(user, beach.getId()));
+
+    assertThat(cacheSpans(awaitSpans(exporter, tracerProvider, 3)))
+        .singleElement()
+        .satisfies(
+            span -> {
+              assertThat(span.getAttributes().get(CACHE_OPERATION)).isEqualTo("evict");
+              assertThat(span.getAttributes().get(CACHE_RESULT)).isEqualTo("success");
+              assertThat(span.toString()).doesNotContain(key);
+            });
+    assertThat(cacheManager.getCache("beachSummaries").get(key)).isNull();
+  }
+
+  private <T> T inParent(Span parent, Supplier<T> action) {
+    try (Tracer.SpanInScope ignored = tracer.withSpan(parent)) {
+      return action.get();
+    } finally {
+      parent.end();
+    }
+  }
+
+  private List<SpanData> cacheSpans(List<SpanData> spans) {
+    return spans.stream()
+        .filter(span -> "caffeine".equals(span.getAttributes().get(CACHE_SYSTEM)))
+        .toList();
   }
 
   private SpanData onlyDatabaseClientSpan(List<SpanData> spans) {
