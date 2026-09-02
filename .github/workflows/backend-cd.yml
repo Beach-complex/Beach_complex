@@ -162,8 +162,13 @@ jobs:
               echo 'EC2 IAM role: not attached or metadata unavailable'
             fi
 
-            if command -v aws >/dev/null 2>&1 && [ -n "${role_name}" ]; then
-              aws rds describe-db-instances --region us-east-1 \
+            if [ -n "${role_name}" ]; then
+              if command -v aws >/dev/null 2>&1; then
+                aws_command='aws'
+              else
+                aws_command='docker run --rm --network host amazon/aws-cli:2.17.40'
+              fi
+              ${aws_command} rds describe-db-instances --region us-east-1 \
                 --query 'DBInstances[].{identifier:DBInstanceIdentifier,status:DBInstanceStatus,endpoint:Endpoint.Address}' \
                 --output table || true
             else
