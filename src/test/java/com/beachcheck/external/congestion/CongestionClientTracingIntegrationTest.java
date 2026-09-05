@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.beachcheck.global.tracing.HttpClientTracingConfiguration;
 import com.beachcheck.global.tracing.QuerylessClientRequestObservationConvention;
 import com.beachcheck.global.tracing.ServerErrorClientRequestObservationHandler;
 import com.beachcheck.global.tracing.W3cTracePropagationConfig;
@@ -45,6 +46,7 @@ class CongestionClientTracingIntegrationTest {
   private static final String BASE_URL = "https://example.com";
   private static final String BEACH_CODE = "GYEONGPO";
   private static final String REQUEST_URL = BASE_URL + "/congestion/current?beach_id=" + BEACH_CODE;
+  private static final String TRANSPORT_ERROR_DETAIL = "transport failed for " + BEACH_CODE;
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
@@ -156,6 +158,47 @@ class CongestionClientTracingIntegrationTest {
         });
   }
 
+  @Test
+  @DisplayName("transport 예외는 원문 없이 일반화된 실패만 HTTP client span에 기록한다")
+  void fetchCurrent_transportErrorRecordsSanitizedFailure() {
+    contextRunner.run(
+        context -> {
+          // Given
+          TraceClientFixture fixture = context.getBean(TraceClientFixture.class);
+          Tracer tracer = context.getBean(Tracer.class);
+          RecordingSpanExporter exporter = context.getBean(RecordingSpanExporter.class);
+          SdkTracerProvider tracerProvider = context.getBean(SdkTracerProvider.class);
+          fixture
+              .server()
+              .expect(requestTo(REQUEST_URL))
+              .andExpect(method(GET))
+              .andRespond(
+                  request -> {
+                    throw new java.io.IOException(TRANSPORT_ERROR_DETAIL);
+                  });
+          Span parent = tracer.nextSpan().name("congestion.parent.test").start();
+
+          // When
+          CongestionCurrentResponse response;
+          try (Tracer.SpanInScope ignored = tracer.withSpan(parent)) {
+            response = fixture.client().fetchCurrent(BEACH_CODE);
+          } finally {
+            parent.end();
+          }
+
+          // Then
+          SpanData clientSpan = onlyClientSpan(awaitSpans(exporter, tracerProvider, 2));
+          assertThat(response).isNull();
+          assertThat(clientSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+          assertThat(clientSpan.getStatus().getDescription())
+              .isEqualTo("HTTP client request failed");
+          assertThat(clientSpan.getAttributes().get(AttributeKey.stringKey("error.type")))
+              .isEqualTo("org.springframework.web.client.ResourceAccessException");
+          assertSpanDoesNotContain(clientSpan, BEACH_CODE, TRANSPORT_ERROR_DETAIL);
+          fixture.server().verify();
+        });
+  }
+
   private SpanData onlyClientSpan(List<SpanData> spans) {
     List<SpanData> clientSpans =
         spans.stream().filter(span -> span.getKind() == SpanKind.CLIENT).toList();
@@ -170,6 +213,22 @@ class CongestionClientTracingIntegrationTest {
         authorization.indexOf(',', authorization.indexOf("SignedHeaders=")));
   }
 
+  private void assertSpanDoesNotContain(SpanData span, String... forbiddenValues) {
+    for (String forbiddenValue : forbiddenValues) {
+      assertThat(span.getName()).doesNotContain(forbiddenValue);
+      assertThat(span.getStatus().getDescription()).doesNotContain(forbiddenValue);
+      assertThat(span.getAttributes().asMap().values().toString()).doesNotContain(forbiddenValue);
+      assertThat(span.getEvents())
+          .allSatisfy(
+              event -> {
+                assertThat(event.getName()).doesNotContain(forbiddenValue);
+                assertThat(event.getAttributes().asMap().values().toString())
+                    .doesNotContain(forbiddenValue);
+              });
+      assertThat(span.toString()).doesNotContain(forbiddenValue);
+    }
+  }
+
   @TestConfiguration(proxyBeanMethods = false)
   @EnableAutoConfiguration(
       exclude = {
@@ -178,6 +237,7 @@ class CongestionClientTracingIntegrationTest {
         HibernateJpaAutoConfiguration.class
       })
   @Import({
+    HttpClientTracingConfiguration.class,
     W3cTracePropagationConfig.class,
     QuerylessClientRequestObservationConvention.class,
     ServerErrorClientRequestObservationHandler.class
