@@ -103,6 +103,7 @@ class BeachConditionSchedulerTracingIntegrationTest {
     AtomicReference<String> spanIdDuringRequest = new AtomicReference<>();
     AtomicReference<String> schedulerNameDuringRequest = new AtomicReference<>();
     AtomicReference<String> jobIdDuringRequest = new AtomicReference<>();
+    AtomicReference<String> traceparentDuringRequest = new AtomicReference<>();
     server
         .expect(requestTo(BASE_URL + "/congestion/current?beach_id=" + forbiddenCode))
         .andExpect(method(GET))
@@ -112,6 +113,7 @@ class BeachConditionSchedulerTracingIntegrationTest {
               spanIdDuringRequest.set(MDC.get("spanId"));
               schedulerNameDuringRequest.set(MDC.get("schedulerName"));
               jobIdDuringRequest.set(MDC.get("jobId"));
+              traceparentDuringRequest.set(request.getHeaders().getFirst("traceparent"));
             })
         .andRespond(
             withSuccess(
@@ -153,7 +155,10 @@ class BeachConditionSchedulerTracingIntegrationTest {
     assertThat(attribute(itemSpan, "scheduler.item.outcome")).isEqualTo("success");
     assertThat(attribute(itemSpan, "scheduler.item.skip.reason")).isNull();
     assertThat(httpSpan.getTraceId()).isEqualTo(jobSpan.getTraceId());
+    assertThat(httpSpan.getKind()).isEqualTo(SpanKind.CLIENT);
     assertThat(httpSpan.getParentSpanId()).isEqualTo(itemSpan.getSpanId());
+    assertThat(traceparentDuringRequest.get())
+        .isEqualTo("00-" + httpSpan.getTraceId() + "-" + httpSpan.getSpanId() + "-01");
     assertThat(initialSelect.getParentSpanId()).isEqualTo(jobSpan.getSpanId());
     assertThat(databaseSpans)
         .allSatisfy(
