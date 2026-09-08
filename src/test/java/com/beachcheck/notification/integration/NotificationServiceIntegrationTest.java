@@ -17,12 +17,15 @@ import com.beachcheck.outbox.repository.OutboxEventRepository;
 import com.beachcheck.support.base.IntegrationTest;
 import com.beachcheck.user.domain.User;
 import com.beachcheck.user.repository.UserRepository;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,12 +44,14 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Contract(Output): 각 테스트는 독립된 트랜잭션 롤백으로 DB 상태 격리
  */
+@TestPropertySource(properties = "management.tracing.sampling.probability=1.0")
 class NotificationServiceIntegrationTest extends IntegrationTest {
 
   @Autowired private NotificationService notificationService;
   @Autowired private NotificationRepository notificationRepository;
   @Autowired private OutboxEventRepository outboxEventRepository;
   @Autowired private UserRepository userRepository;
+  @Autowired private Tracer tracer;
   @SpyBean private OutboxEventRepository outboxEventRepositorySpy;
 
   private User savedUser;
@@ -160,6 +165,34 @@ class NotificationServiceIntegrationTest extends IntegrationTest {
     assertThat(saved.getNextRetryAt()).isNotNull(); // @PrePersist에서 createdAt 기준으로 설정
     assertThat(saved.getProcessedAt()).isNull(); // OutboxPublisher가 아직 처리하지 않은 상태
     assertThat(saved.getCreatedAt()).isNotNull();
+    assertThat(saved.getProducerTraceparent()).isNull();
+  }
+
+  @Test
+  @DisplayName("active producer span의 trace context를 OutboxEvent에 저장")
+  void shouldPersistActiveProducerTraceContext() {
+    // Given
+    UUID userId = savedUser.getId();
+    Span producer = tracer.nextSpan().name("notification producer").start();
+
+    // When
+    try (Tracer.SpanInScope ignored = tracer.withSpan(producer)) {
+      notificationService.createAndSchedule(
+          userId, NotificationType.TEST, "Trace 연결", "내용", "fcm-token-trace");
+    } finally {
+      producer.end();
+    }
+    entityManager.flush();
+    entityManager.clear();
+
+    // Then
+    Notification savedNotification = notificationRepository.findByUserId(userId).getFirst();
+    OutboxEvent savedOutboxEvent =
+        outboxEventRepository
+            .findByNotificationId(savedNotification.getId())
+            .orElseThrow(() -> new AssertionError("OutboxEvent가 저장되지 않았습니다"));
+    assertThat(savedOutboxEvent.getProducerTraceparent().split("-"))
+        .containsExactly("00", producer.context().traceId(), producer.context().spanId(), "01");
   }
 
   @Test

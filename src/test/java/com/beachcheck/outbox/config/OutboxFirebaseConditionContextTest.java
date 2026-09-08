@@ -7,6 +7,7 @@ import com.beachcheck.notification.repository.NotificationRepository;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
 import com.beachcheck.outbox.service.OutboxEventDispatcher;
 import com.beachcheck.outbox.service.OutboxPublisher;
+import com.beachcheck.outbox.tracing.OutboxTracing;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,8 @@ class OutboxFirebaseConditionContextTest {
           .withUserConfiguration(OutboxBeansConfig.class)
           .withPropertyValues("app.outbox.polling.enabled=true", "app.outbox.polling.batch-size=10")
           .withBean(OutboxEventRepository.class, () -> mock(OutboxEventRepository.class))
-          .withBean(NotificationRepository.class, () -> mock(NotificationRepository.class));
+          .withBean(NotificationRepository.class, () -> mock(NotificationRepository.class))
+          .withBean(OutboxTracing.class, () -> mock(OutboxTracing.class));
 
   @Test
   @DisplayName("FirebaseMessaging 빈이 없으면 Outbox 관련 빈 없이도 컨텍스트가 정상 기동된다")

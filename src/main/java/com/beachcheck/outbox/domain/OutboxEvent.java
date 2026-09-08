@@ -54,6 +54,9 @@ public class OutboxEvent {
   @Column(columnDefinition = "TEXT")
   private String payload;
 
+  @Column(name = "producer_traceparent", length = 64)
+  private String producerTraceparent;
+
   @Column(nullable = false)
   private Integer retryCount = 0;
 
@@ -85,17 +88,18 @@ public class OutboxEvent {
    *   <li>nextRetryAt은 @PrePersist에서 현재 시각으로 설정 (즉시 처리)
    * </ul>
    *
-   * <p>Contract(Input): notificationId, eventType은 NULL 불가. payload는 NULL 가능.
+   * <p>Contract(Input): notificationId, eventType은 NULL 불가. payload, producerTraceparent는 NULL 가능.
    *
    * <p>Contract(Output): status=PENDING, retryCount=0인 OutboxEvent 인스턴스
    */
   public static OutboxEvent createPending(
-      UUID notificationId, OutboxEventType eventType, String payload) {
+      UUID notificationId, OutboxEventType eventType, String payload, String producerTraceparent) {
     OutboxEvent event = new OutboxEvent();
     event.setNotificationId(notificationId);
     event.setStatus(OutboxEventStatus.PENDING);
     event.setEventType(eventType);
     event.setPayload(payload);
+    event.producerTraceparent = producerTraceparent;
     event.setRetryCount(0);
     // nextRetryAt, createdAt은 @PrePersist에서 설정
     return event;
@@ -167,6 +171,10 @@ public class OutboxEvent {
 
   public void setPayload(String payload) {
     this.payload = payload;
+  }
+
+  public String getProducerTraceparent() {
+    return producerTraceparent;
   }
 
   public Integer getRetryCount() {

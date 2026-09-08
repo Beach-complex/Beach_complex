@@ -260,6 +260,6 @@ class OutboxEventDispatcherTest {
   }
 
   private OutboxEvent createPendingEvent(UUID notificationId) {
-    return OutboxEvent.createPending(notificationId, OutboxEventType.PUSH_NOTIFICATION, null);
+    return OutboxEvent.createPending(notificationId, OutboxEventType.PUSH_NOTIFICATION, null, null);
   }
 }

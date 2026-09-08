@@ -4,6 +4,7 @@ import com.beachcheck.notification.repository.NotificationRepository;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
 import com.beachcheck.outbox.service.OutboxEventDispatcher;
 import com.beachcheck.outbox.service.OutboxPublisher;
+import com.beachcheck.outbox.tracing.OutboxTracing;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -37,7 +38,9 @@ public class OutboxFirebaseConfig {
   public OutboxPublisher outboxPublisher(
       OutboxEventRepository outboxEventRepository,
       OutboxEventDispatcher outboxEventDispatcher,
+      OutboxTracing outboxTracing,
       @Value("${app.outbox.polling.batch-size:10}") int batchSize) {
-    return new OutboxPublisher(outboxEventRepository, outboxEventDispatcher, batchSize);
+    return new OutboxPublisher(
+        outboxEventRepository, outboxEventDispatcher, outboxTracing, batchSize);
   }
 }

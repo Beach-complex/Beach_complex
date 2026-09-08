@@ -7,6 +7,7 @@ import com.beachcheck.notification.repository.NotificationRepository;
 import com.beachcheck.outbox.domain.OutboxEvent;
 import com.beachcheck.outbox.domain.OutboxEvent.OutboxEventType;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
+import com.beachcheck.outbox.tracing.OutboxTracing;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +23,15 @@ public class NotificationService {
 
   private final NotificationRepository notificationRepository;
   private final OutboxEventRepository outboxEventRepository;
+  private final OutboxTracing outboxTracing;
 
   public NotificationService(
-      NotificationRepository notificationRepository, OutboxEventRepository outboxEventRepository) {
+      NotificationRepository notificationRepository,
+      OutboxEventRepository outboxEventRepository,
+      OutboxTracing outboxTracing) {
     this.notificationRepository = notificationRepository;
     this.outboxEventRepository = outboxEventRepository;
+    this.outboxTracing = outboxTracing;
   }
 
   @Transactional
@@ -40,8 +45,10 @@ public class NotificationService {
     Notification notification = Notification.createPending(userId, type, title, message, fcmToken);
     notificationRepository.save(notification);
 
+    String producerTraceparent = outboxTracing.captureCurrentTraceparent();
     OutboxEvent event =
-        OutboxEvent.createPending(notification.getId(), OutboxEventType.PUSH_NOTIFICATION, null);
+        OutboxEvent.createPending(
+            notification.getId(), OutboxEventType.PUSH_NOTIFICATION, null, producerTraceparent);
     outboxEventRepository.save(event);
 
     log.info(
