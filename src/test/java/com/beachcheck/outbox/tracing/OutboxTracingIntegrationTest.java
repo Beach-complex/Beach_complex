@@ -10,6 +10,7 @@ import com.beachcheck.support.tracing.RecordingSpanExporter;
 import com.beachcheck.support.tracing.TracingTestConfiguration;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -93,9 +94,13 @@ class OutboxTracingIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("action 예외를 기록하고 동일 예외를 재전파")
-  void shouldRecordAndRethrowActionFailure() {
-    IllegalStateException failure = new IllegalStateException("dispatch failed");
+  @DisplayName("action 예외는 정제해 기록하고 동일 예외를 재전파")
+  void shouldSanitizeAndRethrowActionFailure() {
+    String sqlInput = "0199a001-0000-7000-8000-000000000003";
+    IllegalStateException failure =
+        new IllegalStateException(
+            "FK violation for notificationId=" + sqlInput,
+            new java.sql.SQLException("SQL input=" + sqlInput));
     assertThatThrownBy(
             () ->
                 outboxTracing.runLinked(
@@ -106,6 +111,20 @@ class OutboxTracingIntegrationTest extends IntegrationTest {
         .isSameAs(failure);
     SpanData processSpan = onlyProcessSpan(awaitSpans(exporter, tracerProvider, 1));
     assertThat(processSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+    assertThat(processSpan.getStatus().getDescription()).isEqualTo("Outbox 처리 실패");
+    assertThat(processSpan.getAttributes().get(AttributeKey.stringKey("error.type")))
+        .isEqualTo(failure.getClass().getName());
+    assertThat(processSpan.getAttributes().asMap().values().toString()).doesNotContain(sqlInput);
+    assertThat(processSpan.getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getName()).isEqualTo("exception");
+              assertThat(event.getAttributes().asMap().values().toString())
+                  .doesNotContain(sqlInput);
+              assertThat(event.getAttributes().get(AttributeKey.stringKey("exception.message")))
+                  .isEqualTo("Outbox 처리 실패");
+            });
   }
 
   private SpanData onlyProcessSpan(List<SpanData> spans) {

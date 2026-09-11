@@ -28,6 +28,8 @@ import org.springframework.stereotype.Component;
 public class OutboxTracing {
 
   private static final String PROCESS_SPAN_NAME = "outbox process";
+  private static final String ERROR_TYPE = "error.type";
+  private static final String SANITIZED_ERROR_MESSAGE = "Outbox 처리 실패";
   private static final String ZERO_TRACE_ID = "00000000000000000000000000000000";
   private static final String ZERO_SPAN_ID = "0000000000000000";
   private static final Pattern TRACEPARENT_PATTERN =
@@ -59,7 +61,8 @@ public class OutboxTracing {
     try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
       action.run();
     } catch (RuntimeException | Error exception) {
-      span.error(exception);
+      span.tag(ERROR_TYPE, exception.getClass().getName());
+      span.error(new IllegalStateException(SANITIZED_ERROR_MESSAGE));
       throw exception;
     } finally {
       span.end();
