@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DisplayName("OutboxEvent 상태 전이 테스트")
 @ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
 class OutboxEventTest {
+
+  @Test
+  @DisplayName("생성 시 producer traceparent 보존")
+  void shouldPreserveProducerTraceparentOnCreate() {
+    // Given
+    String producerTraceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+
+    // When
+    OutboxEvent event =
+        OutboxEvent.createPending(
+            UUID.randomUUID(),
+            OutboxEvent.OutboxEventType.PUSH_NOTIFICATION,
+            null,
+            producerTraceparent);
+
+    // Then
+    assertThat(event.getProducerTraceparent()).isEqualTo(producerTraceparent);
+  }
 
   @Test
   @DisplayName("전송 성공 시 SENT 상태 전이 및 processedAt 기록")

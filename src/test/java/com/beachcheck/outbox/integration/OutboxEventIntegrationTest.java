@@ -51,6 +51,32 @@ class OutboxEventIntegrationTest extends IntegrationTest {
   @DisplayName("Repository 테스트")
   class RepositoryTest {
 
+    @Test
+    @DisplayName("producer traceparent 값과 null을 모두 저장하고 재조회")
+    void shouldPersistProducerTraceparentAndLegacyNull() {
+      // Given
+      String producerTraceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+      Notification linkedNotification = createNotification();
+      Notification legacyNotification = createNotification();
+      OutboxEvent linkedEvent =
+          OutboxEvent.createPending(
+              linkedNotification.getId(), PUSH_NOTIFICATION, null, producerTraceparent);
+      OutboxEvent legacyEvent =
+          OutboxEvent.createPending(legacyNotification.getId(), PUSH_NOTIFICATION, null, null);
+
+      // When
+      linkedEvent = outboxEventRepository.saveAndFlush(linkedEvent);
+      legacyEvent = outboxEventRepository.saveAndFlush(legacyEvent);
+      OutboxEvent reloadedLinked =
+          outboxEventRepository.findById(linkedEvent.getId()).orElseThrow();
+      OutboxEvent reloadedLegacy =
+          outboxEventRepository.findById(legacyEvent.getId()).orElseThrow();
+
+      // Then
+      assertThat(reloadedLinked.getProducerTraceparent()).isEqualTo(producerTraceparent);
+      assertThat(reloadedLegacy.getProducerTraceparent()).isNull();
+    }
+
     @Nested
     @DisplayName("findPendingEvents()")
     class FindPendingEventsTest {
@@ -249,7 +275,7 @@ class OutboxEventIntegrationTest extends IntegrationTest {
     Notification notification = createNotification();
     OutboxEvent event =
         OutboxEvent.createPending(
-            notification.getId(), PUSH_NOTIFICATION, "{\"title\":\"테스트\",\"body\":\"내용\"}");
+            notification.getId(), PUSH_NOTIFICATION, "{\"title\":\"테스트\",\"body\":\"내용\"}", null);
     event.setStatus(status);
     if (nextRetryAt != null) {
       event.setNextRetryAt(nextRetryAt);

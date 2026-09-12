@@ -5,9 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willAnswer;
 
 import com.beachcheck.outbox.domain.OutboxEvent;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
+import com.beachcheck.outbox.tracing.OutboxTracing;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -36,11 +38,14 @@ class OutboxPublisherTest {
 
   @Mock private OutboxEventDispatcher outboxEventDispatcher;
 
+  @Mock private OutboxTracing outboxTracing;
+
   private OutboxPublisher publisher;
 
   @BeforeEach
   void setUp() {
-    publisher = new OutboxPublisher(outboxEventRepository, outboxEventDispatcher, 10);
+    publisher =
+        new OutboxPublisher(outboxEventRepository, outboxEventDispatcher, outboxTracing, 10);
   }
 
   @Nested
@@ -55,11 +60,21 @@ class OutboxPublisherTest {
 
       given(outboxEventRepository.findPendingEvents(any(Instant.class), any(PageRequest.class)))
           .willReturn(List.of(event));
+      willAnswer(
+              invocation -> {
+                invocation.<Runnable>getArgument(1).run();
+                return null;
+              })
+          .given(outboxTracing)
+          .runLinked(eq(event.getProducerTraceparent()), any(Runnable.class));
 
       // When
       publisher.processPendingOutboxEvents();
 
       // Then
+      then(outboxTracing)
+          .should()
+          .runLinked(eq(event.getProducerTraceparent()), any(Runnable.class));
       then(outboxEventDispatcher).should().dispatch(event);
     }
 
@@ -75,6 +90,7 @@ class OutboxPublisherTest {
 
       // Then
       then(outboxEventDispatcher).shouldHaveNoInteractions();
+      then(outboxTracing).shouldHaveNoInteractions();
     }
 
     @Test
@@ -95,6 +111,10 @@ class OutboxPublisherTest {
   }
 
   private OutboxEvent createPendingEvent(UUID notificationId) {
-    return OutboxEvent.createPending(notificationId, OutboxEventType.PUSH_NOTIFICATION, null);
+    return OutboxEvent.createPending(
+        notificationId,
+        OutboxEventType.PUSH_NOTIFICATION,
+        null,
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
   }
 }

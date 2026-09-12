@@ -4,6 +4,8 @@ import static com.beachcheck.notification.domain.Notification.NotificationStatus
 import static com.beachcheck.notification.domain.Notification.NotificationType;
 import static com.beachcheck.outbox.domain.OutboxEvent.OutboxEventStatus;
 import static com.beachcheck.outbox.domain.OutboxEvent.OutboxEventType;
+import static com.beachcheck.support.tracing.SpanTestSupport.awaitSpans;
+import static com.beachcheck.support.tracing.SpanTestSupport.flushSpans;
 import static java.time.Instant.now;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,18 +21,26 @@ import com.beachcheck.outbox.domain.OutboxEvent;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
 import com.beachcheck.outbox.service.OutboxPublisher;
 import com.beachcheck.support.base.IntegrationTest;
+import com.beachcheck.support.tracing.RecordingSpanExporter;
+import com.beachcheck.support.tracing.TracingTestConfiguration;
 import com.beachcheck.user.domain.User;
 import com.beachcheck.user.repository.UserRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +62,14 @@ import org.springframework.transaction.annotation.Transactional;
         Propagation
             .NOT_SUPPORTED) // OutboxPublisher의 REQUIRES_NEW 트랜잭션과 격리하여 테스트 간 트랜잭션 롤백이 영향을 주지 않도록 함.
 // 대신 @BeforeEach에서 deleteAll()로 DB 상태 초기화
+@Import(TracingTestConfiguration.class)
+@TestPropertySource(properties = "management.tracing.sampling.probability=1.0")
 class OutboxPublisherIntegrationTest extends IntegrationTest {
+
+  private static final String PRODUCER_TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
+  private static final String PRODUCER_SPAN_ID = "00f067aa0ba902b7";
+  private static final String PRODUCER_TRACEPARENT =
+      "00-" + PRODUCER_TRACE_ID + "-" + PRODUCER_SPAN_ID + "-01";
 
   @Autowired private OutboxPublisher outboxPublisher;
 
@@ -64,8 +81,15 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Autowired private FirebaseMessaging firebaseMessaging; // 외부 서비스는 Mock 처리 (E2E 테스트에서는 실제 호출)
 
+  @Autowired private RecordingSpanExporter exporter;
+
+  @Autowired private SdkTracerProvider tracerProvider;
+
   @BeforeEach
   void setUp() throws FirebaseMessagingException {
+    flushSpans(tracerProvider);
+    exporter.clear();
+
     // Mock 호출 기록 초기화 (테스트 간 격리)
     clearInvocations(firebaseMessaging);
 
@@ -355,6 +379,60 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     assertThat(saved.getProcessedAt()).isNotNull();
   }
 
+  @Test
+  @DisplayName("legacy null context도 Link 없는 consumer root span에서 처리")
+  void shouldCreateUnlinkedConsumerRootForLegacyContext() {
+    // Given
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    createAndSaveOutboxEvent(notification.getId());
+
+    // When
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then
+    SpanData processSpan = onlyProcessSpan(awaitSpans(exporter, tracerProvider, 1));
+    assertThat(processSpan.getParentSpanContext().isValid()).isFalse();
+    assertThat(processSpan.getLinks()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("재시도마다 새 trace를 만들고 동일 producer span을 Link")
+  void shouldCreateIndependentLinkedTraceForEachRetry() throws FirebaseMessagingException {
+    // Given
+    Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
+    OutboxEvent event = createAndSaveOutboxEvent(notification.getId(), PRODUCER_TRACEPARENT);
+    given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+
+    // When: 첫 번째 처리 시도
+    outboxPublisher.processPendingOutboxEvents();
+    awaitSpans(exporter, tracerProvider, 1);
+    OutboxEvent failedEvent = outboxEventRepository.findById(event.getId()).orElseThrow();
+    failedEvent.setNextRetryAt(now().minusSeconds(10));
+    outboxEventRepository.save(failedEvent);
+    given(firebaseMessaging.send(any(Message.class))).willReturn("mock-message-id");
+
+    // When: 두 번째 처리 시도
+    outboxPublisher.processPendingOutboxEvents();
+
+    // Then
+    List<SpanData> processSpans = processSpans(awaitSpans(exporter, tracerProvider, 2));
+    assertThat(processSpans).hasSize(2);
+    assertThat(processSpans).extracting(SpanData::getTraceId).doesNotHaveDuplicates();
+    assertThat(processSpans)
+        .allSatisfy(
+            span -> {
+              assertThat(span.getKind()).isEqualTo(SpanKind.CONSUMER);
+              assertThat(span.getParentSpanContext().isValid()).isFalse();
+              assertThat(span.getLinks())
+                  .singleElement()
+                  .satisfies(
+                      link -> {
+                        assertThat(link.getSpanContext().getTraceId()).isEqualTo(PRODUCER_TRACE_ID);
+                        assertThat(link.getSpanContext().getSpanId()).isEqualTo(PRODUCER_SPAN_ID);
+                      });
+            });
+  }
+
   // TODO: 향후 Dead Letter Queue 도입 시 별도 테이블 이관 여부 검증 필요
 
   // TODO(후속 PR): createAndSaveNotification(status) 헬퍼를 상태별 메서드로 분리
@@ -397,8 +475,23 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
   }
 
   private OutboxEvent createAndSaveOutboxEvent(UUID notificationId) {
+    return createAndSaveOutboxEvent(notificationId, null);
+  }
+
+  private OutboxEvent createAndSaveOutboxEvent(UUID notificationId, String producerTraceparent) {
     OutboxEvent event =
-        OutboxEvent.createPending(notificationId, OutboxEventType.PUSH_NOTIFICATION, null);
+        OutboxEvent.createPending(
+            notificationId, OutboxEventType.PUSH_NOTIFICATION, null, producerTraceparent);
     return outboxEventRepository.save(event);
+  }
+
+  private SpanData onlyProcessSpan(List<SpanData> spans) {
+    List<SpanData> processSpans = processSpans(spans);
+    assertThat(processSpans).hasSize(1);
+    return processSpans.getFirst();
+  }
+
+  private List<SpanData> processSpans(List<SpanData> spans) {
+    return spans.stream().filter(span -> span.getName().equals("outbox process")).toList();
   }
 }

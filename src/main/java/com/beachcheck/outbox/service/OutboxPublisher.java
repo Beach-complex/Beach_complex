@@ -4,6 +4,7 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 
 import com.beachcheck.outbox.domain.OutboxEvent;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
+import com.beachcheck.outbox.tracing.OutboxTracing;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -27,14 +28,17 @@ public class OutboxPublisher {
 
   private final OutboxEventRepository outboxEventRepository;
   private final OutboxEventDispatcher outboxEventDispatcher;
+  private final OutboxTracing outboxTracing;
   private final int batchSize;
 
   public OutboxPublisher(
       OutboxEventRepository outboxEventRepository,
       OutboxEventDispatcher outboxEventDispatcher,
+      OutboxTracing outboxTracing,
       int batchSize) {
     this.outboxEventRepository = outboxEventRepository;
     this.outboxEventDispatcher = outboxEventDispatcher;
+    this.outboxTracing = outboxTracing;
     this.batchSize = batchSize;
   }
 
@@ -52,7 +56,8 @@ public class OutboxPublisher {
     log.info("Outbox 폴링 대상 이벤트 조회 완료", kv("outboxEventCount", pendingEvents.size()));
 
     for (OutboxEvent event : pendingEvents) {
-      outboxEventDispatcher.dispatch(event);
+      outboxTracing.runLinked(
+          event.getProducerTraceparent(), () -> outboxEventDispatcher.dispatch(event));
     }
   }
 }
