@@ -70,7 +70,9 @@ app:
 
   outbox:
     polling:
-      enabled: false  # Outbox 폴링 스케줄러 비활성화 (수동 호출로 테스트)
+      # @SpringBootTest 기반 Outbox 통합 테스트에서 처리 시점을 직접 제어하기 위해 스케줄러 자동 실행을 비활성화한다.
+      # Outbox 통합 테스트는 FirebaseMessaging Mock을 사용하고 OutboxPublisher를 직접 호출한다.
+      enabled: false
 
 logging:
   level:
