@@ -12,6 +12,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
@@ -27,21 +28,24 @@ class OutboxFirebaseConditionContextTest {
           .withBean(OutboxTracing.class, () -> mock(OutboxTracing.class));
 
   @Test
-  @DisplayName("FirebaseMessaging 빈이 없으면 Outbox 관련 빈 없이도 컨텍스트가 정상 기동된다")
-  void whenFirebaseMessagingMissing_thenContextLoadsWithoutOutboxBeans() {
-    contextRunner.run(
-        context -> {
-          assertThat(context).hasNotFailed();
-          assertThat(context).doesNotHaveBean(OutboxEventDispatcher.class);
-          assertThat(context).doesNotHaveBean(OutboxPublisher.class);
-          assertThat(context).doesNotHaveBean(OutboxSchedulingConfig.class);
-        });
+  @DisplayName("Firebase가 비활성화되면 Outbox 관련 빈 없이도 컨텍스트가 정상 기동된다")
+  void whenFirebaseDisabled_thenContextLoadsWithoutOutboxBeans() {
+    contextRunner
+        .withPropertyValues("app.firebase.enabled=false")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              assertThat(context).doesNotHaveBean(OutboxEventDispatcher.class);
+              assertThat(context).doesNotHaveBean(OutboxPublisher.class);
+              assertThat(context).doesNotHaveBean(OutboxSchedulingConfig.class);
+            });
   }
 
   @Test
   @DisplayName("FirebaseMessaging 빈이 있으면 Outbox 관련 빈을 함께 등록한다")
   void whenFirebaseMessagingPresent_thenRegisterOutboxBeans() {
     contextRunner
+        .withPropertyValues("app.firebase.enabled=true")
         .withBean(FirebaseMessaging.class, () -> mock(FirebaseMessaging.class))
         .run(
             context -> {
@@ -52,7 +56,47 @@ class OutboxFirebaseConditionContextTest {
             });
   }
 
+  @Test
+  @DisplayName("Outbox 폴링이 비활성화되면 전송 빈은 유지하고 스케줄러만 등록하지 않는다")
+  void whenOutboxPollingDisabled_thenRegisterDispatchBeansWithoutScheduler() {
+    contextRunner
+        .withPropertyValues("app.firebase.enabled=true", "app.outbox.polling.enabled=false")
+        .withBean(FirebaseMessaging.class, () -> mock(FirebaseMessaging.class))
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              assertThat(context).hasSingleBean(OutboxEventDispatcher.class);
+              assertThat(context).hasSingleBean(OutboxPublisher.class);
+              assertThat(context).doesNotHaveBean(OutboxSchedulingConfig.class);
+            });
+  }
+
+  @Test
+  @DisplayName("Firebase 활성화 시 FirebaseMessaging 설정 처리 순서와 관계없이 Outbox 빈을 등록한다")
+  void whenFirebaseEnabled_thenRegisterOutboxBeansRegardlessOfConfigurationOrder() {
+    contextRunner
+        .withPropertyValues("app.firebase.enabled=true")
+        .withUserConfiguration(FirebaseMessagingConfig.class)
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              assertThat(context).hasSingleBean(FirebaseMessaging.class);
+              assertThat(context).hasSingleBean(OutboxEventDispatcher.class);
+              assertThat(context).hasSingleBean(OutboxPublisher.class);
+              assertThat(context).hasSingleBean(OutboxSchedulingConfig.class);
+            });
+  }
+
   @Configuration(proxyBeanMethods = false)
-  @Import({OutboxFirebaseConfig.class, OutboxSchedulingConfig.class})
+  @Import({OutboxSchedulingConfig.class, OutboxFirebaseConfig.class})
   static class OutboxBeansConfig {}
+
+  @Configuration(proxyBeanMethods = false)
+  static class FirebaseMessagingConfig {
+
+    @Bean
+    FirebaseMessaging firebaseMessaging() {
+      return mock(FirebaseMessaging.class);
+    }
+  }
 }

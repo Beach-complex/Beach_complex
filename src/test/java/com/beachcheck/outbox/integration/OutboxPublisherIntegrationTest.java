@@ -63,7 +63,8 @@ import org.springframework.transaction.annotation.Transactional;
             .NOT_SUPPORTED) // OutboxPublisher의 REQUIRES_NEW 트랜잭션과 격리하여 테스트 간 트랜잭션 롤백이 영향을 주지 않도록 함.
 // 대신 @BeforeEach에서 deleteAll()로 DB 상태 초기화
 @Import(TracingTestConfiguration.class)
-@TestPropertySource(properties = "management.tracing.sampling.probability=1.0")
+@TestPropertySource(
+    properties = {"management.tracing.sampling.probability=1.0", "app.firebase.enabled=true"})
 class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   private static final String PRODUCER_TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";

@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 
@@ -34,6 +35,7 @@ import org.springframework.util.StringUtils;
  * 자격증명을 탐색한다.
  */
 @Configuration
+@Profile("!test")
 @ConditionalOnProperty(
     prefix = "app.firebase",
     name = "enabled",
