@@ -19,7 +19,9 @@ import com.beachcheck.notification.domain.Notification;
 import com.beachcheck.notification.repository.NotificationRepository;
 import com.beachcheck.outbox.domain.OutboxEvent;
 import com.beachcheck.outbox.repository.OutboxEventRepository;
+import com.beachcheck.outbox.service.OutboxEventDispatcher;
 import com.beachcheck.outbox.service.OutboxPublisher;
+import com.beachcheck.outbox.tracing.OutboxTracing;
 import com.beachcheck.support.base.IntegrationTest;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import com.beachcheck.support.tracing.TracingTestConfiguration;
@@ -39,6 +41,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Propagation;
@@ -62,7 +67,7 @@ import org.springframework.transaction.annotation.Transactional;
         Propagation
             .NOT_SUPPORTED) // OutboxPublisher의 REQUIRES_NEW 트랜잭션과 격리하여 테스트 간 트랜잭션 롤백이 영향을 주지 않도록 함.
 // 대신 @BeforeEach에서 deleteAll()로 DB 상태 초기화
-@Import(TracingTestConfiguration.class)
+@Import({TracingTestConfiguration.class, OutboxPublisherIntegrationTest.OutboxTestConfig.class})
 @TestPropertySource(properties = "management.tracing.sampling.probability=1.0")
 class OutboxPublisherIntegrationTest extends IntegrationTest {
 
@@ -84,6 +89,29 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
   @Autowired private RecordingSpanExporter exporter;
 
   @Autowired private SdkTracerProvider tracerProvider;
+
+  @TestConfiguration(proxyBeanMethods = false)
+  static class OutboxTestConfig {
+
+    @Bean
+    OutboxEventDispatcher outboxEventDispatcher(
+        OutboxEventRepository outboxEventRepository,
+        NotificationRepository notificationRepository,
+        FirebaseMessaging firebaseMessaging) {
+      return new OutboxEventDispatcher(
+          outboxEventRepository, notificationRepository, firebaseMessaging);
+    }
+
+    @Bean
+    OutboxPublisher outboxPublisher(
+        OutboxEventRepository outboxEventRepository,
+        OutboxEventDispatcher outboxEventDispatcher,
+        OutboxTracing outboxTracing,
+        @Value("${app.outbox.polling.batch-size:10}") int batchSize) {
+      return new OutboxPublisher(
+          outboxEventRepository, outboxEventDispatcher, outboxTracing, batchSize);
+    }
+  }
 
   @BeforeEach
   void setUp() throws FirebaseMessagingException {

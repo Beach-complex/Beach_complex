@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Primary;
  *
  * <ul>
  *   <li>@TestConfiguration으로 테스트 환경에만 적용
- *   <li>@Primary로 FirebaseConfig의 실제 빈보다 우선순위 높게 설정 (실제 FirebaseConfig는 test 환경에서 비활성화되어 있지만 명시적
- *       우선순위 지정)
+ *   <li>기본 test 프로필의 app.firebase.enabled=false로 실제 FirebaseConfig를 비활성화하고 Mock 빈을 사용
+ *   <li>@Primary로 테스트용 FirebaseMessaging 의존성을 명확하게 선택
  *   <li>ApiTest, IntegrationTest 베이스 클래스에 @Import로 자동 적용
  * </ul>
  *
@@ -36,9 +36,8 @@ public class FirebaseTestConfig {
    *
    * <ul>
    *   <li>Mockito.mock()으로 Mock 객체 생성
-   *   <li>@Primary로 실제 FirebaseConfig보다 우선순위 높게 설정 (test 환경에서 FirebaseConfig는 비활성화되어 있지만 명시적 우선순위
-   *       지정)
-   *   <li>개별 테스트에서 @MockBean으로 추가 설정 가능 (예: OutboxPublisherIntegrationTest)
+   *   <li>기본 test 프로필에서는 app.firebase.enabled=false이므로 실제 FirebaseConfig를 등록하지 않음
+   *   <li>개별 테스트에서 반환값과 예외 등 Mock 동작을 추가 설정 가능
    * </ul>
    */
   @Bean

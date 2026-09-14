@@ -3,7 +3,6 @@ package com.beachcheck.outbox.config;
 import com.beachcheck.outbox.service.OutboxPublisher;
 import java.util.UUID;
 import org.slf4j.MDC;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,15 +14,14 @@ import org.springframework.scheduling.annotation.Scheduled;
  * <p>Policy:
  *
  * <ul>
- *   <li>app.outbox.polling.enabled=true 일 때만 빈 등록
+ *   <li>app.firebase.enabled=true이고 app.outbox.polling.enabled=true일 때만 빈 등록
  *   <li>fixedDelay: app.outbox.polling.fixed-delay 값 사용 (기본 1초)
  * </ul>
  */
 @Configuration
-@ConditionalOnBean(OutboxPublisher.class)
 @ConditionalOnProperty(
-    prefix = "app.outbox.polling",
-    name = "enabled",
+    prefix = "app",
+    name = {"firebase.enabled", "outbox.polling.enabled"},
     havingValue = "true",
     matchIfMissing = false)
 public class OutboxSchedulingConfig {
