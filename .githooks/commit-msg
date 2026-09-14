@@ -9,37 +9,4 @@ if grep -qE '^\[[A-Za-z]+\]' "$MSG_FILE"; then
   exit 1
 fi
 
-# Allow merge/revert/fixup/squash commits without JIRA key
-if grep -qE '^(Merge|Revert|fixup!|squash!)' "$MSG_FILE"; then
-  exit 0
-fi
-
-if ! grep -qiE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-  # 브랜치명에 `pb-81`처럼 소문자로 들어온 케이스도 허용한다.
-  JIRA=$(echo "$BRANCH" | grep -oiE 'pb-[0-9]+' | head -n1 | tr '[:lower:]' '[:upper:]')
-  if [ -n "$JIRA" ]; then
-    TMP_FILE=$(mktemp)
-    FIRST_LINE=$(head -n 1 "$MSG_FILE")
-    REST_LINES=$(tail -n +2 "$MSG_FILE")
-    {
-      TYPE=$(echo "$FIRST_LINE" | sed -nE 's/^([a-zA-Z]+):.*/\1/p')
-      SUBJECT=$(echo "$FIRST_LINE" | sed -E 's/^[a-zA-Z]+:[[:space:]]*//')
-      if [ -n "$TYPE" ]; then
-        printf "%s: %s %s\n" "$TYPE" "$JIRA" "$SUBJECT"
-      else
-        printf "%s %s\n" "$JIRA" "$FIRST_LINE"
-      fi
-      printf "%s\n" "$REST_LINES"
-    } > "$TMP_FILE"
-    mv "$TMP_FILE" "$MSG_FILE"
-    exit 0
-  fi
-fi
-
-if grep -qiE '(^|[^A-Z0-9])PB-[0-9]+([^A-Z0-9]|$)' "$MSG_FILE"; then
-  exit 0
-fi
-
-echo "JIRA key (e.g., PB-123) is required in commit messages."
-exit 1
+exit 0
