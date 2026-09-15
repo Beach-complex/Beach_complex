@@ -1,16 +1,7 @@
 # 📝 Docs PR
 
-## 🔗 Jira Issue (필수)
-- Key: **PB-**
-- Link: https://parkjaehong.atlassian.net/browse/PB-
-
-> PR 제목: `PB-123 Docs: <짧은 요약>`  
-> 브랜치: `PB-123/docs-<slug>`
-
----
-
-### 🔒 Close Issue (필수)
-- GitHub: Closes #
+## 🔗 GitHub Issue (필수)
+- Closes #
 
 ---
 

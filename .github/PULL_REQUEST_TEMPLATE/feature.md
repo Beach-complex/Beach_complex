@@ -1,11 +1,9 @@
 # ✨ Feature PR
 
 ## 🔗 이슈 링크 (필수)
-- Jira: https://parkjaehong.atlassian.net/browse/PB-
 - GitHub: Related # (필수)
 - GitHub: Closes # (Final PR만)
 
-> PR 제목: `PB-123 <짧은 요약>`
 
 ---
 
