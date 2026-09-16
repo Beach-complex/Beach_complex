@@ -16,16 +16,16 @@ import org.springframework.stereotype.Component;
  *
  * <p>Contract(Input): datasource-micrometer가 생성한 QueryContext
  *
- * <p>Contract(Output): ERROR span에는 원래 예외 클래스명과 민감정보가 제거된 exception event만 기록
+ * <p>Contract(Output): 오류가 발생한 JDBC query span에는 원래 예외 클래스명과 민감정보가 제거된 exception event만 기록
  */
 @Component
 @Order(MicrometerTracingAutoConfiguration.DEFAULT_TRACING_OBSERVATION_HANDLER_ORDER - 1000)
-public class SanitizingQueryTracingObservationHandler extends QueryTracingObservationHandler {
+public class JdbcQueryErrorSanitizingObservationHandler extends QueryTracingObservationHandler {
 
   private static final String ERROR_TYPE = "error.type";
   private static final String SANITIZED_ERROR_MESSAGE = "JDBC 쿼리 실행 실패";
 
-  public SanitizingQueryTracingObservationHandler(Tracer tracer) {
+  public JdbcQueryErrorSanitizingObservationHandler(Tracer tracer) {
     super(tracer);
   }
 

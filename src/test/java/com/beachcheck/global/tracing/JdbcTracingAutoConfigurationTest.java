@@ -48,7 +48,7 @@ class JdbcTracingAutoConfigurationTest extends IntegrationTest {
         .hasSize(1)
         .allSatisfy(
             (name, handler) ->
-                assertThat(handler).isInstanceOf(SanitizingQueryTracingObservationHandler.class));
+                assertThat(handler).isInstanceOf(JdbcQueryErrorSanitizingObservationHandler.class));
     assertThat(context.getBeansOfType(OpenTelemetryMeterObservationHandler.class)).isEmpty();
   }
 }

@@ -31,7 +31,10 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import io.micrometer.tracing.Tracer;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Instant;
@@ -90,6 +93,8 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
   @Autowired private SdkTracerProvider tracerProvider;
 
+  @Autowired private Tracer tracer;
+
   @TestConfiguration(proxyBeanMethods = false)
   static class OutboxTestConfig {
 
@@ -97,9 +102,10 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     OutboxEventDispatcher outboxEventDispatcher(
         OutboxEventRepository outboxEventRepository,
         NotificationRepository notificationRepository,
-        FirebaseMessaging firebaseMessaging) {
+        FirebaseMessaging firebaseMessaging,
+        Tracer tracer) {
       return new OutboxEventDispatcher(
-          outboxEventRepository, notificationRepository, firebaseMessaging);
+          outboxEventRepository, notificationRepository, firebaseMessaging, tracer);
     }
 
     @Bean
@@ -138,6 +144,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     // Given: 실제 DB에 Notification + OutboxEvent 저장
     Notification notification = createAndSaveNotification(NotificationStatus.PENDING);
     OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    resetSpans();
 
     // When: OutboxPublisher 수동 실행 (스케줄러 대신 직접 호출하여 테스트 제어)
     outboxPublisher.processPendingOutboxEvents();
@@ -160,6 +167,29 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
     // Then: FCM 전송 확인
     then(firebaseMessaging).should().send(any(Message.class));
+
+    // Then: runtime trace 구조와 성공 결과 확인
+    List<SpanData> spans = awaitSpans(exporter, tracerProvider, 5);
+    SpanData processSpan = onlySpanNamed(spans, "outbox process");
+    SpanData dispatchSpan = onlySpanNamed(spans, "outbox dispatch");
+    SpanData lookupSpan = onlySpanNamed(spans, "outbox notification lookup");
+    SpanData fcmSpan = onlySpanNamed(spans, "outbox fcm send");
+    SpanData stateSpan = onlySpanNamed(spans, "outbox state update");
+
+    assertThat(dispatchSpan.getParentSpanId()).isEqualTo(processSpan.getSpanId());
+    assertThat(lookupSpan.getParentSpanId()).isEqualTo(dispatchSpan.getSpanId());
+    assertThat(fcmSpan.getParentSpanId()).isEqualTo(dispatchSpan.getSpanId());
+    assertThat(stateSpan.getParentSpanId()).isEqualTo(dispatchSpan.getSpanId());
+    assertThat(dispatchSpan.getKind()).isEqualTo(SpanKind.INTERNAL);
+    assertThat(lookupSpan.getKind()).isEqualTo(SpanKind.INTERNAL);
+    assertThat(fcmSpan.getKind()).isEqualTo(SpanKind.CLIENT);
+    assertThat(stateSpan.getKind()).isEqualTo(SpanKind.INTERNAL);
+    assertThat(dispatchSpan.getAttributes().get(AttributeKey.stringKey("outbox.item.outcome")))
+        .isEqualTo("success");
+    assertThat(fcmSpan.getAttributes().get(AttributeKey.stringKey("outbox.fcm.outcome")))
+        .isEqualTo("success");
+    assertThat(tracer.currentSpan()).isNull();
+    assertNoSensitiveTraceData(spans, notification);
   }
 
   @Test
@@ -212,6 +242,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     // Given: SENT 상태의 Notification + PENDING OutboxEvent
     Notification notification = createAndSaveNotification(NotificationStatus.SENT);
     OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
+    resetSpans();
 
     // When: OutboxPublisher 실행
     outboxPublisher.processPendingOutboxEvents();
@@ -225,6 +256,15 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
 
     // Then: FCM 전송 안 됨
     then(firebaseMessaging).should(never()).send(any(Message.class));
+
+    List<SpanData> spans = awaitSpans(exporter, tracerProvider, 4);
+    SpanData dispatchSpan = onlySpanNamed(spans, "outbox dispatch");
+    assertThat(dispatchSpan.getAttributes().get(AttributeKey.stringKey("outbox.item.outcome")))
+        .isEqualTo("skipped");
+    assertThat(dispatchSpan.getAttributes().get(AttributeKey.stringKey("outbox.item.skip.reason")))
+        .isEqualTo("already_sent");
+    assertThat(spans).noneMatch(span -> span.getName().equals("outbox fcm send"));
+    assertNoSensitiveTraceData(spans, notification);
   }
 
   @Test
@@ -236,6 +276,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     OutboxEvent event = createAndSaveOutboxEvent(notification.getId());
 
     given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+    resetSpans();
 
     // When: OutboxPublisher 실행
 
@@ -254,6 +295,13 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     assertThat(processedEvent.getRetryCount()).isEqualTo(1);
     assertThat(processedEvent.getNextRetryAt())
         .isBetween(before.plusSeconds(1), after.plusSeconds(1));
+
+    List<SpanData> spans = awaitSpans(exporter, tracerProvider, 5);
+    assertFailureTrace(spans, "retryable_failure", 1);
+    assertThat(onlySpanNamed(spans, "outbox process").getStatus().getStatusCode())
+        .isEqualTo(StatusCode.UNSET);
+    assertThat(tracer.currentSpan()).isNull();
+    assertNoSensitiveTraceData(spans, notification);
   }
 
   @Test
@@ -266,6 +314,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     event.setRetryCount(3); // 이미 3번 실패한 상태로 세팅
     outboxEventRepository.save(event);
     given(firebaseMessaging.send(any(Message.class))).willThrow(FirebaseMessagingException.class);
+    resetSpans();
 
     // When
     outboxPublisher.processPendingOutboxEvents();
@@ -276,6 +325,11 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
             .findById(event.getId())
             .orElseThrow(() -> new IllegalStateException("OutboxEvent를 찾을 수 없습니다"));
     assertThat(saved.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
+
+    List<SpanData> spans = awaitSpans(exporter, tracerProvider, 5);
+    assertFailureTrace(spans, "permanent_failure", 3);
+    assertThat(onlySpanNamed(spans, "outbox process").getStatus().getStatusCode())
+        .isEqualTo(StatusCode.UNSET);
   }
 
   @Test
@@ -393,6 +447,7 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
     given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
     given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+    resetSpans();
 
     // When
     outboxPublisher.processPendingOutboxEvents();
@@ -405,6 +460,11 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     assertThat(saved.getStatus()).isEqualTo(OutboxEventStatus.FAILED_PERMANENT);
     assertThat(saved.getRetryCount()).isEqualTo(0);
     assertThat(saved.getProcessedAt()).isNotNull();
+
+    List<SpanData> spans = awaitSpans(exporter, tracerProvider, 5);
+    assertFailureTrace(spans, "permanent_failure", 0);
+    assertThat(onlySpanNamed(spans, "outbox process").getStatus().getStatusCode())
+        .isEqualTo(StatusCode.UNSET);
   }
 
   @Test
@@ -517,6 +577,51 @@ class OutboxPublisherIntegrationTest extends IntegrationTest {
     List<SpanData> processSpans = processSpans(spans);
     assertThat(processSpans).hasSize(1);
     return processSpans.getFirst();
+  }
+
+  private SpanData onlySpanNamed(List<SpanData> spans, String name) {
+    List<SpanData> namedSpans = spans.stream().filter(span -> span.getName().equals(name)).toList();
+    assertThat(namedSpans).hasSize(1);
+    return namedSpans.getFirst();
+  }
+
+  private void resetSpans() {
+    flushSpans(tracerProvider);
+    exporter.clear();
+  }
+
+  private void assertFailureTrace(List<SpanData> spans, String outcome, long retryCount) {
+    SpanData dispatchSpan = onlySpanNamed(spans, "outbox dispatch");
+    SpanData fcmSpan = onlySpanNamed(spans, "outbox fcm send");
+    assertThat(dispatchSpan.getAttributes().get(AttributeKey.stringKey("outbox.item.outcome")))
+        .isEqualTo(outcome);
+    assertThat(dispatchSpan.getAttributes().get(AttributeKey.longKey("outbox.retry.count")))
+        .isEqualTo(retryCount);
+    assertThat(fcmSpan.getAttributes().get(AttributeKey.stringKey("outbox.fcm.outcome")))
+        .isEqualTo(outcome);
+  }
+
+  private void assertNoSensitiveTraceData(List<SpanData> spans, Notification notification) {
+    List<SpanData> runtimeSpans =
+        spans.stream().filter(span -> span.getName().startsWith("outbox ")).toList();
+    assertThat(runtimeSpans)
+        .allSatisfy(
+            span -> {
+              String attributeKeys = span.getAttributes().asMap().keySet().toString();
+              String attributeValues = span.getAttributes().asMap().values().toString();
+              String eventValues = span.getEvents().toString();
+              assertThat(attributeKeys)
+                  .doesNotContainIgnoringCase("notificationId")
+                  .doesNotContainIgnoringCase("outboxEventId")
+                  .doesNotContainIgnoringCase("userId")
+                  .doesNotContainIgnoringCase("token");
+              assertThat(attributeValues)
+                  .doesNotContain(notification.getId().toString())
+                  .doesNotContain(notification.getRecipientToken());
+              assertThat(eventValues)
+                  .doesNotContain(notification.getId().toString())
+                  .doesNotContain(notification.getRecipientToken());
+            });
   }
 
   private List<SpanData> processSpans(List<SpanData> spans) {

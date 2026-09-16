@@ -11,8 +11,11 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
@@ -31,14 +34,17 @@ public class OutboxEventDispatcher {
   private final OutboxEventRepository outboxEventRepository;
   private final NotificationRepository notificationRepository;
   private final FirebaseMessaging firebaseMessaging;
+  private final Tracer tracer;
 
   public OutboxEventDispatcher(
       OutboxEventRepository outboxEventRepository,
       NotificationRepository notificationRepository,
-      FirebaseMessaging firebaseMessaging) {
+      FirebaseMessaging firebaseMessaging,
+      Tracer tracer) {
     this.outboxEventRepository = outboxEventRepository;
     this.notificationRepository = notificationRepository;
     this.firebaseMessaging = firebaseMessaging;
+    this.tracer = tracer;
   }
 
   /**
@@ -48,16 +54,38 @@ public class OutboxEventDispatcher {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void dispatch(OutboxEvent event) {
+    Span span = startSpan("outbox dispatch");
+    try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
+      dispatchEvent(event, span);
+    } catch (RuntimeException | Error exception) {
+      span.tag("outbox.item.outcome", "error");
+      span.tag("outbox.failure.class", exception.getClass().getName());
+      span.error(new IllegalStateException("Outbox dispatch 실패"));
+      throw exception;
+    } finally {
+      span.end();
+    }
+  }
+
+  private void dispatchEvent(OutboxEvent event, Span dispatchSpan) {
     // 1. Notification 조회
     Notification notification =
-        notificationRepository
-            .findById(event.getNotificationId())
-            .orElseThrow(() -> new IllegalArgumentException("Notification을 찾을 수 없습니다"));
+        traceChild(
+            "outbox notification lookup",
+            () ->
+                notificationRepository
+                    .findById(event.getNotificationId())
+                    .orElseThrow(() -> new IllegalArgumentException("Notification을 찾을 수 없습니다")));
 
     // 2. 멱등성: 이미 SENT 상태면 OutboxEvent만 SENT로 전이하고 스킵
     if (notification.getStatus() == NotificationStatus.SENT) {
-      event.markAsSent();
-      outboxEventRepository.save(event);
+      traceStateUpdate(
+          () -> {
+            event.markAsSent();
+            outboxEventRepository.save(event);
+          });
+      dispatchSpan.tag("outbox.item.outcome", "skipped");
+      dispatchSpan.tag("outbox.item.skip.reason", "already_sent");
       log.info(
           "Outbox 이벤트 멱등 스킵 (이미 발송됨)",
           kv("outboxEventId", event.getId()),
@@ -69,16 +97,20 @@ public class OutboxEventDispatcher {
     // 3. FCM 전송
     try {
       Message message = notification.toFcmMessage();
-      firebaseMessaging.send(message);
+      sendFcm(message, event);
 
-      // 4. Notification 상태 업데이트
-      notification.setStatus(NotificationStatus.SENT);
-      notification.setSentAt(Instant.now());
-      notificationRepository.save(notification);
+      traceStateUpdate(
+          () -> {
+            // 4. Notification 상태 업데이트
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(Instant.now());
+            notificationRepository.save(notification);
 
-      // 5. OutboxEvent 상태 업데이트
-      event.markAsSent();
-      outboxEventRepository.save(event);
+            // 5. OutboxEvent 상태 업데이트
+            event.markAsSent();
+            outboxEventRepository.save(event);
+          });
+      dispatchSpan.tag("outbox.item.outcome", "success");
 
       log.info(
           "Outbox 이벤트 발송 성공",
@@ -89,10 +121,14 @@ public class OutboxEventDispatcher {
     } catch (FirebaseMessagingException e) {
       // Exponential Backoff 재시도 로직
       if (isPermanentFcmError(e)) {
-        event.markAsFailedPermanent();
-        notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
-        notificationRepository.save(notification);
-        outboxEventRepository.save(event);
+        traceStateUpdate(
+            () -> {
+              event.markAsFailedPermanent();
+              notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
+              notificationRepository.save(notification);
+              outboxEventRepository.save(event);
+            });
+        tagFailureOutcome(dispatchSpan, "permanent_failure", event.getRetryCount());
         log.warn(
             "Outbox 이벤트 발송 영구 실패",
             kv("outboxEventId", event.getId()),
@@ -103,10 +139,14 @@ public class OutboxEventDispatcher {
       Duration backoff = Duration.ofSeconds(1L << event.getRetryCount()); // 1s, 2s, 4s
 
       if (event.getRetryCount() >= 3) { // 최대 재시도 횟수 초과 시 영구 실패로 전이
-        event.markAsFailedPermanent();
-        notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
-        notificationRepository.save(notification);
-        outboxEventRepository.save(event);
+        traceStateUpdate(
+            () -> {
+              event.markAsFailedPermanent();
+              notification.markAsFailed("errorCode: " + e.getMessagingErrorCode());
+              notificationRepository.save(notification);
+              outboxEventRepository.save(event);
+            });
+        tagFailureOutcome(dispatchSpan, "permanent_failure", event.getRetryCount());
         log.warn(
             "Outbox 이벤트 발송 영구 실패 (최대 재시도 초과)",
             kv("outboxEventId", event.getId()),
@@ -114,8 +154,12 @@ public class OutboxEventDispatcher {
             kv("retryCount", event.getRetryCount()),
             kv("messagingErrorCode", e.getMessagingErrorCode()));
       } else {
-        event.markAsFailedRetriable(backoff);
-        outboxEventRepository.save(event);
+        traceStateUpdate(
+            () -> {
+              event.markAsFailedRetriable(backoff);
+              outboxEventRepository.save(event);
+            });
+        tagFailureOutcome(dispatchSpan, "retryable_failure", event.getRetryCount());
         log.warn(
             "Outbox 이벤트 발송 실패 (재시도 예정)",
             kv("outboxEventId", event.getId()),
@@ -124,6 +168,60 @@ public class OutboxEventDispatcher {
             kv("messagingErrorCode", e.getMessagingErrorCode()));
       }
     }
+  }
+
+  private void sendFcm(Message message, OutboxEvent event) throws FirebaseMessagingException {
+    Span span = startClientSpan("outbox fcm send");
+    try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
+      firebaseMessaging.send(message);
+      span.tag("outbox.fcm.outcome", "success");
+    } catch (FirebaseMessagingException exception) {
+      String outcome =
+          isPermanentFcmError(exception) || event.getRetryCount() >= 3
+              ? "permanent_failure"
+              : "retryable_failure";
+      span.tag("outbox.fcm.outcome", outcome);
+      span.error(new IllegalStateException("FCM 전송 실패"));
+      throw exception;
+    } finally {
+      span.end();
+    }
+  }
+
+  private void traceStateUpdate(Runnable action) {
+    traceChild(
+        "outbox state update",
+        () -> {
+          action.run();
+          return null;
+        });
+  }
+
+  private <T> T traceChild(String name, Supplier<T> action) {
+    Span span = startSpan(name);
+    try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
+      return action.get();
+    } finally {
+      span.end();
+    }
+  }
+
+  private Span startSpan(String name) {
+    return tracer.nextSpan().name(name).start();
+  }
+
+  private Span startClientSpan(String name) {
+    return tracer
+        .spanBuilder()
+        .setParent(tracer.currentSpan().context())
+        .name(name)
+        .kind(Span.Kind.CLIENT)
+        .start();
+  }
+
+  private void tagFailureOutcome(Span span, String outcome, int retryCount) {
+    span.tag("outbox.item.outcome", outcome);
+    span.tag("outbox.retry.count", retryCount);
   }
 
   private boolean isPermanentFcmError(FirebaseMessagingException e) {

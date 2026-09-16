@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -20,6 +21,9 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,13 +53,23 @@ class OutboxEventDispatcherTest {
   @Mock private OutboxEventRepository outboxEventRepository;
   @Mock private NotificationRepository notificationRepository;
   @Mock private FirebaseMessaging firebaseMessaging;
+  @Mock private Tracer tracer;
+  @Mock private Span span;
+  @Mock private Span.Builder spanBuilder;
+  @Mock private TraceContext traceContext;
+  @Mock private Tracer.SpanInScope spanInScope;
 
   private OutboxEventDispatcher dispatcher;
 
   @BeforeEach
   void setUp() {
+    given(tracer.nextSpan()).willReturn(span);
+    given(span.name(any())).willReturn(span);
+    given(span.start()).willReturn(span);
+    given(tracer.withSpan(any())).willReturn(spanInScope);
     dispatcher =
-        new OutboxEventDispatcher(outboxEventRepository, notificationRepository, firebaseMessaging);
+        new OutboxEventDispatcher(
+            outboxEventRepository, notificationRepository, firebaseMessaging, tracer);
   }
 
   @Nested
@@ -72,6 +86,7 @@ class OutboxEventDispatcherTest {
 
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class))).willReturn("message-id-12345");
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -120,6 +135,11 @@ class OutboxEventDispatcherTest {
       assertThatThrownBy(() -> dispatcher.dispatch(event))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Notification을 찾을 수 없습니다");
+      then(span).should().tag("outbox.item.outcome", "error");
+      then(span).should().tag("outbox.failure.class", IllegalArgumentException.class.getName());
+      then(span).should().error(any(IllegalStateException.class));
+      then(spanInScope).should(atLeast(2)).close();
+      then(span).should(atLeast(2)).end();
     }
 
     @Test
@@ -133,6 +153,7 @@ class OutboxEventDispatcherTest {
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class)))
           .willThrow(mock(FirebaseMessagingException.class));
+      givenClientSpan();
 
       // When
       Instant before = Instant.now();
@@ -160,6 +181,7 @@ class OutboxEventDispatcherTest {
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class)))
           .willThrow(mock(FirebaseMessagingException.class));
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -184,6 +206,7 @@ class OutboxEventDispatcherTest {
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class)))
           .willThrow(mock(FirebaseMessagingException.class));
+      givenClientSpan();
 
       // When
       Instant before = Instant.now();
@@ -210,6 +233,7 @@ class OutboxEventDispatcherTest {
       given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -236,6 +260,7 @@ class OutboxEventDispatcherTest {
       given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.INVALID_ARGUMENT);
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -248,6 +273,16 @@ class OutboxEventDispatcherTest {
       assertThat(notification.getErrorMessage()).isNotNull();
       then(outboxEventRepository).should().save(event);
     }
+  }
+
+  private void givenClientSpan() {
+    given(span.context()).willReturn(traceContext);
+    given(tracer.currentSpan()).willReturn(span);
+    given(tracer.spanBuilder()).willReturn(spanBuilder);
+    given(spanBuilder.setParent(any())).willReturn(spanBuilder);
+    given(spanBuilder.name(any())).willReturn(spanBuilder);
+    given(spanBuilder.kind(any())).willReturn(spanBuilder);
+    given(spanBuilder.start()).willReturn(span);
   }
 
   private Notification createNotification(UUID notificationId, NotificationStatus status) {
