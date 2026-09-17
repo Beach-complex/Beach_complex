@@ -12,6 +12,8 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED;
+import static org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK;
 
 import com.beachcheck.notification.domain.Notification;
 import com.beachcheck.notification.repository.NotificationRepository;
@@ -34,6 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 /**
  * Why: OutboxEventDispatcher.dispatch()의 FCM 전송 및 상태 전이 로직 검증
@@ -99,6 +103,64 @@ class OutboxEventDispatcherTest {
       assertThat(event.getProcessedAt()).isNotNull();
       then(notificationRepository).should().save(notification);
       then(outboxEventRepository).should().save(event);
+    }
+
+    @Test
+    @DisplayName("TC1-1 - DB 커밋 전에는 성공 결과를 기록하지 않음")
+    void shouldRecordSuccessOnlyAfterTransactionCommit() throws FirebaseMessagingException {
+      // Given
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId);
+
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class))).willReturn("message-id-12345");
+      givenClientSpan();
+      TransactionSynchronizationManager.initSynchronization();
+
+      try {
+        // When
+        dispatcher.dispatch(event);
+
+        // Then: dispatch() 반환 시점에는 아직 커밋 전이므로 성공 결과를 기록하지 않음
+        then(span).should(never()).tag("outbox.item.outcome", "success");
+
+        // When: 트랜잭션 커밋 완료 콜백 실행
+        TransactionSynchronizationUtils.triggerAfterCommit();
+
+        // Then
+        then(span).should().tag("outbox.item.outcome", "success");
+        TransactionSynchronizationUtils.triggerAfterCompletion(STATUS_COMMITTED);
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization();
+      }
+    }
+
+    @Test
+    @DisplayName("TC1-2 - DB 롤백 시 성공 대신 오류 결과를 기록")
+    void shouldRecordErrorWhenTransactionRollsBack() throws FirebaseMessagingException {
+      // Given
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId);
+
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class))).willReturn("message-id-12345");
+      givenClientSpan();
+      TransactionSynchronizationManager.initSynchronization();
+
+      try {
+        // When
+        dispatcher.dispatch(event);
+        TransactionSynchronizationUtils.triggerAfterCompletion(STATUS_ROLLED_BACK);
+
+        // Then
+        then(span).should().tag("outbox.item.outcome", "error");
+        then(span).should().error(any(IllegalStateException.class));
+        then(span).should(never()).tag("outbox.item.outcome", "success");
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization();
+      }
     }
 
     @Test

@@ -15,11 +15,14 @@ import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Why: OutboxPublisher의 self-invocation 문제로 @Transactional(REQUIRES_NEW)가 프록시를 우회하는 것을 방지하기 위해 별도
@@ -55,19 +58,28 @@ public class OutboxEventDispatcher {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void dispatch(OutboxEvent event) {
     Span span = startSpan("outbox dispatch");
+    AtomicBoolean outcomeRecorded = new AtomicBoolean(false);
+    boolean transactionSynchronizationActive =
+        TransactionSynchronizationManager.isSynchronizationActive();
+    if (transactionSynchronizationActive) {
+      registerCompletionCallback(span, outcomeRecorded, event);
+    }
     try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
-      dispatchEvent(event, span);
+      dispatchEvent(event, span, outcomeRecorded);
     } catch (RuntimeException | Error exception) {
+      outcomeRecorded.set(true);
       span.tag("outbox.item.outcome", "error");
       span.tag("outbox.failure.class", exception.getClass().getName());
       span.error(new IllegalStateException("Outbox dispatch 실패"));
       throw exception;
     } finally {
-      span.end();
+      if (!transactionSynchronizationActive) {
+        span.end();
+      }
     }
   }
 
-  private void dispatchEvent(OutboxEvent event, Span dispatchSpan) {
+  private void dispatchEvent(OutboxEvent event, Span dispatchSpan, AtomicBoolean outcomeRecorded) {
     // 1. Notification 조회
     Notification notification =
         traceChild(
@@ -84,13 +96,17 @@ public class OutboxEventDispatcher {
             event.markAsSent();
             outboxEventRepository.save(event);
           });
-      dispatchSpan.tag("outbox.item.outcome", "skipped");
-      dispatchSpan.tag("outbox.item.skip.reason", "already_sent");
-      log.info(
-          "Outbox 이벤트 멱등 스킵 (이미 발송됨)",
-          kv("outboxEventId", event.getId()),
-          kv("notificationId", event.getNotificationId()),
-          kv("outboxEventType", event.getEventType()));
+      recordAfterCommit(
+          () -> {
+            outcomeRecorded.set(true);
+            dispatchSpan.tag("outbox.item.outcome", "skipped");
+            dispatchSpan.tag("outbox.item.skip.reason", "already_sent");
+            log.info(
+                "Outbox 이벤트 멱등 스킵 (이미 발송됨)",
+                kv("outboxEventId", event.getId()),
+                kv("notificationId", event.getNotificationId()),
+                kv("outboxEventType", event.getEventType()));
+          });
       return;
     }
 
@@ -110,14 +126,17 @@ public class OutboxEventDispatcher {
             event.markAsSent();
             outboxEventRepository.save(event);
           });
-      dispatchSpan.tag("outbox.item.outcome", "success");
-
-      log.info(
-          "Outbox 이벤트 발송 성공",
-          kv("outboxEventId", event.getId()),
-          kv("notificationId", event.getNotificationId()),
-          kv("outboxEventType", event.getEventType()),
-          kv("retryCount", event.getRetryCount()));
+      recordAfterCommit(
+          () -> {
+            outcomeRecorded.set(true);
+            dispatchSpan.tag("outbox.item.outcome", "success");
+            log.info(
+                "Outbox 이벤트 발송 성공",
+                kv("outboxEventId", event.getId()),
+                kv("notificationId", event.getNotificationId()),
+                kv("outboxEventType", event.getEventType()),
+                kv("retryCount", event.getRetryCount()));
+          });
     } catch (FirebaseMessagingException e) {
       // Exponential Backoff 재시도 로직
       if (isPermanentFcmError(e)) {
@@ -128,7 +147,8 @@ public class OutboxEventDispatcher {
               notificationRepository.save(notification);
               outboxEventRepository.save(event);
             });
-        tagFailureOutcome(dispatchSpan, "permanent_failure", event.getRetryCount());
+        tagFailureOutcome(
+            dispatchSpan, outcomeRecorded, "permanent_failure", event.getRetryCount());
         log.warn(
             "Outbox 이벤트 발송 영구 실패",
             kv("outboxEventId", event.getId()),
@@ -146,7 +166,8 @@ public class OutboxEventDispatcher {
               notificationRepository.save(notification);
               outboxEventRepository.save(event);
             });
-        tagFailureOutcome(dispatchSpan, "permanent_failure", event.getRetryCount());
+        tagFailureOutcome(
+            dispatchSpan, outcomeRecorded, "permanent_failure", event.getRetryCount());
         log.warn(
             "Outbox 이벤트 발송 영구 실패 (최대 재시도 초과)",
             kv("outboxEventId", event.getId()),
@@ -159,7 +180,8 @@ public class OutboxEventDispatcher {
               event.markAsFailedRetriable(backoff);
               outboxEventRepository.save(event);
             });
-        tagFailureOutcome(dispatchSpan, "retryable_failure", event.getRetryCount());
+        tagFailureOutcome(
+            dispatchSpan, outcomeRecorded, "retryable_failure", event.getRetryCount());
         log.warn(
             "Outbox 이벤트 발송 실패 (재시도 예정)",
             kv("outboxEventId", event.getId()),
@@ -219,9 +241,45 @@ public class OutboxEventDispatcher {
         .start();
   }
 
-  private void tagFailureOutcome(Span span, String outcome, int retryCount) {
+  private void tagFailureOutcome(
+      Span span, AtomicBoolean outcomeRecorded, String outcome, int retryCount) {
+    outcomeRecorded.set(true);
     span.tag("outbox.item.outcome", outcome);
     span.tag("outbox.retry.count", retryCount);
+  }
+
+  private void recordAfterCommit(Runnable action) {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              action.run();
+            }
+          });
+      return;
+    }
+    action.run();
+  }
+
+  private void registerCompletionCallback(
+      Span span, AtomicBoolean outcomeRecorded, OutboxEvent event) {
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCompletion(int status) {
+            if (status != TransactionSynchronization.STATUS_COMMITTED
+                && outcomeRecorded.compareAndSet(false, true)) {
+              span.tag("outbox.item.outcome", "error");
+              span.error(new IllegalStateException("Outbox dispatch 커밋 실패"));
+              log.warn(
+                  "Outbox 이벤트 상태 저장 커밋 실패",
+                  kv("outboxEventId", event.getId()),
+                  kv("notificationId", event.getNotificationId()));
+            }
+            span.end();
+          }
+        });
   }
 
   private boolean isPermanentFcmError(FirebaseMessagingException e) {
