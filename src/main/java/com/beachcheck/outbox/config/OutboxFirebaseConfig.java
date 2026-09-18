@@ -6,6 +6,7 @@ import com.beachcheck.outbox.service.OutboxEventDispatcher;
 import com.beachcheck.outbox.service.OutboxPublisher;
 import com.beachcheck.outbox.tracing.OutboxTracing;
 import com.google.firebase.messaging.FirebaseMessaging;
+import io.micrometer.tracing.Tracer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -33,9 +34,10 @@ public class OutboxFirebaseConfig {
   public OutboxEventDispatcher outboxEventDispatcher(
       OutboxEventRepository outboxEventRepository,
       NotificationRepository notificationRepository,
-      FirebaseMessaging firebaseMessaging) {
+      FirebaseMessaging firebaseMessaging,
+      Tracer tracer) {
     return new OutboxEventDispatcher(
-        outboxEventRepository, notificationRepository, firebaseMessaging);
+        outboxEventRepository, notificationRepository, firebaseMessaging, tracer);
   }
 
   @Bean

@@ -15,6 +15,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
+import io.micrometer.tracing.Tracer;
 import java.io.InputStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,8 @@ class OutboxFirebaseConditionContextTest {
           .withPropertyValues("app.outbox.polling.enabled=true", "app.outbox.polling.batch-size=10")
           .withBean(OutboxEventRepository.class, () -> mock(OutboxEventRepository.class))
           .withBean(NotificationRepository.class, () -> mock(NotificationRepository.class))
-          .withBean(OutboxTracing.class, () -> mock(OutboxTracing.class));
+          .withBean(OutboxTracing.class, () -> mock(OutboxTracing.class))
+          .withBean(Tracer.class, () -> mock(Tracer.class));
 
   @Test
   @DisplayName("Firebase가 비활성화되면 Outbox 관련 빈 없이도 컨텍스트가 정상 기동된다")

@@ -9,8 +9,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED;
+import static org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK;
 
 import com.beachcheck.notification.domain.Notification;
 import com.beachcheck.notification.repository.NotificationRepository;
@@ -20,6 +23,9 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 /**
  * Why: OutboxEventDispatcher.dispatch()의 FCM 전송 및 상태 전이 로직 검증
@@ -49,13 +57,23 @@ class OutboxEventDispatcherTest {
   @Mock private OutboxEventRepository outboxEventRepository;
   @Mock private NotificationRepository notificationRepository;
   @Mock private FirebaseMessaging firebaseMessaging;
+  @Mock private Tracer tracer;
+  @Mock private Span span;
+  @Mock private Span.Builder spanBuilder;
+  @Mock private TraceContext traceContext;
+  @Mock private Tracer.SpanInScope spanInScope;
 
   private OutboxEventDispatcher dispatcher;
 
   @BeforeEach
   void setUp() {
+    given(tracer.nextSpan()).willReturn(span);
+    given(span.name(any())).willReturn(span);
+    given(span.start()).willReturn(span);
+    given(tracer.withSpan(any())).willReturn(spanInScope);
     dispatcher =
-        new OutboxEventDispatcher(outboxEventRepository, notificationRepository, firebaseMessaging);
+        new OutboxEventDispatcher(
+            outboxEventRepository, notificationRepository, firebaseMessaging, tracer);
   }
 
   @Nested
@@ -72,6 +90,7 @@ class OutboxEventDispatcherTest {
 
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class))).willReturn("message-id-12345");
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -84,6 +103,64 @@ class OutboxEventDispatcherTest {
       assertThat(event.getProcessedAt()).isNotNull();
       then(notificationRepository).should().save(notification);
       then(outboxEventRepository).should().save(event);
+    }
+
+    @Test
+    @DisplayName("TC1-1 - DB 커밋 전에는 성공 결과를 기록하지 않음")
+    void shouldRecordSuccessOnlyAfterTransactionCommit() throws FirebaseMessagingException {
+      // Given
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId);
+
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class))).willReturn("message-id-12345");
+      givenClientSpan();
+      TransactionSynchronizationManager.initSynchronization();
+
+      try {
+        // When
+        dispatcher.dispatch(event);
+
+        // Then: dispatch() 반환 시점에는 아직 커밋 전이므로 성공 결과를 기록하지 않음
+        then(span).should(never()).tag("outbox.item.outcome", "success");
+
+        // When: 트랜잭션 커밋 완료 콜백 실행
+        TransactionSynchronizationUtils.triggerAfterCommit();
+
+        // Then
+        then(span).should().tag("outbox.item.outcome", "success");
+        TransactionSynchronizationUtils.triggerAfterCompletion(STATUS_COMMITTED);
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization();
+      }
+    }
+
+    @Test
+    @DisplayName("TC1-2 - DB 롤백 시 성공 대신 오류 결과를 기록")
+    void shouldRecordErrorWhenTransactionRollsBack() throws FirebaseMessagingException {
+      // Given
+      UUID notificationId = UUID.randomUUID();
+      Notification notification = createNotification(notificationId, NotificationStatus.PENDING);
+      OutboxEvent event = createPendingEvent(notificationId);
+
+      given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+      given(firebaseMessaging.send(any(Message.class))).willReturn("message-id-12345");
+      givenClientSpan();
+      TransactionSynchronizationManager.initSynchronization();
+
+      try {
+        // When
+        dispatcher.dispatch(event);
+        TransactionSynchronizationUtils.triggerAfterCompletion(STATUS_ROLLED_BACK);
+
+        // Then
+        then(span).should().tag("outbox.item.outcome", "error");
+        then(span).should().error(any(IllegalStateException.class));
+        then(span).should(never()).tag("outbox.item.outcome", "success");
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization();
+      }
     }
 
     @Test
@@ -120,6 +197,11 @@ class OutboxEventDispatcherTest {
       assertThatThrownBy(() -> dispatcher.dispatch(event))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Notification을 찾을 수 없습니다");
+      then(span).should().tag("outbox.item.outcome", "error");
+      then(span).should().tag("outbox.failure.class", IllegalArgumentException.class.getName());
+      then(span).should().error(any(IllegalStateException.class));
+      then(spanInScope).should(atLeast(2)).close();
+      then(span).should(atLeast(2)).end();
     }
 
     @Test
@@ -133,6 +215,7 @@ class OutboxEventDispatcherTest {
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class)))
           .willThrow(mock(FirebaseMessagingException.class));
+      givenClientSpan();
 
       // When
       Instant before = Instant.now();
@@ -160,6 +243,7 @@ class OutboxEventDispatcherTest {
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class)))
           .willThrow(mock(FirebaseMessagingException.class));
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -184,6 +268,7 @@ class OutboxEventDispatcherTest {
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class)))
           .willThrow(mock(FirebaseMessagingException.class));
+      givenClientSpan();
 
       // When
       Instant before = Instant.now();
@@ -210,6 +295,7 @@ class OutboxEventDispatcherTest {
       given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -236,6 +322,7 @@ class OutboxEventDispatcherTest {
       given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.INVALID_ARGUMENT);
       given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
       given(firebaseMessaging.send(any(Message.class))).willThrow(exception);
+      givenClientSpan();
 
       // When
       dispatcher.dispatch(event);
@@ -248,6 +335,16 @@ class OutboxEventDispatcherTest {
       assertThat(notification.getErrorMessage()).isNotNull();
       then(outboxEventRepository).should().save(event);
     }
+  }
+
+  private void givenClientSpan() {
+    given(span.context()).willReturn(traceContext);
+    given(tracer.currentSpan()).willReturn(span);
+    given(tracer.spanBuilder()).willReturn(spanBuilder);
+    given(spanBuilder.setParent(any())).willReturn(spanBuilder);
+    given(spanBuilder.name(any())).willReturn(spanBuilder);
+    given(spanBuilder.kind(any())).willReturn(spanBuilder);
+    given(spanBuilder.start()).willReturn(span);
   }
 
   private Notification createNotification(UUID notificationId, NotificationStatus status) {
