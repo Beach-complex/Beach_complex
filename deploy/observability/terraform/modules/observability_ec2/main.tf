@@ -25,6 +25,10 @@ locals {
   tempo_config_base64gzip = base64gzip(
     file("${path.module}/../../../compose/tempo/tempo.yaml")
   )
+  loki_config_base64gzip = base64gzip(
+    file("${path.module}/../../../compose/loki/local-config.yaml")
+  )
+  loki_retention_period = lookup({ dev = "72h", staging = "168h", prod = "336h" }, var.env)
   grafana_datasources_base64gzip = base64gzip(
     file("${path.module}/../../../compose/grafana/provisioning/datasources/datasources.yml")
   )
@@ -39,6 +43,8 @@ locals {
     compose_base64gzip             = local.compose_base64gzip
     prometheus_config_base64gzip   = local.prometheus_config_base64gzip
     tempo_config_base64gzip        = local.tempo_config_base64gzip
+    loki_config_base64gzip         = local.loki_config_base64gzip
+    loki_retention_period          = local.loki_retention_period
     grafana_datasources_base64gzip = local.grafana_datasources_base64gzip
   })
 
@@ -52,6 +58,8 @@ locals {
     compose_base64gzip             = local.compose_base64gzip
     prometheus_config_base64gzip   = local.prometheus_config_base64gzip
     tempo_config_base64gzip        = local.tempo_config_base64gzip
+    loki_config_base64gzip         = local.loki_config_base64gzip
+    loki_retention_period          = local.loki_retention_period
     grafana_datasources_base64gzip = local.grafana_datasources_base64gzip
   })
 
@@ -113,6 +121,15 @@ resource "aws_vpc_security_group_ingress_rule" "otlp_http" {
   from_port                    = 4318
   ip_protocol                  = "tcp"
   to_port                      = 4318
+}
+
+resource "aws_vpc_security_group_ingress_rule" "loki" {
+  security_group_id            = aws_security_group.this.id
+  referenced_security_group_id = var.app_server_security_group_id
+  description                  = "Loki log ingestion from the application server Alloy"
+  from_port                    = 3100
+  ip_protocol                  = "tcp"
+  to_port                      = 3100
 }
 
 resource "aws_vpc_security_group_egress_rule" "all" {

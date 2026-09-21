@@ -42,6 +42,8 @@ validate_terraform() {
     -lockfile=readonly \
     -no-color
   terraform -chdir="$terraform_environment" validate -no-color
+  # Mock provider: verifies SG and retention contracts without contacting AWS.
+  terraform -chdir="$terraform_environment" test -no-color
 }
 
 render_cloud_init() {
@@ -59,6 +61,8 @@ base64gzip(templatefile("${path.module}/../../modules/observability_ec2/cloud-in
     )
   ),
   tempo_config_base64gzip        = base64gzip(file("${path.module}/../../../compose/tempo/tempo.yaml")),
+  loki_config_base64gzip         = base64gzip(file("${path.module}/../../../compose/loki/local-config.yaml")),
+  loki_retention_period          = lookup({ dev = "72h", staging = "168h", prod = "336h" }, var.env),
   grafana_datasources_base64gzip = base64gzip(file("${path.module}/../../../compose/grafana/provisioning/datasources/datasources.yml"))
 }))
 EOF
@@ -96,7 +100,13 @@ EOF
 }
 
 validate_compose() {
+  local loki_image
   docker compose -f "$compose_dir/docker-compose.yml" config --quiet
+  loki_image="$(docker compose -f "$compose_dir/docker-compose.yml" config --format json \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["loki"]["image"])')"
+  docker run --rm \
+    --volume "$compose_dir/loki/local-config.yaml:/etc/loki/local-config.yaml:ro" "$loki_image" \
+    -config.file=/etc/loki/local-config.yaml -config.expand-env=true -verify-config=true
 }
 
 main() {

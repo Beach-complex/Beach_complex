@@ -1,0 +1,46 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ingester:
+  wal:
+    enabled: true
+    dir: /loki/wal
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  retention_delete_delay: 2h
+  delete_request_store: filesystem
+
+limits_config:
+  # ADR-014: dev 3d, staging 7d, prod 14d; cloud-init supplies the environment.
+  retention_period: ${LOKI_RETENTION_PERIOD:-72h}
+  # Do not implicitly add service_name to the explicit four-label contract.
+  discover_service_name: []
+
+analytics:
+  reporting_enabled: false
