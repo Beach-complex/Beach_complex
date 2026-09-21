@@ -21,9 +21,9 @@ Trace는 기존 경로대로 애플리케이션에서 Tempo로 직접 전송한�
 | 접근 | 관측 SG TCP 3100은 앱 SG만 허용. 인증 없는 Loki를 인터넷에 직접 공개하지 않는다. |
 | 수집 | `app-agent/alloy/config.alloy`, Docker 로그 디렉터리 읽기 전용; Docker socket 사용 없음 |
 | 수집 대상 | Docker logging attribute `beach.logs=backend`인 컨테이너만 통과 |
-| 재배포 | 5초마다 파일 탐색. 컨테이너 ID를 설정에 고정하지 않는다. |
-| 읽기 위치 | 앱 서버 `alloy-data` named volume. `down -v`로 삭제하지 않는다. |
-| 회전 | backend Docker 로그 파일당 50MB, 최대 5개 |
+| 재배포 | 기본 200ms 주기로 파일 탐색. 컨테이너 ID를 설정에 고정하지 않는다. |
+| 읽기 위치 | 파일 지문과 읽기 위치를 앱 서버 `alloy-data` Docker 볼륨에 저장. `down -v`로 삭제하지 않는다. |
+| 회전 | backend Docker 로그 파일당 50MB, 최대 5개, 압축하지 않음 |
 | 인덱스 라벨 | `app=beach-complex`, `env`, `service=backend`, `host`만 유지 |
 | 식별자 | traceId/spanId/requestId/userId/notificationId/outboxEventId는 JSON 본문에 유지; 인덱스 라벨로 승격하지 않는다. |
 
@@ -31,8 +31,22 @@ Alloy는 root 소유 Docker 파일을 읽기 위해 UID 0으로 실행하지만,
 빈 상태 볼륨에 이미지 내부 UID 소유권이 복사되지 않도록 `nocopy: true`를 지정한다.
 이는 rootful Docker의 기본 `json-file` 배치를 기준으로 한다. rootless Docker나 user namespace remapping 환경은 별도 권한 검증이 필요하다.
 
+`otelcol.receiver.filelog`와 `otelcol.storage.file`은 고정한 Alloy v1.19.2에서 공개 미리보기 기능이다.
+Compose와 설정 검사에 `--stability.level=public-preview`를 명시했다. 업그레이드할 때 같은 회귀 테스트를 실행한다.
+Docker 레코드 끝의 시각까지 비교하도록 지문 크기를 128KiB로 설정했다. 긴 로그 조각의 앞부분이 같아도 다른 파일로 구분한다.
+파일 지문으로 이름이 바뀐 파일을 추적하고 `.log.4`부터 `.log`까지 차례로 읽는다.
+Docker가 나눈 한 줄은 컨테이너 ID와 stdout/stderr를 기준으로 묶어, 줄바꿈이 나올 때까지 구분자 없이 합친다.
+
+이 버전의 Alloy 정렬 설정은 `lexicographic`을 받지만 내부 Stanza는 `alphabetical`을 요구한다.
+이를 피하려고 `operators`의 `file_input`에 정렬을 직접 설정했다. 바깥쪽 입력은 사용하지 않는 경로를 가리킨다.
+두 입력이 같은 파일을 읽지 않으며, 실제 입력은 같은 file storage에 읽기 위치를 저장한다.
+이 우회 설정은 해당 버전의 매핑이 수정되면 제거할 수 있다.
+
 Alloy의 읽기 위치는 지속되지만 전송 성공 확인과 원자적으로 묶이지 않는다. 짧은 Loki 장애에는 재시도하며,
 장시간 장애·강제 종료·로그 회전 한도 초과에 대한 무손실 또는 exactly-once를 보장하지 않는다.
+재조립 중인 조각은 메모리에만 있다. 조각 사이에 5초 이상 지연되거나 재조립 도중 Alloy가 종료되면 완전한 한 줄을 보장하지 않는다.
+한 줄의 크기는 Loki 기본 상한인 256KiB 이내로 유지한다. 회전 파일은 최대 5개를 수집하므로 Docker의 보존 개수와 압축 설정을 함께 유지한다.
+기존 `loki.source.file`의 positions 파일은 새 저장 형식으로 자동 이관하지 않는다. 이전 초안을 실행한 환경에 적용하면 남아 있는 로그를 다시 읽을 수 있다.
 보존 기간은 디스크 용량 상한이 아니며, 오래된 chunk 삭제는 compactor 주기와 삭제 지연 이후에 이루어진다.
 
 ## 로컬 검증
@@ -55,7 +69,9 @@ Compose 병합, Loki/Alloy 실제 이미지의 설정 검증을 수행한다.
 - 실제 Docker json-file → Alloy → Loki 수집, 원본 JSON 보존 및 traceId 검색
 - 다른 컨테이너 제외, `/series` 기준 인덱스 라벨 4개만 존재
 - Grafana provisioning의 변수·정규식과 datasource health, Grafana proxy를 통한 Trace 및 역방향 로그 조회
-- Alloy 정상 재시작 후 저장된 positions 사용 및 중지 중 쌓인 로그 수집
+- Alloy 정상 재시작 후 저장된 파일 지문·읽기 위치 사용 및 중지 중 쌓인 로그 수집
+- 두 컨테이너의 stdout/stderr에서 조각이 교차하는 40KB JSON의 원문 보존과 traceId 검색
+- Alloy 중지 중 회전된 로그 110건과 파일 경계에 걸친 90KB JSON 복구, 재시작 후 중복 전송 검사
 - backend 컨테이너 교체 시 새 로그 경로 발견, 짧은 Loki 중단 후 전송 재시도
 - Loki 컨테이너 재생성 후 기존 데이터 조회 및 실제 적용된 retention 설정
 
@@ -64,7 +80,8 @@ Compose 병합, Loki/Alloy 실제 이미지의 설정 검증을 수행한다.
 보고서는 `build/reports/observability/log-pipeline.json`에 생성하며 CI에서도 같은 검증을 실행하도록 구성했다.
 
 이 검증은 합성 데이터와 로컬 볼륨을 사용한다. 실제 EC2/EBS 부팅·재부팅, 브라우저 클릭,
-운영 앱의 로그와 span 연결, 기간 경과에 따른 실제 삭제 및 24시간 soak는 서버 적용 후 확인할 항목이다.
+운영 앱의 로그와 span 연결, 보존 기간 경과에 따른 실제 삭제는 서버 적용 후 확인할 항목이다.
+24시간 운영 검증, 대시보드·알림·SLI/SLO 및 Terraform 원격 상태 저장소는 #233에서 분리한 후속 범위다.
 
 ## 서버 적용용 설정 (이번 작업에서는 실행하지 않음)
 
@@ -114,7 +131,9 @@ Trace가 샘플링되지 않았거나 Tempo 보존 기간이 지났으면 해당
 
 - [ADR-014: Loki 및 보존·라벨 정책](https://github.com/Beach-complex/beach_complex_docs/blob/main/adr/ADR-014-logging-storage-backend.md)
 - [ADR-015: Alloy 및 file tail](https://github.com/Beach-complex/beach_complex_docs/blob/main/adr/ADR-015-log-collector.md)
-- [Alloy file source](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.file/)
+- [Alloy filelog receiver](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.filelog/)
+- [Alloy file storage](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.storage.file/)
+- [Stanza 재조립 설정](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.158.0/pkg/stanza/docs/operators/recombine.md)
 - [Alloy Loki write 및 재시도](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.write/)
 - [Loki retention](https://grafana.com/docs/loki/latest/operations/storage/retention/)
 - [Grafana Tempo와 로그 연결](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/)
