@@ -1,4 +1,20 @@
 services:
+  loki:
+    image: grafana/loki:3.7.8
+    container_name: beach-loki
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+      - -config.expand-env=true
+    environment:
+      LOKI_RETENTION_PERIOD: ${LOKI_RETENTION_PERIOD:-72h}
+    volumes:
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - ../data/loki:/loki
+    # Terraform permits TCP 3100 only from the application server SG.
+    ports:
+      - 3100:3100
+
   prometheus:
     image: prom/prometheus:v3.13.2
     container_name: beach-prometheus
@@ -46,6 +62,7 @@ services:
     depends_on:
       - prometheus
       - tempo
+      - loki
     environment:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:

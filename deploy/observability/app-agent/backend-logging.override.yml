@@ -1,0 +1,12 @@
+# Merge with the app server's existing Compose file. Service name must be app.
+services:
+  app:
+    labels:
+      beach.logs: backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "false"
+        labels: "beach.logs"

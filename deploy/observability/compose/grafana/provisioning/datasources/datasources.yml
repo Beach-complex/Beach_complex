@@ -11,6 +11,21 @@ datasources:
     isDefault: true
     editable: false
 
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          datasourceUid: tempo
+          matcherRegex: '(?:"traceId"\s*:\s*"|traceId=)([a-f0-9]{32})'
+          url: '$${__value.raw}'
+          urlDisplayLabel: View trace
+
   - name: Tempo
     uid: tempo
     type: tempo
@@ -18,3 +33,10 @@ datasources:
     url: http://tempo:3200
     isDefault: false
     editable: false
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: '-5m'
+        spanEndTimeShift: '5m'
+        customQuery: true
+        query: '{app="beach-complex", service="backend"} |= "$${__span.traceId}"'

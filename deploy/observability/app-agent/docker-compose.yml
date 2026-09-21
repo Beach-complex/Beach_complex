@@ -1,0 +1,32 @@
+services:
+  alloy:
+    image: grafana/alloy:v1.19.2
+    restart: unless-stopped
+    # Docker log files are root-owned; no Docker socket or host write access.
+    user: "0:0"
+    command:
+      - run
+      - --stability.level=public-preview
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy
+      - /etc/alloy/config.alloy
+    environment:
+      LOKI_URL: ${LOKI_URL:?Set the observability private Loki push URL}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:?Set dev, staging or prod}
+      LOG_HOST: ${LOG_HOST:?Set a stable application host identifier}
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ${DOCKER_LOG_ROOT:-/var/lib/docker/containers}:/var/log/docker:ro
+      # Keep the empty volume root-owned instead of copying image UID ownership.
+      - type: volume
+        source: alloy-data
+        target: /var/lib/alloy
+        volume:
+          nocopy: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  alloy-data:
