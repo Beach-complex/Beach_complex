@@ -100,13 +100,24 @@ EOF
 }
 
 validate_compose() {
-  local loki_image
+  local loki_image alloy_image
   docker compose -f "$compose_dir/docker-compose.yml" config --quiet
+  LOKI_URL=http://loki:3100/loki/api/v1/push APP_ENVIRONMENT=dev LOG_HOST=validation \
+    docker compose -f deploy/observability/app-agent/docker-compose.yml config --quiet
+  IMAGE_REPOSITORY=local/backend IMAGE_TAG=validation APP_RUNTIME_ENV_FILE=/dev/null \
+    docker compose -f deploy/docker-compose.ec2.yml.example \
+    -f deploy/observability/app-agent/backend-logging.override.yml config --quiet
   loki_image="$(docker compose -f "$compose_dir/docker-compose.yml" config --format json \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["loki"]["image"])')"
+  alloy_image="$(LOKI_URL=http://loki:3100/loki/api/v1/push APP_ENVIRONMENT=dev LOG_HOST=validation \
+    docker compose -f deploy/observability/app-agent/docker-compose.yml config --images)"
   docker run --rm \
     --volume "$compose_dir/loki/local-config.yaml:/etc/loki/local-config.yaml:ro" "$loki_image" \
     -config.file=/etc/loki/local-config.yaml -config.expand-env=true -verify-config=true
+  LOKI_URL=http://loki:3100/loki/api/v1/push APP_ENVIRONMENT=dev LOG_HOST=validation \
+    docker run --rm --env LOKI_URL --env APP_ENVIRONMENT --env LOG_HOST \
+      --volume "$PWD/deploy/observability/app-agent/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
+      "$alloy_image" validate /etc/alloy/config.alloy
 }
 
 main() {

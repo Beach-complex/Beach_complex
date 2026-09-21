@@ -1,0 +1,57 @@
+logging {
+	level = "info"
+}
+
+local.file_match "docker" {
+	path_targets = [{
+		__path__ = "/var/log/docker/*/*-json.log",
+		app      = "beach-complex",
+		env      = sys.env("APP_ENVIRONMENT"),
+		service  = "backend",
+		host     = sys.env("LOG_HOST"),
+	}]
+	sync_period = "5s"
+}
+
+loki.source.file "docker" {
+	targets    = local.file_match.docker.targets
+	forward_to = [loki.process.backend.receiver]
+	// Offsets live under --storage.path on the persistent alloy-data volume.
+	tail_from_end = false
+}
+
+loki.process "backend" {
+	forward_to = [loki.write.observability.receiver]
+
+	// Select by an explicit Docker logging attribute, not a changing container ID.
+	// Unlabelled containers (including Alloy itself) are rejected before unwrapping.
+	stage.json {
+		expressions = {source_service = "attrs.\"beach.logs\""}
+	}
+
+	stage.labels {
+		values = {source_service = ""}
+	}
+
+	stage.match {
+		selector            = "{source_service!=\"backend\"}"
+		action              = "drop"
+		drop_counter_reason = "not_backend"
+	}
+
+	stage.docker { }
+	// Preserve the original app JSON. IDs are fields, never indexed labels.
+	stage.json {
+		expressions = {traceId = "traceId"}
+	}
+
+	stage.label_keep {
+		values = ["app", "env", "service", "host"]
+	}
+}
+
+loki.write "observability" {
+	endpoint {
+		url = sys.env("LOKI_URL")
+	}
+}
