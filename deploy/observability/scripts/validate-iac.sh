@@ -117,7 +117,7 @@ validate_compose() {
   LOKI_URL=http://loki:3100/loki/api/v1/push APP_ENVIRONMENT=dev LOG_HOST=validation \
     docker run --rm --env LOKI_URL --env APP_ENVIRONMENT --env LOG_HOST \
       --volume "$PWD/deploy/observability/app-agent/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
-      "$alloy_image" validate /etc/alloy/config.alloy
+      "$alloy_image" validate --stability.level=public-preview /etc/alloy/config.alloy
 }
 
 main() {

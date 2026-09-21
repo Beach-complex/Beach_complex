@@ -6,6 +6,7 @@ services:
     user: "0:0"
     command:
       - run
+      - --stability.level=public-preview
       - --server.http.listen-addr=127.0.0.1:12345
       - --storage.path=/var/lib/alloy
       - /etc/alloy/config.alloy

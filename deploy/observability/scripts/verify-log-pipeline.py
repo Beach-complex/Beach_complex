@@ -197,11 +197,11 @@ def main():
             request(emitter, json.dumps({'message': 'while-stopped-' + PROJECT}).encode())
             compose('start', 'alloy')
             wait_for('Alloy offset resume', lambda: entries('while-stopped-' + PROJECT))
-            positions = compose('exec', '-T', 'alloy', 'sh', '-c',
-                                r'find /var/lib/alloy -name positions.yml -exec cat {} \;')
-            assert 'positions:' in positions and '-json.log' in positions, positions
+            offsets = compose('exec', '-T', 'alloy', 'sh', '-c',
+                              'find /var/lib/alloy/docker-offsets -type f -size +0c')
+            assert offsets, 'No persistent file fingerprint/offset database'
             assert len(entries(record['message'])) == len(found)
-            passed('Alloy persisted positions and resumed logs written during its stop')
+            passed('Alloy persisted file fingerprints/offsets and resumed logs written during its stop')
 
             compose('up', '-d', '--force-recreate', '--no-deps', 'emitter')
             emitter = address('emitter', 8000)

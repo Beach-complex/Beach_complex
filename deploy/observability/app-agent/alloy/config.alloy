@@ -2,49 +2,106 @@ logging {
 	level = "info"
 }
 
-local.file_match "docker" {
-	path_targets = [{
-		__path__ = "/var/log/docker/*/*-json.log",
-		app      = "beach-complex",
-		env      = sys.env("APP_ENVIRONMENT"),
-		service  = "backend",
-		host     = sys.env("LOG_HOST"),
-	}]
-	sync_period = "5s"
+// Fingerprints identify files even after Docker renames them during rotation.
+// Both components are public preview in the pinned Alloy v1.19.2 image.
+otelcol.storage.file "docker" {
+	directory        = "/var/lib/alloy/docker-offsets"
+	create_directory = true
+	fsync            = true
 }
 
-loki.source.file "docker" {
-	targets    = local.file_match.docker.targets
+otelcol.receiver.filelog "docker" {
+	// v1.19.2's ordering wrapper accepts "lexicographic", whereas its bundled
+	// stanza reader requires "alphabetical". Configure the file_input operator
+	// directly until that upstream mapping is fixed. The wrapper input is idle.
+	include   = ["/var/log/docker/__unused_wrapper_input__"]
+	storage   = otelcol.storage.file.docker.handler
+	operators = [
+		{
+			type      = "json_parser",
+			id        = "parse_docker",
+			output    = "select_backend",
+			on_error  = "drop",
+			timestamp = {
+				parse_from  = "attributes.time",
+				layout_type = "gotime",
+				layout      = "2006-01-02T15:04:05.999999999Z07:00",
+			},
+		},
+		{
+			type     = "file_input",
+			id       = "docker_files",
+			output   = "parse_docker",
+			include  = ["/var/log/docker/*/*-json.log", "/var/log/docker/*/*-json.log.[1-4]"],
+			start_at = "beginning",
+			// Include Docker timestamps after escaped 16 KiB chunks in the fingerprint.
+			// A 1 KiB prefix can be identical across containers with repetitive payloads.
+			fingerprint_size  = "128KiB",
+			include_file_path = true,
+			include_file_name = false,
+			// Oldest file first, one reader at a time, across all five files.
+			max_concurrent_files = 1,
+			max_batches          = 0,
+			ordering_criteria    = {
+				regex    = "/[^/]+/[^/]+-json\\.log(?P<rotation>\\.[1-4])?$",
+				group_by = "/([^/]+)/[^/]+-json\\.log",
+				top_n    = 5,
+				sort_by  = [{sort_type = "alphabetical", regex_key = "rotation", ascending = false}],
+			},
+			attributes = {
+				app                     = "beach-complex",
+				env                     = sys.env("APP_ENVIRONMENT"),
+				service                 = "backend",
+				host                    = sys.env("LOG_HOST"),
+				"loki.attribute.labels" = "app,env,service,host",
+				"loki.format"           = "raw",
+			},
+		},
+		{
+			type = "filter",
+			id   = "select_backend",
+			expr = "attributes.attrs == nil or attributes.attrs[\"beach.logs\"] != \"backend\"",
+		},
+		{
+			type       = "regex_parser",
+			parse_from = "attributes[\"log.file.path\"]",
+			regex      = "/(?P<container>[^/]+)/[^/]+-json.log",
+			on_error   = "drop",
+		},
+		{
+			type  = "add",
+			field = "attributes.source",
+			value = "EXPR(attributes.container + \"/\" + attributes.stream)",
+		},
+		{
+			type               = "recombine",
+			combine_field      = "attributes.log",
+			combine_with       = "",
+			is_last_entry      = "attributes.log endsWith \"\\n\"",
+			source_identifier  = "attributes.source",
+			overwrite_with     = "oldest",
+			force_flush_period = "5s",
+			max_log_size       = 262144,
+		},
+		{
+			type = "move",
+			from = "attributes.log",
+			to   = "body",
+		},
+	]
+
+	output {
+		logs = [otelcol.exporter.loki.backend.input]
+	}
+}
+
+otelcol.exporter.loki "backend" {
 	forward_to = [loki.process.backend.receiver]
-	// Offsets live under --storage.path on the persistent alloy-data volume.
-	tail_from_end = false
 }
 
 loki.process "backend" {
 	forward_to = [loki.write.observability.receiver]
-
-	// Select by an explicit Docker logging attribute, not a changing container ID.
-	// Unlabelled containers (including Alloy itself) are rejected before unwrapping.
-	stage.json {
-		expressions = {source_service = "attrs.\"beach.logs\""}
-	}
-
-	stage.labels {
-		values = {source_service = ""}
-	}
-
-	stage.match {
-		selector            = "{source_service!=\"backend\"}"
-		action              = "drop"
-		drop_counter_reason = "not_backend"
-	}
-
-	stage.docker { }
-	// Preserve the original app JSON. IDs are fields, never indexed labels.
-	stage.json {
-		expressions = {traceId = "traceId"}
-	}
-
+	// Preserve app JSON; IDs and Docker paths never become indexed labels.
 	stage.label_keep {
 		values = ["app", "env", "service", "host"]
 	}

@@ -10,6 +10,7 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+        compress: "false"
         labels: "beach.logs"
     env_file:
       - ${APP_RUNTIME_ENV_FILE:-.env}
