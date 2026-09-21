@@ -59,6 +59,7 @@ def passed(message):
 
 
 def main():
+    REPORT.unlink(missing_ok=True)
     # Refuse to mix another backend's logs into the test Loki instance.
     if run('docker', 'ps', '-aq', '--filter', 'label=beach.logs=backend'):
         raise RuntimeError('A labelled backend exists; use an isolated Docker daemon for this test.')
@@ -92,18 +93,25 @@ def main():
                     mount['volume'] = {'nocopy': True}
         if name == 'alloy':
             service['environment']['LOG_HOST'] = PROJECT
+            # Expose collector metrics only on a random loopback port in this test.
+            service['command'] = [arg.replace('127.0.0.1:12345', '0.0.0.0:12345')
+                                  for arg in service['command']]
+            service['ports'] = [{'target': 12345, 'published': '0', 'host_ip': '127.0.0.1'}]
     services['grafana']['environment'].update(GF_SECURITY_ADMIN_PASSWORD=PASSWORD,
                                                GF_ANALYTICS_REPORTING_ENABLED='false')
     logging_contract = json.loads(run('docker', 'compose', '-f',
         str(OBS / 'app-agent/backend-logging.override.yml'), 'config', '--no-consistency', '--format', 'json'))['services']['app']
-    for name, label in [('emitter', 'backend'), ('ignored', 'unrelated')]:
+    for name, label in [('emitter', 'backend'), ('emitter2', 'backend'), ('ignored', 'unrelated')]:
         services[name] = {
             'image': 'python:3.12-slim', 'command': ['python3', '-u', '/fixture.py'],
             'volumes': [{'type': 'bind', 'source': str(OBS / 'scripts/fixtures/log-emitter.py'),
                          'target': '/fixture.py', 'read_only': True}],
             'ports': [{'target': 8000, 'published': '0', 'host_ip': '127.0.0.1'}],
-            'labels': {'beach.logs': label}, 'logging': logging_contract['logging'],
+            'labels': {'beach.logs': label}, 'logging': copy.deepcopy(logging_contract['logging']),
         }
+    # Exercise real rotation quickly while retaining the production five-file policy.
+    for name in ['emitter', 'emitter2', 'ignored']:
+        services[name]['logging']['options']['max-size'] = '64k'
     document = {'services': services, 'volumes': volumes}
     with tempfile.TemporaryDirectory(prefix=PROJECT) as temp:
         config = Path(temp) / 'compose.json'
@@ -202,6 +210,65 @@ def main():
             assert offsets, 'No persistent file fingerprint/offset database'
             assert len(entries(record['message'])) == len(found)
             passed('Alloy persisted file fingerprints/offsets and resumed logs written during its stop')
+
+            # #263: a 40 KB JSON record spans multiple Docker 16 KiB records.
+            emitter2 = address('emitter2', 8000)
+            wait_for('second backend', lambda: request(emitter2) == '')
+            long_lines = []
+            for index, endpoint in enumerate([emitter, emitter + '/stderr', emitter2, emitter2 + '/stderr']):
+                payload = {'message': f'long-{index}-' + PROJECT,
+                           'padding': 'x' * 40000, 'traceId': secrets.token_hex(16)}
+                original = json.dumps(payload, separators=(',', ':'))
+                long_lines.append((endpoint, payload, original))
+                request(endpoint + '/partial', original[:20000].encode())
+            # Let the first fragment from every source reach Alloy before finishing.
+            time.sleep(1)
+            for endpoint, payload, original in long_lines:
+                request(endpoint, original[20000:].encode())
+            for endpoint, payload, original in long_lines:
+                received = wait_for('complete long JSON', lambda: entries(payload['message']))
+                assert len(received) == 1 and received[0][1] == original + '\n', [len(v[1]) for v in received]
+                assert query(selector + ' | json | traceId="' + payload['traceId'] + '"')
+                assert re.search(field['matcherRegex'], received[0][1]).group(1) == payload['traceId']
+            for name in ['emitter', 'emitter2']:
+                container_id = compose('ps', '-q', name)
+                compose('exec', '-T', 'alloy', 'test', '-s',
+                        f'/var/log/docker/{container_id}/{container_id}-json.log.1')
+            passed('40 KB JSON preserved during live rotation with interleaved stdout/stderr from two containers')
+
+            # #263: all these records remain in Docker's five files while Alloy is stopped.
+            compose('stop', 'alloy')
+            rotation_marker = 'rotation-' + PROJECT
+            expected_rotation = []
+            for number in range(110):
+                original = json.dumps({'message': rotation_marker, 'number': number,
+                                       'padding': 'r' * 1000}, separators=(',', ':'))
+                expected_rotation.append(original + '\n')
+                request(emitter, original.encode())
+            retained = compose('logs', '--no-log-prefix', 'emitter')
+            assert retained.count(rotation_marker) == 110, 'Fixture exceeded Docker retention'
+            # Force a long record across a rotation boundary while the reader is offline.
+            offline_long = json.dumps({'message': 'offline-long-' + PROJECT,
+                                       'padding': 'z' * 90000, 'traceId': secrets.token_hex(16)},
+                                      separators=(',', ':'))
+            request(emitter, offline_long.encode())
+            assert compose('logs', '--no-log-prefix', 'emitter').count(rotation_marker) == 110
+            compose('start', 'alloy')
+            recovered = wait_for('all 110 rotated records',
+                                 lambda: (rows if len(rows := entries(rotation_marker)) == 110 else None))
+            assert sorted(v[1] for v in recovered) == sorted(expected_rotation)
+            complete = wait_for('long JSON across rotated files', lambda: entries('offline-long-' + PROJECT))
+            assert len(complete) == 1 and complete[0][1] == offline_long + '\n', [len(v[1]) for v in complete]
+            # Recreate the collector using the same volume and check that completed files are not replayed.
+            compose('up', '-d', '--force-recreate', '--no-deps', 'alloy')
+            request(emitter, json.dumps({'message': 'rotation-resume-' + PROJECT}).encode())
+            wait_for('resume after rotation', lambda: entries('rotation-resume-' + PROJECT))
+            assert len(entries(rotation_marker)) == 110
+            metrics = request(address('alloy', 12345) + '/metrics')
+            sent = sum(float(value) for value in re.findall(
+                r'^loki_write_sent_entries_total\{[^\n]*\} ([0-9.e+]+)$', metrics, re.MULTILINE))
+            assert sent == 1, f'Restarted Alloy replayed previously read records: {sent} sends'
+            passed('All 110 retained rotated records and a 90 KB JSON spanning files recovered after Alloy restart')
 
             compose('up', '-d', '--force-recreate', '--no-deps', 'emitter')
             emitter = address('emitter', 8000)
