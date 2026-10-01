@@ -43,6 +43,16 @@ jobs:
       - name: Validate observability IaC
         run: bash deploy/observability/scripts/validate-iac.sh
 
+      - name: Verify local log pipeline and trace correlation
+        timeout-minutes: 10
+        run: python3 deploy/observability/scripts/verify-log-pipeline.py
+
+      - name: Upload log pipeline verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: observability-log-pipeline
+          path: build/reports/observability/log-pipeline.json
+
   backend-build-test:
     name: Backend Build & Test (Unit + Integration)
     runs-on: ubuntu-latest
