@@ -16,11 +16,11 @@ cd Beach_complex
 docker compose up -d --wait postgres redis
 ```
 
-기본 DB 접속 정보는 `localhost:15432`, 데이터베이스 `beach_complex`, 사용자·비밀번호 `beach`입니다. Redis 포트는 `6379`입니다.
+기본 DB 접속 정보는 `localhost:15432`, 데이터베이스 `beach_complex`, 사용자·비밀번호 `beach`입니다. Redis 포트는 `6379`입니다. API 캐시는 Caffeine을 사용하지만 기본 Actuator Health에는 Redis 점검이 포함되어 있어, Redis를 실행하지 않으면 Health가 `503`을 반환합니다.
 
 ## 2. 외부 인증정보 없이 백엔드 실행
 
-기본 설정은 Firebase와 메일 발송을 활성화합니다. 로컬에서 API를 먼저 확인하려면 아래처럼 비활성화해 실행하세요.
+기본 설정은 Firebase와 메일 발송을 활성화합니다. 로컬에서 API를 먼저 확인하려면 아래처럼 비활성화해 실행하세요. Bash 예시는 JWT 키 생성에 OpenSSL을 사용합니다.
 
 ```bash
 export SPRING_PROFILES_ACTIVE=dev
@@ -29,7 +29,7 @@ export APP_OUTBOX_POLLING_ENABLED=false
 export APP_MAIL_ENABLED=false
 export MANAGEMENT_HEALTH_MAIL_ENABLED=false
 export CONGESTION_SIGV4_ENABLED=false
-export JWT_SECRET=local-development-only-change-this-secret-before-deploy
+export JWT_SECRET=$(openssl rand -hex 32)
 
 ./gradlew bootRun
 ```
@@ -49,7 +49,7 @@ $env:JWT_SECRET = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("
 .\gradlew.bat bootRun
 ```
 
-앱 시작 시 Flyway가 마이그레이션과 초기 데이터를 적용합니다. 위 설정에서는 이메일과 푸시가 실제로 발송되지 않습니다. 혼잡도 스케줄러는 계속 실행되므로 별도 API가 없으면 30분 주기의 갱신 시 연결 실패 로그가 발생할 수 있습니다. `CONGESTION_SIGV4_ENABLED=false`는 서명만 끄며 혼잡도 API를 제공하거나 스케줄러를 중지하지 않습니다.
+앱 시작 시 Flyway가 마이그레이션과 초기 데이터를 적용합니다. 위 설정에서는 이메일과 푸시가 실제로 발송되지 않습니다. Bash와 PowerShell 모두 JWT 키 생성 명령을 다시 실행하면 기존 토큰은 유효하지 않게 됩니다. 혼잡도 스케줄러는 계속 실행되므로 별도 API가 없으면 30분 주기의 갱신 시 연결 실패 로그가 발생할 수 있습니다. `CONGESTION_SIGV4_ENABLED=false`는 서명만 끄며 혼잡도 API를 제공하거나 스케줄러를 중지하지 않습니다.
 
 ## 3. 동작 확인
 

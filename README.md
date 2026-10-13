@@ -127,7 +127,7 @@ Alloy에서 컨테이너·stdout/stderr별로 조각을 재조립하고, 파일 
 
 ## 로컬 실행
 
-JDK 21, Docker Compose, Git이 필요합니다. 아래는 이메일·푸시 발송을 끄고 API를 실행하는 Bash 예시입니다.
+JDK 21, Docker Compose, Git이 필요합니다. 아래는 이메일·푸시 발송을 끄고 API를 실행하는 Bash 예시이며, JWT 키 생성에 OpenSSL을 사용합니다.
 
 ```bash
 git clone https://github.com/Beach-complex/Beach_complex.git
@@ -140,12 +140,14 @@ export APP_OUTBOX_POLLING_ENABLED=false
 export APP_MAIL_ENABLED=false
 export MANAGEMENT_HEALTH_MAIL_ENABLED=false
 export CONGESTION_SIGV4_ENABLED=false
-export JWT_SECRET=local-development-only-change-this-secret-before-deploy
+export JWT_SECRET=$(openssl rand -hex 32)
 
 ./gradlew bootRun
 ```
 
-Flyway가 초기 데이터를 적용합니다. 혼잡도 스케줄러는 계속 동작하므로 외부 API를 연결하지 않으면 30분 주기 갱신 시 연결 실패 로그가 발생할 수 있습니다.
+Flyway가 초기 데이터를 적용합니다. JWT 키 생성 명령을 다시 실행하면 기존 토큰은 유효하지 않게 됩니다. 혼잡도 스케줄러는 계속 동작하므로 외부 API를 연결하지 않으면 30분 주기 갱신 시 연결 실패 로그가 발생할 수 있습니다.
+
+API 캐시는 Caffeine을 사용하며, Redis는 기본 Actuator Health 점검 때문에 함께 실행합니다.
 
 [Swagger UI](http://localhost:8080/swagger-ui.html) · [Health](http://localhost:8081/actuator/health)
 
