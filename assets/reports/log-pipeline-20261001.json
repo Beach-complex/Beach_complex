@@ -1,0 +1,25 @@
+{
+  "checked_at_utc": "2026-10-01T13:16:28.322906+00:00",
+  "scope": "isolated local Docker; synthetic app logs and OTLP trace; not EC2 deployment or browser UI",
+  "checks": [
+    "Local Loki, Tempo, Grafana and Docker log emitters ready",
+    "Real Docker JSON is preserved; unrelated logs excluded; only four low-cardinality labels",
+    "Grafana datasource health and provisioned log-to-trace / trace-to-log targets resolve",
+    "Alloy persisted file fingerprints/offsets and resumed logs written during its stop",
+    "40 KB JSON preserved during live rotation with interleaved stdout/stderr from two containers",
+    "All 110 retained rotated records and a 90 KB JSON spanning files recovered after Alloy restart",
+    "Alloy discovers a recreated backend without a hardcoded container ID",
+    "Alloy retries delivery across a short Loki outage",
+    "Loki data survives container recreation; compactor retention active at 72h"
+  ],
+  "images": {
+    "loki": "grafana/loki:3.7.8",
+    "tempo": "grafana/tempo:3.0.2",
+    "grafana": "grafana/grafana:13.1.3",
+    "alloy": "grafana/alloy:v1.19.2",
+    "emitter": "python:3.12-slim",
+    "emitter2": "python:3.12-slim",
+    "ignored": "python:3.12-slim"
+  },
+  "production_deployed": false
+}
