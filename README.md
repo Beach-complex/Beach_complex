@@ -38,7 +38,9 @@
 
 앱 EC2에서 Spring Boot와 PostgreSQL/PostGIS를 실행합니다. React가 REST API를 호출하며, 혼잡도는 Lambda Function URL(SigV4), 이메일 인증은 Gmail SMTP, 푸시는 FCM과 연동합니다.
 
-관측 EC2에는 Prometheus·Tempo·Loki·Grafana를 배치했습니다. Prometheus가 앱과 호스트의 메트릭을 수집하고, 앱은 Trace를 Tempo로 보냅니다. Alloy가 Docker 로그를 읽어 Loki로 전송하며, Grafana에서 `traceId`로 로그와 Trace를 오가며 확인합니다.
+관측 환경은 Prometheus·Tempo·Loki·Grafana로 구성했습니다. 앱은 Trace를 Tempo로 보내고, Alloy는 Docker 로그를 읽어 Loki로 보냅니다. Grafana에서 `traceId`로 로그와 Trace를 연결합니다.
+
+Prometheus·Tempo·Grafana는 [EC2에서 기동과 연동을 확인했습니다](https://github.com/Beach-complex/Beach_complex/pull/238). Loki·Alloy 로그 수집과 로그·Trace 연결은 [로컬 Docker에서 합성 데이터로 검증했습니다](https://github.com/Beach-complex/Beach_complex/pull/264).
 
 ## 주요 구현
 
@@ -145,7 +147,7 @@ export JWT_SECRET=$(openssl rand -hex 32)
 ./gradlew bootRun
 ```
 
-Flyway가 초기 데이터를 적용합니다. JWT 키 생성 명령을 다시 실행하면 기존 토큰은 유효하지 않게 됩니다. 혼잡도 스케줄러는 계속 동작하므로 외부 API를 연결하지 않으면 30분 주기 갱신 시 연결 실패 로그가 발생할 수 있습니다.
+Flyway가 초기 데이터를 적용합니다. 새 JWT 키로 앱을 다시 시작하면 이전에 발급한 액세스 토큰은 사용할 수 없습니다. 혼잡도는 30분마다 갱신하며, 외부 API를 연결하지 않으면 갱신 시 연결 실패 로그가 남을 수 있습니다.
 
 API 캐시는 Caffeine을 사용하며, Redis는 기본 Actuator Health 점검 때문에 함께 실행합니다.
 

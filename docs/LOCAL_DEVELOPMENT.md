@@ -49,7 +49,11 @@ $env:JWT_SECRET = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("
 .\gradlew.bat bootRun
 ```
 
-앱 시작 시 Flyway가 마이그레이션과 초기 데이터를 적용합니다. 위 설정에서는 이메일과 푸시가 실제로 발송되지 않습니다. Bash와 PowerShell 모두 JWT 키 생성 명령을 다시 실행하면 기존 토큰은 유효하지 않게 됩니다. 혼잡도 스케줄러는 계속 실행되므로 별도 API가 없으면 30분 주기의 갱신 시 연결 실패 로그가 발생할 수 있습니다. `CONGESTION_SIGV4_ENABLED=false`는 서명만 끄며 혼잡도 API를 제공하거나 스케줄러를 중지하지 않습니다.
+앱을 시작하면 Flyway가 마이그레이션과 초기 데이터를 적용합니다. 위 설정에서는 이메일과 푸시를 발송하지 않습니다.
+
+새 JWT 키로 앱을 다시 시작하면 이전에 발급한 액세스 토큰은 사용할 수 없습니다.
+
+혼잡도는 30분마다 갱신하며, 외부 API를 연결하지 않으면 갱신 시 연결 실패 로그가 남을 수 있습니다. `CONGESTION_SIGV4_ENABLED=false`는 요청 서명만 끄므로 스케줄러는 계속 실행됩니다.
 
 ## 3. 동작 확인
 
