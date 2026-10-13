@@ -7,7 +7,7 @@
 
 부산 해수욕장 7곳을 시작으로, 위치 기반 검색과 시설·상태 조회, 즐겨찾기, 방문 예약을 제공합니다. 이 저장소는 Spring Boot 백엔드와 배포·관측 환경을 관리합니다.
 
-[프론트엔드](https://github.com/Beach-complex/beach_complex_client) · [주요 구현](#주요-구현) · [문제 해결](#문제-해결) · [로컬 실행](#로컬-실행) · [문서](https://github.com/Beach-complex/beach_complex_docs)
+[프론트엔드](https://github.com/Beach-complex/beach_complex_client) · [주요 구현](#주요-구현) · [문제 해결](#문제-해결) · [로컬 실행](#로컬-실행) · [문서](#문서)
 
 ## 기술 스택
 
@@ -16,9 +16,21 @@
 ![PostgreSQL 16 · PostGIS 3.4](https://img.shields.io/badge/PostgreSQL_16-PostGIS_3.4-4169E1)
 ![Caffeine](https://img.shields.io/badge/Cache-Caffeine-8A684B)
 ![OpenTelemetry](https://img.shields.io/badge/Tracing-OpenTelemetry-425CC7)
-![Grafana stack](https://img.shields.io/badge/Observability-Grafana_Stack-F46800)
+![Grafana](https://img.shields.io/badge/Observability-Grafana-F46800)
 ![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED)
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-844FBA)
+
+| 영역 | 기술 |
+| --- | --- |
+| 프론트엔드 · 별도 저장소 | React |
+| 백엔드 | Java 21, Gradle, Spring Boot 3.3, Spring Security, JWT, Spring Data JPA / Hibernate |
+| 데이터 · 캐시 | PostgreSQL 16 / PostGIS 3.4, Flyway, Caffeine · Redis 7은 로컬 개발 Compose에 포함 |
+| 외부 연동 | Firebase Cloud Messaging(FCM), AWS Lambda Function URL / SigV4, Spring Mail / Gmail SMTP |
+| 관측 · 앱 계측 | Spring Boot Actuator, Micrometer, OpenTelemetry, Logback |
+| 관측 · 수집과 저장 | Prometheus, node_exporter, Grafana Alloy, Loki, Tempo, Grafana |
+| 인프라 | AWS EC2, EBS, Security Group, IAM role, Docker / Docker Compose, Terraform, cloud-init |
+| CI/CD | GitHub Actions, GitHub Container Registry(GHCR), SSH 배포 |
+| 품질 | JUnit 5, Testcontainers, JaCoCo, Checkstyle, Spotless, Gitleaks |
 
 ## 시스템 구성
 
@@ -174,9 +186,11 @@ Beach_complex/
 
 ## 문서
 
+외부에 공개 가능한 일부 문서만 이 저장소에 남겨두었습니다. 상세 설계·ADR·문제 해결 기록과 내부 협업·운영 문서는 비공개 [문서 저장소](https://github.com/Beach-complex/beach_complex_docs)에서 관리합니다. 아래와 본문의 문서 저장소 링크는 접근 권한이 필요하며, 권한이 없는 경우 GitHub에서 404로 표시될 수 있습니다.
+
 - [로컬 개발 가이드](./docs/LOCAL_DEVELOPMENT.md)
-- [문서 저장소](https://github.com/Beach-complex/beach_complex_docs) · [ADR 목록](https://github.com/Beach-complex/beach_complex_docs/tree/main/adr)
-- [문제 해결 기록](https://github.com/Beach-complex/beach_complex_docs/tree/main/backend/troubleshooting)
+- [문서 저장소 · 비공개](https://github.com/Beach-complex/beach_complex_docs) · [ADR 목록 · 비공개](https://github.com/Beach-complex/beach_complex_docs/tree/main/adr)
+- [문제 해결 기록 · 비공개](https://github.com/Beach-complex/beach_complex_docs/tree/main/backend/troubleshooting)
 - [관측 환경 가이드](./deploy/observability/README.md) · [Trace 공통 계약](./docs/TRACING_CONTRACT.md)
 - [프론트엔드](https://github.com/Beach-complex/beach_complex_client)
 
@@ -185,7 +199,7 @@ Beach_complex/
 | 역할 | 이름 | GitHub |
 | --- | --- | --- |
 | Backend / Infra | 박재홍 | [@PHJ2000](https://github.com/PHJ2000) |
-| Backend | 박건우 | [@GunwooPar](https://github.com/GunwooPar) |
+| Backend | 박건우 | [@geonusp](https://github.com/geonusp) |
 | Frontend / PM | 정도경 | [@DoGyeong888](https://github.com/DoGyeong888) |
 
 ## 라이선스
