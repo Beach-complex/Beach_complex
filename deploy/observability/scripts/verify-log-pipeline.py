@@ -114,6 +114,27 @@ def main():
         services[name]['logging']['options']['max-size'] = '64k'
     document = {'services': services, 'volumes': volumes}
     with tempfile.TemporaryDirectory(prefix=PROJECT) as temp:
+        alloy_config = (OBS / 'app-agent/alloy/config.alloy').read_text()
+        output = 'logs = [otelcol.exporter.loki.backend.input]'
+        probe_output = 'logs = [otelcol.exporter.loki.backend.input, otelcol.exporter.file.order_probe.input]'
+        assert alloy_config.count(output) == 1, 'Could not add isolated file-order probe'
+        alloy_config_path = Path(temp) / 'config.alloy'
+        alloy_config_path.write_text(alloy_config.replace(output, probe_output) + '''
+
+otelcol.exporter.file "order_probe" {
+    path           = "/tmp/alloy-file-order.jsonl"
+    append         = true
+    flush_interval = "1s"
+    format         = "json"
+}
+''')
+        os.chmod(alloy_config_path, 0o600)
+        for mount in services['alloy']['volumes']:
+            if mount['target'] == '/etc/alloy/config.alloy':
+                mount['source'] = str(alloy_config_path)
+                break
+        else:
+            raise RuntimeError('Alloy config mount was not found')
         config = Path(temp) / 'compose.json'
         config.write_text(json.dumps(document))
         os.chmod(config, 0o600)
@@ -143,6 +164,26 @@ def main():
             def entries(marker):
                 return [v for stream in query(selector + ' |= "' + marker + '"') for v in stream['values']]
 
+            def file_exported_records(marker):
+                try:
+                    batches = compose('exec', '-T', 'alloy', 'cat', '/tmp/alloy-file-order.jsonl')
+                except subprocess.CalledProcessError:
+                    return []
+                records = []
+                for batch_text in batches.splitlines():
+                    batch = json.loads(batch_text)
+                    for resource_logs in batch.get('resourceLogs', []):
+                        for scope_logs in resource_logs.get('scopeLogs', []):
+                            for record in scope_logs.get('logRecords', []):
+                                body = record.get('body', {}).get('stringValue', '')
+                                try:
+                                    event = json.loads(body)
+                                except json.JSONDecodeError:
+                                    continue
+                                if event.get('message') == marker:
+                                    records.append(event)
+                return records
+
             trace_id, span_id = secrets.token_hex(16), secrets.token_hex(8)
             record = {'message': 'pr4-first-' + PROJECT, 'traceId': trace_id,
                       'spanId': span_id, 'requestId': 'synthetic-request', 'userId': 'synthetic-user',
@@ -151,6 +192,8 @@ def main():
             request(emitter, line.encode())
             found = wait_for('Docker -> Alloy -> Loki', lambda: entries(record['message']))
             assert found[0][1].rstrip('\n') == line, 'Original app JSON was altered'
+            assert wait_for('Alloy file order probe',
+                            lambda: file_exported_records(record['message']), timeout=10)
             parsed = query(selector + ' | json | traceId="' + trace_id + '"')
             assert parsed, 'traceId JSON filter did not work'
             # Query results also contain structured metadata (e.g. detected_level).
@@ -257,6 +300,11 @@ def main():
             recovered = wait_for('all 110 rotated records',
                                  lambda: (rows if len(rows := entries(rotation_marker)) == 110 else None))
             assert sorted(v[1] for v in recovered) == sorted(expected_rotation)
+            ordered = wait_for('filelog reader order for all rotated records',
+                               lambda: (records if len(records := file_exported_records(rotation_marker)) == 110
+                                        else None))
+            assert [record['number'] for record in ordered] == list(range(110)), \
+                'Alloy did not export rotated files oldest to newest'
             complete = wait_for('long JSON across rotated files', lambda: entries('offline-long-' + PROJECT))
             assert len(complete) == 1 and complete[0][1] == offline_long + '\n', [len(v[1]) for v in complete]
             # Recreate the collector using the same volume and check that completed files are not replayed.
