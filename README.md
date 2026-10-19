@@ -201,7 +201,7 @@ Beach_complex/
 | 역할 | 이름 | GitHub |
 | --- | --- | --- |
 | Backend / Infra | 박재홍 | [@PHJ2000](https://github.com/PHJ2000) |
-| Backend | 박건우 | [@geonusp](https://github.com/geonusp) |
+| Backend / Infra | 박건우 | [@geonusp](https://github.com/geonusp) |
 | Frontend / PM | 정도경 | [@DoGyeong888](https://github.com/DoGyeong888) |
 
 ## 라이선스
