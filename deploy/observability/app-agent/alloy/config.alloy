@@ -3,7 +3,7 @@ logging {
 }
 
 // Fingerprints identify files even after Docker renames them during rotation.
-// Both components are public preview in the pinned Alloy v1.19.2 image.
+// Both components are public preview in the pinned Alloy v1.21.0 image.
 otelcol.storage.file "docker" {
 	directory        = "/var/lib/alloy/docker-offsets"
 	create_directory = true
@@ -11,11 +11,34 @@ otelcol.storage.file "docker" {
 }
 
 otelcol.receiver.filelog "docker" {
-	// v1.19.2's ordering wrapper accepts "lexicographic", whereas its bundled
-	// stanza reader requires "alphabetical". Configure the file_input operator
-	// directly until that upstream mapping is fixed. The wrapper input is idle.
-	include   = ["/var/log/docker/__unused_wrapper_input__"]
-	storage   = otelcol.storage.file.docker.handler
+	include = ["/var/log/docker/*/*-json.log", "/var/log/docker/*/*-json.log.[1-4]"]
+	storage = otelcol.storage.file.docker.handler
+	start_at = "beginning"
+	// Include Docker timestamps after escaped 16 KiB chunks in the fingerprint.
+	// A 1 KiB prefix can be identical across containers with repetitive payloads.
+	fingerprint_size       = "128KiB"
+	include_file_path      = true
+	include_file_name      = false
+	max_concurrent_files   = 1
+	max_batches            = 0
+	attributes = {
+		app                     = "beach-complex",
+		env                     = sys.env("APP_ENVIRONMENT"),
+		service                 = "backend",
+		host                    = sys.env("LOG_HOST"),
+		"loki.attribute.labels" = "app,env,service,host",
+		"loki.format"           = "raw",
+	}
+	ordering_criteria {
+		regex    = "/[^/]+/[^/]+-json\\.log(?P<rotation>\\.[1-4])?$"
+		group_by = "/([^/]+)/[^/]+-json\\.log"
+		top_n    = 5
+		sort_by {
+			sort_type = "alphabetical"
+			regex_key = "rotation"
+			ascending = false
+		}
+	}
 	operators = [
 		{
 			type      = "json_parser",
@@ -26,35 +49,6 @@ otelcol.receiver.filelog "docker" {
 				parse_from  = "attributes.time",
 				layout_type = "gotime",
 				layout      = "2006-01-02T15:04:05.999999999Z07:00",
-			},
-		},
-		{
-			type     = "file_input",
-			id       = "docker_files",
-			output   = "parse_docker",
-			include  = ["/var/log/docker/*/*-json.log", "/var/log/docker/*/*-json.log.[1-4]"],
-			start_at = "beginning",
-			// Include Docker timestamps after escaped 16 KiB chunks in the fingerprint.
-			// A 1 KiB prefix can be identical across containers with repetitive payloads.
-			fingerprint_size  = "128KiB",
-			include_file_path = true,
-			include_file_name = false,
-			// Oldest file first, one reader at a time, across all five files.
-			max_concurrent_files = 1,
-			max_batches          = 0,
-			ordering_criteria    = {
-				regex    = "/[^/]+/[^/]+-json\\.log(?P<rotation>\\.[1-4])?$",
-				group_by = "/([^/]+)/[^/]+-json\\.log",
-				top_n    = 5,
-				sort_by  = [{sort_type = "alphabetical", regex_key = "rotation", ascending = false}],
-			},
-			attributes = {
-				app                     = "beach-complex",
-				env                     = sys.env("APP_ENVIRONMENT"),
-				service                 = "backend",
-				host                    = sys.env("LOG_HOST"),
-				"loki.attribute.labels" = "app,env,service,host",
-				"loki.format"           = "raw",
 			},
 		},
 		{
