@@ -128,7 +128,7 @@ otelcol.exporter.file "order_probe" {
     format         = "json"
 }
 ''')
-        os.chmod(alloy_config_path, 0o600)
+        os.chmod(alloy_config_path, 0o644)
         for mount in services['alloy']['volumes']:
             if mount['target'] == '/etc/alloy/config.alloy':
                 mount['source'] = str(alloy_config_path)
