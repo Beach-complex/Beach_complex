@@ -48,6 +48,15 @@ target/
 
 # Firebase service account key (보안상 절대 커밋 금지)
 **/firebase-service-account.json
+**/*firebase-adminsdk*.json
+
+# Local credentials and Terraform state/plan backups
+/*.pem
+**/tfplan
+**/*.tfplan
+**/terraform.tfstate*
+**/terraform-state-backup-*.json
+/OPENWEATHER_API_KEY-backup-*.txt
 
 # Firebase 자동 생성 설정 파일 (환경변수 포함)
 front/public/firebase-config.js

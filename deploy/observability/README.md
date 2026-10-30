@@ -144,7 +144,7 @@ Trace가 샘플링되지 않았거나 Tempo 보존 기간이 지났으면 해당
 ## 구현 상세
 
 <details>
-<summary>Alloy 실행 권한, 파일 식별 방식과 정렬 우회 설정</summary>
+<summary>Alloy 실행 권한, 파일 식별 방식과 정렬 설정</summary>
 
 ### 실행 권한
 
@@ -154,19 +154,18 @@ Alloy는 root 소유 Docker 파일을 읽기 위해 UID 0으로 실행하지만,
 
 ### 수집기 버전과 로그 처리
 
-`otelcol.receiver.filelog`와 `otelcol.storage.file`은 고정한 Alloy v1.19.2에서 공개 미리보기 기능이다.
+`otelcol.receiver.filelog`와 `otelcol.storage.file`은 고정한 Alloy v1.21.0에서 공개 미리보기 기능이다.
 Compose와 설정 검사에 `--stability.level=public-preview`를 명시했다. 업그레이드할 때 같은 회귀 테스트를 실행한다.
 
 파일 지문은 파일 내용 일부를 비교해 같은 파일인지 식별하는 값이다. Docker 레코드 끝의 시각까지 비교하도록 크기를 128KiB로 설정했다. 긴 로그 조각의 앞부분이 같아도 다른 파일로 구분한다.
 파일 지문으로 이름이 바뀐 파일을 추적하고 `.log.4`부터 `.log`까지 차례로 읽는다.
 Docker가 나눈 한 줄은 컨테이너 ID와 stdout/stderr를 기준으로 묶어, 줄바꿈이 나올 때까지 구분자 없이 합친다.
 
-### 정렬 옵션의 우회 설정
+### 파일 정렬 설정
 
-이 버전의 Alloy 정렬 설정은 `lexicographic`을 받지만 내부 Stanza는 `alphabetical`을 요구한다.
-이를 피하려고 `operators`의 `file_input`에 정렬을 직접 설정했다. 바깥쪽 입력은 사용하지 않는 경로를 가리킨다.
-두 입력이 같은 파일을 읽지 않으며, 실제 입력은 같은 file storage에 읽기 위치를 저장한다.
-이 우회 설정은 해당 버전의 매핑이 수정되면 제거할 수 있다.
+Alloy v1.21.0에서는 `otelcol.receiver.filelog`가 `alphabetical` 정렬값을 지원하며, 내부 Stanza에도 같은 값을 전달한다.
+따라서 receiver의 `ordering_criteria.sort_by`에서 `sort_type = "alphabetical"`을 직접 사용하고, 이전 버전에서 필요했던 `file_input` 우회 설정을 제거했다.
+관련 수정은 [Alloy #7212](https://github.com/grafana/alloy/pull/7212)에 반영됐다.
 
 </details>
 
