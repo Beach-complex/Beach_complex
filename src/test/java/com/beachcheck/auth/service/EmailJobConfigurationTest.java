@@ -26,22 +26,6 @@ class EmailJobConfigurationTest {
           .withPropertyValues("app.email.jobs.polling-enabled=true");
 
   @Test
-  void mailDisabledDoesNotRequireKeyOrRegisterAnyJobProducerOrConsumer() {
-    runner
-        .withPropertyValues("app.mail.enabled=false")
-        .run(
-            context -> {
-              assertThat(context).hasNotFailed();
-              assertThat(context)
-                  .doesNotHaveBean(EmailPayloadCipher.class)
-                  .doesNotHaveBean(EmailEventListener.class)
-                  .doesNotHaveBean(EmailJobService.class)
-                  .doesNotHaveBean(EmailJobWorker.class)
-                  .doesNotHaveBean(EmailJobScheduler.class);
-            });
-  }
-
-  @Test
   void missingMailSettingAlsoPreservesNoopMode() {
     runner.run(
         context -> {

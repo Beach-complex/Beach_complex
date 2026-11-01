@@ -39,10 +39,22 @@ public class EmailJobWorker {
   }
 
   public void poll() {
+    poll(
+        () -> {
+          // 직접 호출은 추가 소비 작업을 예약하지 않는다.
+        });
+  }
+
+  public void poll(Runnable onFirstJob) {
+    boolean notified = false;
     // 소비 작업 하나당 정리·발송을 합쳐 최대 20건 처리한다.
     for (int i = 0; i < 20; i++) {
       var claimed = store.claim();
       if (claimed.queueEmpty()) return;
+      if (claimed.job().isPresent() && !notified) {
+        notified = true;
+        onFirstJob.run();
+      }
       claimed.job().ifPresent(this::deliver);
     }
   }

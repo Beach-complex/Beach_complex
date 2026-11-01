@@ -393,6 +393,17 @@ class EmailJobIntegrationTest extends IntegrationTest {
     assertThat(attempts()).isEqualTo(1);
   }
 
+  @Test
+  void workerReportsOnlyFirstSendableJobToScheduler() {
+    verification.sendVerification(user);
+    Runnable onFirstJob = org.mockito.Mockito.mock(Runnable.class);
+    worker.poll(onFirstJob);
+    verify(onFirstJob).run();
+    verify(sender, times(2)).send(anyString(), eq(user.getEmail()), anyString(), anyString());
+    worker.poll(onFirstJob);
+    verify(onFirstJob).run(); // 빈 큐를 다시 조회해도 확장 알림을 보내지 않는다.
+  }
+
   private void expireLease() {
     jdbc.update(
         "UPDATE email_jobs SET lease_until = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE id = ?",

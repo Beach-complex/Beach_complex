@@ -4,9 +4,7 @@ import static com.beachcheck.support.tracing.SpanTestSupport.awaitSpans;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.beachcheck.auth.service.EmailSender;
 import com.beachcheck.global.config.AsyncConfig;
-import com.beachcheck.global.config.RetryConfig;
 import com.beachcheck.global.logging.MdcTaskDecorator;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import io.micrometer.tracing.Span;
@@ -15,7 +13,6 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -51,8 +48,7 @@ class EmailJobTracingIntegrationTest {
                       .OpenTelemetryAutoConfiguration.class,
                   OpenTelemetryAutoConfiguration.class,
                   MicrometerTracingAutoConfiguration.class))
-          .withUserConfiguration(
-              AsyncConfig.class, RetryConfig.class, EmailTraceTestConfiguration.class)
+          .withUserConfiguration(AsyncConfig.class, EmailTraceTestConfiguration.class)
           .withPropertyValues("management.tracing.sampling.probability=1.0");
 
   @Test
@@ -255,34 +251,6 @@ class EmailJobTracingIntegrationTest {
     @Bean
     RecordingSpanExporter recordingSpanExporter() {
       return new RecordingSpanExporter();
-    }
-
-    @Bean
-    RecordingEmailSender emailSender() {
-      return new RecordingEmailSender();
-    }
-  }
-
-  static class RecordingEmailSender implements EmailSender {
-
-    private volatile CountDownLatch latch = new CountDownLatch(0);
-
-    void prepare() {
-      latch = new CountDownLatch(1);
-    }
-
-    @Override
-    public void send(String from, String to, String subject, String body) {
-      latch.countDown();
-    }
-
-    boolean await() {
-      try {
-        return latch.await(3, TimeUnit.SECONDS);
-      } catch (InterruptedException exception) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
     }
   }
 }
