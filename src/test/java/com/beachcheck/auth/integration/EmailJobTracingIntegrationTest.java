@@ -77,7 +77,11 @@ class EmailJobTracingIntegrationTest {
                   3,
                   traceparent);
           org.mockito.Mockito.when(store.claim())
-              .thenReturn(java.util.Optional.of(job), java.util.Optional.empty());
+              .thenReturn(
+                  new com.beachcheck.auth.repository.EmailJobStore.ClaimResult(
+                      java.util.Optional.of(job), false),
+                  new com.beachcheck.auth.repository.EmailJobStore.ClaimResult(
+                      java.util.Optional.empty(), true));
           org.mockito.Mockito.when(
                   store.finish(
                       org.mockito.ArgumentMatchers.any(),

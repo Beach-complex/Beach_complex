@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+@org.springframework.test.context.TestPropertySource(properties = "app.mail.enabled=true")
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmailJobTransactionIntegrationTest extends IntegrationTest {
 
@@ -30,6 +31,9 @@ class EmailJobTransactionIntegrationTest extends IntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private EmailVerificationTokenRepository tokenRepository;
   @Autowired private PlatformTransactionManager transactionManager;
+
+  @org.springframework.boot.test.mock.mockito.MockBean
+  private com.beachcheck.auth.service.EmailSender sender;
 
   @Autowired private JdbcTemplate jdbc;
 

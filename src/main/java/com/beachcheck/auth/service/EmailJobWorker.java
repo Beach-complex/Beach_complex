@@ -9,9 +9,11 @@ import io.micrometer.tracing.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(prefix = "app.mail", name = "enabled", havingValue = "true")
 public class EmailJobWorker {
   private static final Logger log = LoggerFactory.getLogger(EmailJobWorker.class);
   private final EmailJobStore store;
@@ -37,11 +39,11 @@ public class EmailJobWorker {
   }
 
   public void poll() {
-    // 직렬로 소량 처리하여 메모리 큐에 선점한 작업을 오래 보관하지 않는다.
+    // 소비 작업 하나당 정리·발송을 합쳐 최대 20건 처리한다.
     for (int i = 0; i < 20; i++) {
       var claimed = store.claim();
-      if (claimed.isEmpty()) return;
-      deliver(claimed.get());
+      if (claimed.queueEmpty()) return;
+      claimed.job().ifPresent(this::deliver);
     }
   }
 
@@ -62,6 +64,21 @@ public class EmailJobWorker {
     }
     Span work = builder.start().tag("email.operation", "verification");
     try (Tracer.SpanInScope ignored = tracer.withSpan(work)) {
+      String link;
+      try {
+        link = cipher.decrypt(job.payload());
+      } catch (RuntimeException failure) {
+        // SMTP에 도달하지 못한 설정/데이터 오류: 자동 재시도하지 않고 암호문을 보존한다.
+        boolean recorded = store.finish(job, "FAILED", "PAYLOAD_DECRYPT_FAILED", 0);
+        work.tag("email.delivery.outcome", recorded ? "payload_decrypt_failed" : "stale_claim");
+        work.error(new IllegalStateException("Email payload decryption failed"));
+        log.error(
+            "Email job={} attempt={} outcome={}",
+            job.id(),
+            job.attempt(),
+            recorded ? "PAYLOAD_DECRYPT_FAILED" : "STALE_CLAIM");
+        return;
+      }
       String status = "SUCCEEDED";
       String outcome = "ACCEPTED";
       Span smtp =
@@ -71,11 +88,7 @@ public class EmailJobWorker {
               .tag("email.retry.attempt", String.valueOf(job.attempt()))
               .start();
       try (Tracer.SpanInScope smtpScope = tracer.withSpan(smtp)) {
-        sender.send(
-            from,
-            job.recipient(),
-            "이메일 인증",
-            "아래 링크를 클릭하여 이메일을 인증해주세요:\n\n" + cipher.decrypt(job.payload()));
+        sender.send(from, job.recipient(), "이메일 인증", "아래 링크를 클릭하여 이메일을 인증해주세요:\n\n" + link);
         smtp.tag("email.delivery.outcome", "success");
       } catch (RuntimeException failure) {
         boolean retry = classifier.retryable(failure);

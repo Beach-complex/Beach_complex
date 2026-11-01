@@ -5,10 +5,12 @@ import com.beachcheck.global.util.HashUtils;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnProperty(prefix = "app.mail", name = "enabled", havingValue = "true")
 public class EmailJobService {
   private final EmailJobStore store;
   private final EmailPayloadCipher cipher;

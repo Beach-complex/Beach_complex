@@ -1,10 +1,12 @@
 package com.beachcheck.auth.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
+@ConditionalOnProperty(prefix = "app.mail", name = "enabled", havingValue = "true")
 public class EmailEventListener {
 
   private final EmailJobService emailJobService;

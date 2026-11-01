@@ -36,7 +36,7 @@ public class EmailJobStore {
 
   /** 선점·횟수 증가·이력 생성은 한 트랜잭션이며 SMTP 호출 전에 커밋한다. */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public Optional<Job> claim() {
+  public ClaimResult claim() {
     var candidates =
         jdbc.query(
             """
@@ -58,7 +58,7 @@ public class EmailJobStore {
                         rs.getInt("attempts"),
                         rs.getString("producer_traceparent")),
                     rs.getBoolean("valid_token")));
-    if (candidates.isEmpty()) return Optional.empty();
+    if (candidates.isEmpty()) return new ClaimResult(Optional.empty(), true);
     Candidate candidate = candidates.getFirst();
     Job old = candidate.job();
     jdbc.update(
@@ -75,8 +75,8 @@ public class EmailJobStore {
           """,
           old.attempt() >= 4 ? "ATTEMPTS_EXHAUSTED_UNKNOWN" : "TOKEN_INACTIVE",
           old.id());
-      // 다음 poll에서 다음 후보를 조회하며, 실패 행은 다시 선택하지 않는다.
-      return Optional.empty();
+      // 정리한 후보도 이번 배치의 한 건으로 세되, 다음 후보를 계속 조회한다.
+      return new ClaimResult(Optional.empty(), false);
     }
     int attempt = old.attempt() + 1;
     jdbc.update(
@@ -89,8 +89,9 @@ public class EmailJobStore {
         leaseSeconds,
         old.id());
     jdbc.update("INSERT INTO email_job_attempts(job_id, attempt) VALUES (?, ?)", old.id(), attempt);
-    return Optional.of(
-        new Job(old.id(), old.recipient(), old.payload(), attempt, old.traceparent()));
+    return new ClaimResult(
+        Optional.of(new Job(old.id(), old.recipient(), old.payload(), attempt, old.traceparent())),
+        false);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -100,7 +101,7 @@ public class EmailJobStore {
             """
         UPDATE email_jobs SET status = ?, lease_until = NULL,
           next_retry_at = CASE WHEN ? = 'RETRY_WAIT' THEN CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond') ELSE NULL END,
-          payload = CASE WHEN ? IN ('SUCCEEDED', 'FAILED') THEN NULL ELSE payload END,
+          payload = CASE WHEN ? IN ('SUCCEEDED', 'FAILED') AND ? <> 'PAYLOAD_DECRYPT_FAILED' THEN NULL ELSE payload END,
           last_error = CASE WHEN ? = 'SUCCEEDED' THEN NULL ELSE ? END
         WHERE id = ? AND status = 'SENDING' AND attempts = ?
         """,
@@ -108,6 +109,7 @@ public class EmailJobStore {
             status,
             delayMs,
             status,
+            outcome,
             status,
             outcome,
             job.id(),
@@ -123,6 +125,8 @@ public class EmailJobStore {
         job.attempt());
     return true;
   }
+
+  public record ClaimResult(Optional<Job> job, boolean queueEmpty) {}
 
   public record Job(UUID id, String recipient, String payload, int attempt, String traceparent) {}
 

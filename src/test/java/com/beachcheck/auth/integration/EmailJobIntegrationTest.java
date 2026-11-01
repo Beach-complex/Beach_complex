@@ -38,6 +38,7 @@ import org.springframework.mail.MailSendException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+@org.springframework.test.context.TestPropertySource(properties = "app.mail.enabled=true")
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmailJobIntegrationTest extends IntegrationTest {
   @Autowired private EmailVerificationService verification;
@@ -72,7 +73,7 @@ class EmailJobIntegrationTest extends IntegrationTest {
   void pendingSurvivesWorkerRecreationAndSuccessIsNotSentAgain() {
     var restarted =
         new EmailJobWorker(store, sender, cipher, new SmtpFailureClassifier(), Tracer.NOOP, "");
-    new EmailJobScheduler(restarted).poll();
+    new EmailJobScheduler(restarted, Runnable::run).poll();
     worker.poll();
     assertThat(status()).isEqualTo("SUCCEEDED");
     assertThat(attempts()).isEqualTo(1);
@@ -85,10 +86,10 @@ class EmailJobIntegrationTest extends IntegrationTest {
 
   @Test
   void staleSendingRecoversAndOldWorkerCannotOverwriteNewClaim() {
-    Job old = store.claim().orElseThrow();
-    assertThat(store.claim()).isEmpty();
+    Job old = store.claim().job().orElseThrow();
+    assertThat(store.claim().queueEmpty()).isTrue();
     expireLease();
-    Job recovered = store.claim().orElseThrow();
+    Job recovered = store.claim().job().orElseThrow();
     assertThat(recovered.attempt()).isEqualTo(2);
     assertThat(store.finish(old, "SUCCEEDED", "ACCEPTED", 0)).isFalse();
     assertThat(status()).isEqualTo("SENDING");
@@ -214,7 +215,7 @@ class EmailJobIntegrationTest extends IntegrationTest {
   @Test
   void fourthAbandonedClaimNeverGetsFifthAttempt() {
     for (int attempt = 1; attempt <= 4; attempt++) {
-      assertThat(store.claim().orElseThrow().attempt()).isEqualTo(attempt);
+      assertThat(store.claim().job().orElseThrow().attempt()).isEqualTo(attempt);
       expireLease();
     }
     worker.poll();
@@ -238,7 +239,7 @@ class EmailJobIntegrationTest extends IntegrationTest {
   @Test
   void closingAndStartingApplicationContextsRecoversPendingAndStaleSending() {
     try (var first = restartContext()) {
-      first.getBean(EmailJobStore.class).claim().orElseThrow();
+      first.getBean(EmailJobStore.class).claim().job().orElseThrow();
     }
     expireLease();
     verification.sendVerification(user); // 다른 PENDING 작업도 재시작 후 처리
@@ -261,6 +262,9 @@ class EmailJobIntegrationTest extends IntegrationTest {
   private org.springframework.context.annotation.AnnotationConfigApplicationContext
       restartContext() {
     var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext();
+    org.springframework.test.context.support.TestPropertySourceUtils
+        .addInlinedPropertiesToEnvironment(
+            context, "app.mail.enabled=true", "app.email.jobs.polling-enabled=true");
     context.register(RestartTransactions.class);
     context.registerBean(
         org.springframework.transaction.PlatformTransactionManager.class,
@@ -281,7 +285,7 @@ class EmailJobIntegrationTest extends IntegrationTest {
                 ""));
     context.registerBean(
         EmailJobScheduler.class,
-        () -> new EmailJobScheduler(context.getBean(EmailJobWorker.class)));
+        () -> new EmailJobScheduler(context.getBean(EmailJobWorker.class), Runnable::run));
     context.refresh();
     return context;
   }
@@ -324,6 +328,69 @@ class EmailJobIntegrationTest extends IntegrationTest {
     assertThat(status()).isEqualTo("FAILED");
     assertThat(attempts()).isZero();
     verify(sender, times(1)).send(anyString(), eq(user.getEmail()), anyString(), anyString());
+  }
+
+  @Test
+  void expiredHeadDoesNotStopDeliveryOfFollowingValidJob() {
+    jdbc.update(
+        "UPDATE email_verification_tokens SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE user_id = ?",
+        user.getId());
+    verification.sendVerification(user);
+    worker.poll();
+    assertThat(status()).isEqualTo("FAILED");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM email_jobs WHERE recipient = ? AND status = 'SUCCEEDED'",
+                Integer.class,
+                user.getEmail()))
+        .isEqualTo(1);
+    verify(sender).send(anyString(), eq(user.getEmail()), anyString(), anyString());
+  }
+
+  @Test
+  void invalidCandidatesStillRespectTwentyItemBatchLimit() {
+    jdbc.update(
+        "UPDATE email_verification_tokens SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE user_id = ?",
+        user.getId());
+    jdbc.update(
+        """
+        INSERT INTO email_jobs(id, recipient, payload, token_hash)
+        SELECT uuid_generate_v4(), recipient, payload, token_hash FROM email_jobs
+        CROSS JOIN generate_series(1, 24) WHERE id = ?
+        """,
+        jobId);
+    worker.poll();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM email_jobs WHERE status = 'FAILED'", Integer.class))
+        .isEqualTo(20);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM email_jobs WHERE status = 'PENDING'", Integer.class))
+        .isEqualTo(5);
+    verifyNoInteractions(sender);
+  }
+
+  @Test
+  void decryptionFailurePreservesCiphertextWithoutCallingSmtp() {
+    String encrypted =
+        jdbc.queryForObject("SELECT payload FROM email_jobs WHERE id = ?", String.class, jobId);
+    var wrongKey = new EmailPayloadCipher("AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=");
+    new EmailJobWorker(store, sender, wrongKey, new SmtpFailureClassifier(), Tracer.NOOP, "")
+        .poll();
+    assertThat(status()).isEqualTo("FAILED");
+    assertThat(history()).containsExactly("PAYLOAD_DECRYPT_FAILED");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT last_error FROM email_jobs WHERE id = ?", String.class, jobId))
+        .isEqualTo("PAYLOAD_DECRYPT_FAILED");
+    String preserved =
+        jdbc.queryForObject("SELECT payload FROM email_jobs WHERE id = ?", String.class, jobId);
+    assertThat(preserved).isEqualTo(encrypted);
+    assertThat(cipher.decrypt(preserved)).contains("?token=");
+    worker.poll();
+    verifyNoInteractions(sender);
+    assertThat(attempts()).isEqualTo(1);
   }
 
   private void expireLease() {
