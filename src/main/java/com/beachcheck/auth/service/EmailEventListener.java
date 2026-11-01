@@ -7,14 +7,14 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 public class EmailEventListener {
 
-  private final AsyncEmailService asyncEmailService;
+  private final EmailJobService emailJobService;
 
-  public EmailEventListener(AsyncEmailService asyncEmailService) {
-    this.asyncEmailService = asyncEmailService;
+  public EmailEventListener(EmailJobService emailJobService) {
+    this.emailJobService = emailJobService;
   }
 
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
   public void handleEmailVerificationEvent(EmailVerificationEvent event) {
-    asyncEmailService.sendVerificationEmailAsync(event.email(), event.verificationLink());
+    emailJobService.enqueue(event.email(), event.verificationLink());
   }
 }

@@ -51,6 +51,10 @@ spring:
 
 # JWT 설정 (테스트용)
 app:
+  email:
+    jobs:
+      polling-enabled: false
+      payload-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= # test-only 32-byte key
   jwt:
     secret: test-secret-key-for-testing-only-minimum-256-bits-required-for-hmac-sha256
     access-token-expiration: 3600000   # 1시간
