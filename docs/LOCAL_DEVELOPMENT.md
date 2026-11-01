@@ -79,7 +79,7 @@ curl 'http://localhost:8080/api/beaches?lat=35.1587&lon=129.1599&radiusKm=5'
 | 연동 | 설정 |
 | --- | --- |
 | PostgreSQL | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` |
-| 이메일 | `APP_MAIL_ENABLED=true`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`; 메일 상태 점검 시 `MANAGEMENT_HEALTH_MAIL_ENABLED=true` |
+| 이메일 | `APP_MAIL_ENABLED=true`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `APP_EMAIL_JOBS_PAYLOAD_KEY`(32바이트 Base64, 모든 메일 인스턴스에 동일한 키); 메일 상태 점검 시 `MANAGEMENT_HEALTH_MAIL_ENABLED=true` |
 | 이메일 인증 링크 | `APP_EMAIL_VERIFICATION_BASE_URL` — 기본값 `http://localhost:8080/api/auth/verify-email` |
 | Firebase FCM | `APP_FIREBASE_ENABLED=true`, `APP_OUTBOX_POLLING_ENABLED=true`, 서비스 계정 설정 |
 | Firebase 서비스 계정 | `APP_FIREBASE_CREDENTIALS_JSON_BASE64` 또는 `APP_FIREBASE_CREDENTIALS_PATH` |

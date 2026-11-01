@@ -52,7 +52,6 @@ class EmailVerificationServiceTest {
   private static final long EXP_MIN_LOWER_BOUND = EXP_MINUTES - EXP_TOLERANCE_MINUTES;
   private static final long EXP_MIN_UPPER_BOUND = EXP_MINUTES;
 
-  @Mock private AsyncEmailService asyncEmailService;
   @Mock private EmailVerificationTokenRepository tokenRepository;
   @Mock private UserRepository userRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
@@ -66,7 +65,6 @@ class EmailVerificationServiceTest {
   void setUp() {
     service =
         new EmailVerificationService(
-            asyncEmailService,
             tokenRepository,
             userRepository,
             eventPublisher,

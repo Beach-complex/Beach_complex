@@ -4,11 +4,7 @@ import static com.beachcheck.support.tracing.SpanTestSupport.awaitSpans;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.beachcheck.auth.service.AsyncEmailService;
-import com.beachcheck.auth.service.EmailSender;
-import com.beachcheck.auth.service.RetryingEmailDeliveryService;
 import com.beachcheck.global.config.AsyncConfig;
-import com.beachcheck.global.config.RetryConfig;
 import com.beachcheck.global.logging.MdcTaskDecorator;
 import com.beachcheck.support.tracing.RecordingSpanExporter;
 import io.micrometer.tracing.Span;
@@ -17,7 +13,6 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -37,7 +32,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @DisplayName("비동기 이메일 Trace 통합 계약")
-class AsyncEmailTracingIntegrationTest {
+class EmailJobTracingIntegrationTest {
 
   private static final String USER_EMAIL = "user@test.com";
   private static final String VERIFICATION_LINK = "https://example.com/verify?token=test-token";
@@ -53,70 +48,70 @@ class AsyncEmailTracingIntegrationTest {
                       .OpenTelemetryAutoConfiguration.class,
                   OpenTelemetryAutoConfiguration.class,
                   MicrometerTracingAutoConfiguration.class))
-          .withUserConfiguration(
-              AsyncConfig.class, RetryConfig.class, EmailTraceTestConfiguration.class)
+          .withUserConfiguration(AsyncConfig.class, EmailTraceTestConfiguration.class)
           .withPropertyValues("management.tracing.sampling.probability=1.0");
 
   @Test
-  @DisplayName("부모 Trace를 worker로 전달하고 이메일 작업 자식 span을 하나 만든다")
-  void parentTrace_createsChildWorkSpan() {
+  @DisplayName("DB에서 복구한 이메일 시도는 생산 Trace에 Link를 연결한다")
+  void recoveredJobLinksProducerAndDoesNotLeakSensitiveData() {
     contextRunner.run(
         context -> {
           Tracer tracer = context.getBean(Tracer.class);
-          AsyncEmailService asyncEmailService = context.getBean(AsyncEmailService.class);
-          RecordingEmailSender emailSender = context.getBean(RecordingEmailSender.class);
-          RecordingSpanExporter exporter = context.getBean(RecordingSpanExporter.class);
-          SdkTracerProvider tracerProvider = context.getBean(SdkTracerProvider.class);
-          emailSender.prepare();
-
+          var store = org.mockito.Mockito.mock(com.beachcheck.auth.repository.EmailJobStore.class);
+          var cipher =
+              new com.beachcheck.auth.service.EmailPayloadCipher(
+                  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
           Span parent = tracer.nextSpan().name("http.parent.test").start();
-          try (Tracer.SpanInScope ignored = tracer.withSpan(parent)) {
-            asyncEmailService.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
-          } finally {
-            parent.end();
-          }
-
-          assertThat(emailSender.await()).isTrue();
-          List<SpanData> spans = awaitSpans(exporter, tracerProvider, 3);
-          SpanData parentData = onlySpanNamed(spans, "http.parent.test");
-          SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
-          SpanData smtpSpan = onlySpanNamed(spans, "email.smtp.send");
-
-          assertThat(workSpan.getTraceId()).isEqualTo(parentData.getTraceId());
-          assertThat(workSpan.getParentSpanId()).isEqualTo(parentData.getSpanId());
-          assertThat(attribute(workSpan, "email.operation")).isEqualTo("verification");
-          assertThat(attribute(workSpan, "email.delivery.outcome")).isEqualTo("success");
-          assertThat(smtpSpan.getTraceId()).isEqualTo(workSpan.getTraceId());
-          assertThat(smtpSpan.getParentSpanId()).isEqualTo(workSpan.getSpanId());
-          assertThat(attribute(smtpSpan, "email.operation")).isEqualTo("verification");
-          assertThat(attribute(smtpSpan, "email.retry.attempt")).isEqualTo("1");
-          assertThat(attribute(smtpSpan, "email.delivery.outcome")).isEqualTo("success");
-        });
-  }
-
-  @Test
-  @DisplayName("부모 Trace가 없으면 이메일 작업을 새 루트 span으로 시작한다")
-  void noParent_createsRootWorkSpan() {
-    contextRunner.run(
-        context -> {
-          AsyncEmailService asyncEmailService = context.getBean(AsyncEmailService.class);
-          RecordingEmailSender emailSender = context.getBean(RecordingEmailSender.class);
-          RecordingSpanExporter exporter = context.getBean(RecordingSpanExporter.class);
-          SdkTracerProvider tracerProvider = context.getBean(SdkTracerProvider.class);
-          emailSender.prepare();
-
-          asyncEmailService.sendVerificationEmailAsync(USER_EMAIL, VERIFICATION_LINK);
-
-          assertThat(emailSender.await()).isTrue();
-          List<SpanData> spans = awaitSpans(exporter, tracerProvider, 2);
-          SpanData workSpan = onlySpanNamed(spans, "email.verification.send");
-          SpanData smtpSpan = onlySpanNamed(spans, "email.smtp.send");
-
-          assertThat(workSpan.getParentSpanContext().isValid()).isFalse();
-          assertThat(attribute(workSpan, "email.delivery.outcome")).isEqualTo("success");
-          assertThat(smtpSpan.getParentSpanId()).isEqualTo(workSpan.getSpanId());
-          assertThat(attribute(smtpSpan, "email.retry.attempt")).isEqualTo("1");
-          assertThat(attribute(smtpSpan, "email.delivery.outcome")).isEqualTo("success");
+          String traceparent =
+              "00-" + parent.context().traceId() + "-" + parent.context().spanId() + "-01";
+          parent.end();
+          var job =
+              new com.beachcheck.auth.repository.EmailJobStore.Job(
+                  java.util.UUID.randomUUID(),
+                  USER_EMAIL,
+                  cipher.encrypt(VERIFICATION_LINK),
+                  3,
+                  traceparent);
+          org.mockito.Mockito.when(store.claim())
+              .thenReturn(
+                  new com.beachcheck.auth.repository.EmailJobStore.ClaimResult(
+                      java.util.Optional.of(job), false),
+                  new com.beachcheck.auth.repository.EmailJobStore.ClaimResult(
+                      java.util.Optional.empty(), true));
+          org.mockito.Mockito.when(
+                  store.finish(
+                      org.mockito.ArgumentMatchers.any(),
+                      org.mockito.ArgumentMatchers.anyString(),
+                      org.mockito.ArgumentMatchers.anyString(),
+                      org.mockito.ArgumentMatchers.anyLong()))
+              .thenReturn(true);
+          var worker =
+              new com.beachcheck.auth.service.EmailJobWorker(
+                  store,
+                  (from, to, subject, body) -> {
+                    throw new org.springframework.mail.MailSendException(VERIFICATION_LINK);
+                  },
+                  cipher,
+                  new com.beachcheck.auth.service.SmtpFailureClassifier(),
+                  tracer,
+                  "sender@example.com");
+          worker.poll();
+          var spans =
+              awaitSpans(
+                  context.getBean(RecordingSpanExporter.class),
+                  context.getBean(SdkTracerProvider.class),
+                  3);
+          var work = onlySpanNamed(spans, "email.verification.send");
+          var smtp = onlySpanNamed(spans, "email.smtp.send");
+          assertThat(work.getParentSpanContext().isValid()).isFalse();
+          assertThat(work.getLinks()).hasSize(1);
+          assertThat(work.getLinks().getFirst().getSpanContext().getTraceId())
+              .isEqualTo(parent.context().traceId());
+          assertThat(smtp.getParentSpanId()).isEqualTo(work.getSpanId());
+          assertThat(attribute(smtp, "email.retry.attempt")).isEqualTo("3");
+          assertThat(attribute(work, "email.delivery.outcome")).isEqualTo("retry_wait");
+          assertThat(spans.toString()).doesNotContain(USER_EMAIL, VERIFICATION_LINK, "?token=");
+          assertThat(tracer.currentSpan()).isNull();
         });
   }
 
@@ -256,46 +251,6 @@ class AsyncEmailTracingIntegrationTest {
     @Bean
     RecordingSpanExporter recordingSpanExporter() {
       return new RecordingSpanExporter();
-    }
-
-    @Bean
-    RecordingEmailSender emailSender() {
-      return new RecordingEmailSender();
-    }
-
-    @Bean
-    RetryingEmailDeliveryService retryingEmailDeliveryService(
-        EmailSender emailSender, Tracer tracer) {
-      return new RetryingEmailDeliveryService(emailSender, tracer);
-    }
-
-    @Bean
-    AsyncEmailService asyncEmailService(
-        RetryingEmailDeliveryService emailDeliveryService, Tracer tracer) {
-      return new AsyncEmailService(emailDeliveryService, tracer, "no-reply@test.com", 30);
-    }
-  }
-
-  static class RecordingEmailSender implements EmailSender {
-
-    private volatile CountDownLatch latch = new CountDownLatch(0);
-
-    void prepare() {
-      latch = new CountDownLatch(1);
-    }
-
-    @Override
-    public void send(String from, String to, String subject, String body) {
-      latch.countDown();
-    }
-
-    boolean await() {
-      try {
-        return latch.await(3, TimeUnit.SECONDS);
-      } catch (InterruptedException exception) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
     }
   }
 }

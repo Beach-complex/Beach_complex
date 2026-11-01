@@ -44,6 +44,9 @@ spring:
     properties:
       mail:
         smtp:
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
           auth: true
           starttls:
             enable: true
@@ -142,6 +145,12 @@ app:
   aws:
     region: ${AWS_REGION:us-east-1}
     profile: ${AWS_PROFILE:}
+  email:
+    jobs:
+      payload-key: ${APP_EMAIL_JOBS_PAYLOAD_KEY:}
+      polling-enabled: ${APP_EMAIL_JOBS_POLLING_ENABLED:true}
+      poll-interval-ms: ${APP_EMAIL_JOBS_POLL_INTERVAL_MS:1000}
+      lease-seconds: ${APP_EMAIL_JOBS_LEASE_SECONDS:300}
   email-verification:
     base-url: ${APP_EMAIL_VERIFICATION_BASE_URL:http://localhost:8080/api/auth/verify-email}
     token-expiration-minutes: 30

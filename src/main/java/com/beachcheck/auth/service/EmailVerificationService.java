@@ -28,7 +28,6 @@ public class EmailVerificationService {
 
   private final Logger log = LoggerFactory.getLogger(EmailVerificationService.class);
 
-  private final AsyncEmailService asyncEmailService;
   private final EmailVerificationTokenRepository tokenRepository;
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
@@ -38,14 +37,12 @@ public class EmailVerificationService {
   private final long resendCooldownMinutes;
 
   public EmailVerificationService(
-      AsyncEmailService asyncEmailService,
       EmailVerificationTokenRepository tokenRepository,
       UserRepository userRepository,
       ApplicationEventPublisher eventPublisher,
       @Value("${app.email-verification.base-url}") String baseUrl,
       @Value("${app.email-verification.token-expiration-minutes:30}") long tokenExpirationMinutes,
       @Value("${app.email-verification.resend-cooldown-minutes:3}") long resendCooldownMinutes) {
-    this.asyncEmailService = asyncEmailService;
     this.tokenRepository = tokenRepository;
     this.userRepository = userRepository;
     this.eventPublisher = eventPublisher;
@@ -143,8 +140,8 @@ public class EmailVerificationService {
    *
    * <p>Contract(Output): 쿨다운 위반 시 IllegalStateException을 던진다.
    *
-   * <p>Note: 이 메서드는 {@link RetryingEmailDeliveryService}의 @Retryable 백오프와는 다른 목적을 가진다.
-   * enforceCooldown은 사용자 행동 제어(비즈니스 규칙), @Retryable은 SMTP 장애 복구(기술 계층)이다.
+   * <p>Note: 이 메서드는 {@link EmailJobWorker}의 DB 기반 백오프와는 다른 목적을 가진다. enforceCooldown은 사용자 행동 제어(비즈니스
+   * 규칙), DB 재시도는 SMTP 장애 복구(기술 계층)이다.
    */
   private void enforceCooldown(UUID userId) {
     tokenRepository
